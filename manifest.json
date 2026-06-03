@@ -1,0 +1,25 @@
+{
+  "manifest_version": 3,
+  "name": "Zakkir",
+  "version": "1.1.0",
+  "description": "Prayer times + Azkar (Hisn al-Muslim) in your toolbar.",
+  "permissions": ["storage"],
+  "host_permissions": [
+    "https://api.aladhan.com/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": { "16": "icon_16.png", "48": "icon_48.png", "128": "icon.png" }
+  },
+  "icons": { "16": "icon_16.png", "48": "icon_48.png", "128": "icon.png" },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "zakkir@lovable.app",
+      "strict_min_version": "140.0",
+      "data_collection_permissions": { "required": ["none"] }
+    }
+  },
+  "web_accessible_resources": [
+    { "resources": ["popup.html", "azkar.json"], "matches": ["<all_urls>"] }
+  ]
+}
