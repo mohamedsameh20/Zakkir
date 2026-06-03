@@ -2,26 +2,36 @@
 
 Standalone desktop application for prayer times and Azkar.
 
-## Screenshots
+## User Interface Screenshots
 
 ### Home View
 
-*   **Light Theme**
-    ![Home Light](Screenshots/Screenshot_20260602_121327.png)
+The main dashboard displays the current local time, calculated prayer timings for the day, a countdown to the next prayer, and progress counters for morning, evening, and sleep Azkar.
 
-*   **Dark Slate Theme**
-    ![Home Dark Slate](Screenshots/Screenshot_20260602_120849.png)
+| Light Theme | Dark Slate Theme | Dark Navy Theme |
+|:---:|:---:|:---:|
+| ![Home Light](Screenshots/Screenshot_20260602_121327.png) | ![Home Dark Slate](Screenshots/Screenshot_20260602_120849.png) | ![Home Dark Navy](Screenshots/Screenshot_20260602_122623.png) |
 
-*   **Dark Navy Theme**
-    ![Home Dark Navy](Screenshots/Screenshot_20260602_122623.png)
+---
 
 ### Settings View
 
-*   **Light Theme**
-    ![Settings Light](Screenshots/Screenshot_20260602_093116.png)
+The settings panel exposes customization and calculation options, including location coordinates, computation methods, Arabic font configuration (style and scaling), application theme selection, custom accent color palettes, and interface scaling.
 
-*   **Dark Theme**
-    ![Settings Dark](Screenshots/Screenshot_20260602_121019.png)
+#### Light and Dark Themes (Standard Sizing)
 
-*   **Resized (Wide)**
-    ![Resized Settings](Screenshots/Screenshot_20260602_123327.png)
+| Light Theme | Dark Theme |
+|:---:|:---:|
+| ![Settings Light](Screenshots/Screenshot_20260602_093116.png) | ![Settings Dark](Screenshots/Screenshot_20260602_121019.png) |
+
+#### Full Configuration Scroll
+
+This view displays the expanded Settings layout, showing the complete configuration options for text size previews, theme cards, custom color swatches, and interface zoom controls:
+
+![Settings Full Configuration](Screenshots/Screenshot_20260602_121126.png)
+
+#### Dynamic Window Resizing (Horizontal Expansion)
+
+This screenshot demonstrates the responsive scaling behavior of the application's interface when resized to a wide layout:
+
+![Settings Resized Wide](Screenshots/Screenshot_20260602_123327.png)
