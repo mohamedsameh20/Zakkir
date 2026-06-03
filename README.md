@@ -32,6 +32,6 @@ This view displays the expanded Settings layout, showing the complete configurat
 
 #### Dynamic Window Resizing (Horizontal Expansion)
 
-This screenshot demonstrates the responsive scaling behavior of the application's interface when resized to a wide layout:
+Responsive scaling behavior of the application's interface when resized to a wide layout:
 
 ![Settings Resized Wide](Screenshots/Screenshot_20260602_123327.png)
