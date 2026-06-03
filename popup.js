@@ -328,6 +328,7 @@ const icon = {
   pin: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 17v5"/><path d="M9 10.76V6a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v4.76l2 3.24H7l2-3.24Z"/></svg>`,
   unpin: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3l18 18"/><path d="M12 17v5"/><path d="M9 10.76V6a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v4.76l2 3.24H7l2-3.24Z"/></svg>`,
   close: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>`,
+  minimize: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/></svg>`,
 };
 
 const IS_PINNED = (() => {
@@ -341,9 +342,10 @@ function headerHTML() {
   return `
     <div class="brand"><img class="logo" src="icon.png" alt="Zakkir"/><span class="name">Zakkir</span></div>
     <div class="icons">
-      ${globalThis.electronAPI ? "" : `<button class="icon-btn" id="pinBtn" title="${pinned ? "Close pinned window" : "Pin (keep open)"}">${pinned ? icon.unpin : icon.pin}</button>`}
-      ${globalThis.electronAPI ? `<button class="icon-btn" id="closeBtn" title="Close">${icon.close}</button>` : ""}
-      <button class="icon-btn" data-go="settings" title="Settings">${icon.gear}</button>
+      ${globalThis.electronAPI ? "" : `<button class="icon-btn" id="pinBtn" title="${pinned ? "Close pinned window" : "Pin (keep open)"}"><span>${pinned ? icon.unpin : icon.pin}</span></button>`}
+      ${globalThis.electronAPI ? `<button class="icon-btn" id="minimizeBtn" title="Minimize"><span>${icon.minimize}</span></button>` : ""}
+      ${globalThis.electronAPI ? `<button class="icon-btn" id="closeBtn" title="Close"><span>${icon.close}</span></button>` : ""}
+      <button class="icon-btn" data-go="settings" title="Settings"><span>${icon.gear}</span></button>
     </div>`;
 }
 
@@ -660,6 +662,13 @@ function wire() {
       chrome.windows.create({ url, type: "popup", width: w, height: h, focused: true }, () => window.close());
     } else {
       window.open(url, "zakkir-pinned", `popup=yes,width=${w},height=${h}`);
+    }
+  });
+
+  const minimizeBtn = $("#minimizeBtn");
+  if (minimizeBtn) minimizeBtn.addEventListener("click", () => {
+    if (globalThis.electronAPI) {
+      globalThis.electronAPI.minimizeWindow();
     }
   });
 

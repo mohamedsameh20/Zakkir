@@ -25,6 +25,14 @@ function createWindow() {
   win.once('ready-to-show', () => {
     win.show();
   });
+
+  // F12 toggles DevTools for debugging in packaged builds
+  win.webContents.on('before-input-event', (event, input) => {
+    if (input.key === 'F12') {
+      win.webContents.toggleDevTools();
+      event.preventDefault();
+    }
+  });
 }
 
 app.whenReady().then(() => {
@@ -55,6 +63,13 @@ ipcMain.on('resize-window', (event, w, h) => {
   const win = BrowserWindow.fromWebContents(event.sender);
   if (win) {
     win.setSize(w, h);
+  }
+});
+
+ipcMain.on('minimize-window', (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (win) {
+    win.minimize();
   }
 });
 
