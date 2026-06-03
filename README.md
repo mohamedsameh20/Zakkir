@@ -1,6 +1,6 @@
 # Zakkir Desktop
 
-Standalone desktop application for prayer times and Azkar.
+Mini desktop app for prayer times and Azkar.
 
 ## User Interface Screenshots
 
