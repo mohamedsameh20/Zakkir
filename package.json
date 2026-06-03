@@ -8,7 +8,7 @@
     "pack": "electron-builder --dir",
     "dist": "electron-builder"
   },
-  "author": "Mohamed Sameh",
+  "author": "Mohamed Sameh <mohamedsameh20@github.com>",
   "license": "MIT",
   "devDependencies": {
     "electron": "^30.0.0",
