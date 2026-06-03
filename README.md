@@ -4,32 +4,15 @@ Mini desktop app for prayer times and Azkar.
 
 ## Installation
 
-Download the latest release from the [Releases](https://github.com/mohamedsameh20/Zakkir/releases) page.
-
-**Windows**
-
-Run `Zakkir Setup 1.1.0.exe`. The installer will add the app to your Start Menu and desktop.
-
-**Debian / Ubuntu**
-
-```bash
-sudo dpkg -i zakkir-desktop_1.1.0_amd64.deb
-```
-
-**Other Linux (AppImage)**
-
-```bash
-chmod +x Zakkir-1.1.0.AppImage
-./Zakkir-1.1.0.AppImage
-```
-
-**NixOS**
-
-```nix
-home.packages = [ pkgs.callPackage ./pkgs/zakkir-desktop { } ];
-```
+| Platform | Download | Install |
+|---|---|---|
+| Windows | [Zakkir-Setup-1.1.0.exe](https://github.com/mohamedsameh20/Zakkir/releases/download/v1.1.0/Zakkir-Setup-1.1.0.exe) | Run the installer |
+| Debian / Ubuntu | [zakkir-desktop_1.1.0_amd64.deb](https://github.com/mohamedsameh20/Zakkir/releases/download/v1.1.0/zakkir-desktop_1.1.0_amd64.deb) | `sudo dpkg -i zakkir-desktop_1.1.0_amd64.deb` |
+| Linux (AppImage) | [Zakkir-1.1.0.AppImage](https://github.com/mohamedsameh20/Zakkir/releases/download/v1.1.0/Zakkir-1.1.0.AppImage) | `chmod +x Zakkir-1.1.0.AppImage && ./Zakkir-1.1.0.AppImage` |
+| NixOS | — | `home.packages = [ pkgs.callPackage ./pkgs/zakkir-desktop { } ];` |
 
 ---
+
 
 ## Screenshots
 
