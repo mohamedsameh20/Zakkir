@@ -7,4 +7,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   closeWindow: () => ipcRenderer.send('close-window'),
   setPrayerTimes: (times, settings) => ipcRenderer.send('set-prayer-times', times, settings),
   onPlaySound: (cb) => ipcRenderer.on('play-sound', (_, file) => cb(file)),
+  openExternal: (url) => ipcRenderer.send('open-external', url),
+  onUpdateAvailable: (cb) => ipcRenderer.on('update-available', (_, version, url) => cb(version, url)),
 });
