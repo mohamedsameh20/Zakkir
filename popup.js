@@ -623,10 +623,7 @@ function stepScheduleMonth(delta) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 function scheduleCacheKey(state, ym) {
-  const useCoords = state.useCoords && state.lat != null && state.lng != null;
-  return useCoords
-    ? `v3|coords|${state.lat}|${state.lng}|${state.method}|${ym}`
-    : `v3|city|${state.city}|${state.country}|${state.method}|${ym}`;
+  return `v4|coords|${state.lat}|${state.lng}|${state.method}|${ym}`;
 }
 
 // Notable Hijri days — keyed as "hMonthNumber|hDayNumber"
@@ -669,10 +666,7 @@ async function fetchMonth(ym) {
   _scheduleLoadingKey = key;
   try {
     const [y, m] = ym.split("-").map(Number);
-    const useCoords = state.useCoords && state.lat != null && state.lng != null;
-    const url = useCoords
-      ? `https://api.aladhan.com/v1/calendar/${y}/${m}?latitude=${state.lat}&longitude=${state.lng}&method=${state.method}`
-      : `https://api.aladhan.com/v1/calendarByCity/${y}/${m}?city=${encodeURIComponent(state.city)}&country=${encodeURIComponent(state.country)}&method=${state.method}`;
+    const url = `https://api.aladhan.com/v1/calendar/${y}/${m}?latitude=${state.lat}&longitude=${state.lng}&method=${state.method}`;
     const r = await fetch(url);
     const j = await r.json();
     if (!Array.isArray(j?.data)) throw new Error("bad response");
@@ -809,10 +803,7 @@ function scheduleBodyHTML() {
 }
 
 function scheduleFooterHTML() {
-  const useCoords = state.useCoords && state.lat != null && state.lng != null;
-  const where = useCoords
-    ? (state.locationName || `${Number(state.lat).toFixed(2)}, ${Number(state.lng).toFixed(2)}`)
-    : `${state.city}, ${state.country}`;
+  const where = state.locationName || `${Number(state.lat).toFixed(2)}, ${Number(state.lng).toFixed(2)}`;
   const methodName = (METHODS.find(([v]) => v === state.method) || [, `Method ${state.method}`])[1];
   return `
     <div class="sched-foot">
