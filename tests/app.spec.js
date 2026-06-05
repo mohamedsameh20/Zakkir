@@ -63,7 +63,7 @@ test("navigate to settings view", async () => {
 });
 
 test("settings view renders city input", async () => {
-  const city = await window.locator("#city").inputValue();
+  const city = await window.locator("#presetCity").inputValue();
   expect(city).toBeTruthy();
 });
 
