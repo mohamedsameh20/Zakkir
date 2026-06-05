@@ -1,11 +1,24 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, Notification } = require('electron');
 const path = require('path');
 
 app.name = 'zakkir-desktop';
 app.setPath('userData', path.join(app.getPath('appData'), 'zakkir-desktop'));
 
+let mainWindow = null;
+let prayerSchedule = null;
+let reminderSettings = {
+  remindersEnabled: false,
+  reminderMinutes: 10,
+  reminderPrayers: [],
+  reminderSound: 'adhan-makkah',
+  prayerAlertEnabled: true,
+  iqamaEnabled: false,
+  iqamaMinutes: 10
+};
+const firedToday = new Set(); // "Prayer-YYYY-MM-DD-N" keys to avoid double-firing
+
 function createWindow() {
-  const win = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 420,
     height: 580,
     frame: false,
@@ -20,16 +33,16 @@ function createWindow() {
     }
   });
 
-  win.loadFile(path.join(__dirname, 'popup.html'));
+  mainWindow.loadFile(path.join(__dirname, 'popup.html'));
 
-  win.once('ready-to-show', () => {
-    win.show();
+  mainWindow.once('ready-to-show', () => {
+    mainWindow.show();
   });
 
   // F12 toggles DevTools for debugging in packaged builds
-  win.webContents.on('before-input-event', (event, input) => {
+  mainWindow.webContents.on('before-input-event', (event, input) => {
     if (input.key === 'F12') {
-      win.webContents.toggleDevTools();
+      mainWindow.webContents.toggleDevTools();
       event.preventDefault();
     }
   });
@@ -43,6 +56,81 @@ app.whenReady().then(() => {
       createWindow();
     }
   });
+
+  // Reminder scheduler — check every 60 seconds
+  setInterval(() => {
+    if (!prayerSchedule) return;
+    const now = new Date();
+    const todayStr = now.toISOString().slice(0, 10);
+    const nowM = now.getHours() * 60 + now.getMinutes();
+    for (const name of (reminderSettings.reminderPrayers || [])) {
+      const timeStr = prayerSchedule[name];
+      if (!timeStr) continue;
+      const [h, m] = timeStr.split(':').map(Number);
+      const prayerM = h * 60 + m;
+
+      // 1. Normal Reminder (Before Adhan)
+      if (reminderSettings.remindersEnabled) {
+        const diff = prayerM - nowM;
+        const fireKey = `${name}-${todayStr}-${reminderSettings.reminderMinutes}`;
+        if (diff === reminderSettings.reminderMinutes && !firedToday.has(fireKey)) {
+          firedToday.add(fireKey);
+          if (Notification.isSupported()) {
+            new Notification({
+              title: 'Zakkir — Prayer Reminder',
+              body: `${name} in ${diff} minutes`,
+              icon: path.join(__dirname, 'icon.png'),
+            }).show();
+          }
+          if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('play-sound', reminderSettings.reminderSound);
+          }
+        }
+      }
+
+      // 2. Exact Prayer Time Alert
+      if (reminderSettings.prayerAlertEnabled) {
+        const diff = prayerM - nowM;
+        const nowKey = `${name}-now-${todayStr}`;
+        if (diff === 0 && !firedToday.has(nowKey)) {
+          firedToday.add(nowKey);
+          if (Notification.isSupported()) {
+            new Notification({
+              title: 'Zakkir — Prayer Time',
+              body: `It is now time for ${name} prayer`,
+              icon: path.join(__dirname, 'icon.png'),
+            }).show();
+          }
+          if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('play-sound', reminderSettings.reminderSound);
+          }
+        }
+      }
+
+      // 2. Iqama Reminder (After Adhan)
+      if (reminderSettings.iqamaEnabled) {
+        const elapsed = nowM - prayerM;
+        const iqamaKey = `${name}-iqama-${todayStr}-${reminderSettings.iqamaMinutes}`;
+        if (elapsed === reminderSettings.iqamaMinutes && !firedToday.has(iqamaKey)) {
+          firedToday.add(iqamaKey);
+          if (Notification.isSupported()) {
+            new Notification({
+              title: 'Zakkir — Iqama Reminder',
+              body: `Iqama for ${name} is now! (${reminderSettings.iqamaMinutes} minutes after Adhan)`,
+              icon: path.join(__dirname, 'icon.png'),
+            }).show();
+          }
+          if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('play-sound', reminderSettings.reminderSound);
+          }
+        }
+      }
+    }
+    // Clean firedToday for old dates
+    for (const key of firedToday) {
+      if (!key.includes(todayStr)) firedToday.delete(key);
+    }
+  }, 60_000);
 });
 
 app.on('window-all-closed', () => {
@@ -54,28 +142,25 @@ app.on('window-all-closed', () => {
 // IPC handlers
 ipcMain.on('set-always-on-top', (event, flag) => {
   const win = BrowserWindow.fromWebContents(event.sender);
-  if (win) {
-    win.setAlwaysOnTop(flag);
-  }
+  if (win) win.setAlwaysOnTop(flag);
 });
 
 ipcMain.on('resize-window', (event, w, h) => {
   const win = BrowserWindow.fromWebContents(event.sender);
-  if (win) {
-    win.setSize(w, h);
-  }
+  if (win) win.setSize(w, h);
 });
 
 ipcMain.on('minimize-window', (event) => {
   const win = BrowserWindow.fromWebContents(event.sender);
-  if (win) {
-    win.minimize();
-  }
+  if (win) win.minimize();
 });
 
 ipcMain.on('close-window', (event) => {
   const win = BrowserWindow.fromWebContents(event.sender);
-  if (win) {
-    win.close();
-  }
+  if (win) win.close();
+});
+
+ipcMain.on('set-prayer-times', (event, times, settings) => {
+  prayerSchedule = times;
+  reminderSettings = { ...reminderSettings, ...settings };
 });

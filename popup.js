@@ -11,8 +11,10 @@ const DEFAULTS = {
   popupH: 580,
   theme: "dark",
   palette: "default",
-  city: "Cairo",
-  country: "Egypt",
+  lat: 30.0444,
+  lng: 31.2357,
+  locationName: "Cairo, Egypt",
+  locationMethod: "manual",
   method: 5,
   category: "أذكار الصباح",
   autoTime: true,
@@ -21,6 +23,13 @@ const DEFAULTS = {
   azkarResetDate: null,
   prayerCache: null,
   isElectronPinned: false,
+  remindersEnabled: false,
+  reminderMinutes: 10,
+  reminderPrayers: ["Fajr","Dhuhr","Asr","Maghrib","Isha"],
+  reminderSound: "adhan-makkah",
+  prayerAlertEnabled: true,
+  iqamaEnabled: false,
+  iqamaMinutes: 10,
 };
 
 const FONT_MAP = {
@@ -146,13 +155,79 @@ const METHODS = [
   [8, "Gulf Region"],
   [13, "Diyanet (Turkey)"],
 ];
+const PRESETS = {
+  "Egypt (مصر)": {
+    "Cairo (القاهرة)": [30.0444, 31.2357],
+    "Alexandria (الإسكندرية)": [31.2001, 29.9187],
+    "Giza (الجيزة)": [30.0131, 31.2089],
+    "Mansoura (المنصورة)": [31.0409, 31.3785],
+    "Tanta (طنطا)": [30.7865, 31.0004],
+    "Asyut (أسيوط)": [27.1810, 31.1837]
+  },
+  "Saudi Arabia (المملكة العربية السعودية)": {
+    "Makkah (مكة المكرمة)": [21.3891, 39.8579],
+    "Madinah (المدينة المنورة)": [24.4672, 39.6111],
+    "Riyadh (الرياض)": [24.7136, 46.6753],
+    "Jeddah (جدة)": [21.5433, 39.1728],
+    "Dammam (الدمام)": [26.4207, 50.0888]
+  },
+  "Palestine (فلسطين)": {
+    "Al-Quds (القدس)": [31.7683, 35.2137],
+    "Gaza (غزة)": [31.5000, 34.4667],
+    "Hebron (الخليل)": [31.5292, 35.0938],
+    "Nablus (نابلس)": [32.2211, 35.2544],
+    "Ramallah (رام الله)": [31.9029, 35.2033]
+  },
+  "UAE (الإمارات العربية المتحدة)": {
+    "Dubai (دبي)": [25.2048, 55.2708],
+    "Abu Dhabi (أبوظبي)": [24.4539, 54.3773],
+    "Sharjah (الشارقة)": [25.3463, 55.4209]
+  },
+  "Jordan (الأردن)": {
+    "Amman (عمان)": [31.9454, 35.9284],
+    "Zarqa (الزرقاء)": [32.0608, 36.0879],
+    "Irbid (إربد)": [32.5514, 35.8514]
+  },
+  "Turkey (تركيا)": {
+    "Istanbul (إسطنبول)": [41.0082, 28.9784],
+    "Ankara (أنقرة)": [39.9334, 32.8597],
+    "Izmir (إزمير)": [38.4192, 27.1287]
+  },
+  "Morocco (المغرب)": {
+    "Casablanca (الدار البيضاء)": [33.5731, -7.5898],
+    "Rabat (الرباط)": [34.0209, -6.8416],
+    "Marrakech (مراكش)": [31.6295, -7.9811]
+  },
+  "Malaysia (ماليزيا)": {
+    "Kuala Lumpur (كوالالمبور)": [3.1390, 101.6869],
+    "Penang (بينانق)": [5.4141, 100.3288]
+  },
+  "United Kingdom (المملكة المتحدة)": {
+    "London": [51.5074, -0.1278],
+    "Birmingham": [52.4862, -1.8904],
+    "Manchester": [53.4808, -2.2426]
+  },
+  "USA (الولايات المتحدة)": {
+    "New York": [40.7128, -74.0060],
+    "Los Angeles": [34.0522, -118.2437],
+    "Chicago": [41.8781, -87.6298]
+  },
+  "Qatar (قطر)": {
+    "Doha (الدوحة)": [25.2854, 51.5310]
+  },
+  "Kuwait (الكويت)": {
+    "Kuwait City (مدينة الكويت)": [29.3759, 47.9774]
+  }
+};
 
 let state = { ...DEFAULTS };
-let AZKAR_DATA = null; // raw json
+let AZKAR_DATA = null;
 let CATS = [];
 let prayers = null;
 let hijri = null;
 let lastErr = null;
+let activePrayer = null; // UI-only, not persisted
+let activeAudio = null;
 
 // ---------- storage ----------
 const storage = {
@@ -262,6 +337,23 @@ function nextPrayer() {
   return { name: next.name, h: Math.floor(d / 60), m: d % 60, pct, prev: prev.name };
 }
 
+// ---------- geocoding ----------
+async function reverseGeocode(lat, lng) {
+  try {
+    const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`, { headers: { 'Accept-Language': 'en' } });
+    const j = await r.json();
+    const a = j.address || {};
+    return [a.city || a.town || a.village || a.county || "", a.country || ""].filter(Boolean).join(", ") || j.display_name || `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+  } catch { return `${lat.toFixed(4)}, ${lng.toFixed(4)}`; }
+}
+
+async function forwardGeocode(query) {
+  try {
+    const r = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=5`, { headers: { 'Accept-Language': 'en' } });
+    return await r.json();
+  } catch { return []; }
+}
+
 // ---------- data ----------
 async function loadAzkar() {
   if (AZKAR_DATA) return;
@@ -281,17 +373,20 @@ function ddmmyyyy() {
 async function loadPrayers(force = false) {
   const today = todayKey();
   const cache = state.prayerCache;
+  const latR = +state.lat.toFixed(4);
+  const lngR = +state.lng.toFixed(4);
   if (
     !force && cache &&
-    cache.date === today && cache.city === state.city &&
-    cache.country === state.country && cache.method === state.method
+    cache.date === today &&
+    +cache.lat === latR && +cache.lng === lngR &&
+    cache.method === state.method
   ) {
     prayers = cache.timings;
     hijri = cache.hijri;
     return;
   }
   try {
-    const url = `https://api.aladhan.com/v1/timingsByCity/${ddmmyyyy()}?city=${encodeURIComponent(state.city)}&country=${encodeURIComponent(state.country)}&method=${state.method}`;
+    const url = `https://api.aladhan.com/v1/timings/${ddmmyyyy()}?latitude=${latR}&longitude=${lngR}&method=${state.method}`;
     const r = await fetch(url);
     const j = await r.json();
     if (!j?.data?.timings) throw new Error("Bad response");
@@ -299,11 +394,48 @@ async function loadPrayers(force = false) {
     prayers = { Fajr: t.Fajr, Dhuhr: t.Dhuhr, Asr: t.Asr, Maghrib: t.Maghrib, Isha: t.Isha };
     const h = j.data.date.hijri;
     hijri = `${h.day} ${h.month.en} ${h.year} AH`;
-    state.prayerCache = { date: today, city: state.city, country: state.country, method: state.method, timings: prayers, hijri };
+    state.prayerCache = { date: today, lat: latR, lng: lngR, method: state.method, timings: prayers, hijri };
     storage.set({ prayerCache: state.prayerCache });
     lastErr = null;
+    // send to main process for reminder scheduling
+    // send to main process for reminder scheduling
+    syncReminders();
+    applyAutoAzkarCategory();
   } catch (e) {
-    lastErr = "Failed to load prayer times — check city/country.";
+    lastErr = "Failed to load prayer times — check your location.";
+  }
+}
+
+function syncReminders() {
+  if (globalThis.electronAPI?.setPrayerTimes && prayers) {
+    globalThis.electronAPI.setPrayerTimes(prayers, {
+      remindersEnabled: state.remindersEnabled,
+      reminderMinutes: state.reminderMinutes,
+      reminderPrayers: state.reminderPrayers,
+      reminderSound: state.reminderSound,
+      prayerAlertEnabled: state.prayerAlertEnabled,
+      iqamaEnabled: state.iqamaEnabled,
+      iqamaMinutes: state.iqamaMinutes,
+    });
+  }
+}
+
+function applyAutoAzkarCategory() {
+  if (!state.autoTime || !prayers) return;
+  const now = new Date();
+  const nowM = now.getHours() * 60 + now.getMinutes();
+  const fajrM = toMinutes(prayers.Fajr);
+  const maghribM = toMinutes(prayers.Maghrib);
+  const isMorning = nowM >= fajrM && nowM < maghribM;
+  const targetCat = isMorning ? "أذكار الصباح" : "أذكار المساء";
+  if (state.category !== targetCat) {
+    state.category = targetCat;
+    state.azkarIndex = 0;
+    state.azkarCount = 0;
+    storage.set({ category: targetCat, azkarIndex: 0, azkarCount: 0 });
+    if (state.view === "home") {
+      patchAzkarCard();
+    }
   }
 }
 
@@ -315,6 +447,7 @@ function maybeResetDaily() {
     state.azkarCount = 0;
     storage.set({ azkarResetDate: today, azkarIndex: 0, azkarCount: 0 });
   }
+  applyAutoAzkarCategory();
 }
 
 // ---------- icons ----------
@@ -361,10 +494,34 @@ function prayerCardHTML() {
       ${PRAYER_ORDER.map((name) => {
         const active = np && np.name === name;
         const t = prayers ? fmt12(prayers[name]) : "—";
-        return `<div class="prayer ${active ? "active" : ""}"><div class="n">${name}</div><div class="t">${t}</div></div>`;
+        return `<div class="prayer ${active ? "active" : ""} ${activePrayer === name ? "tapped" : ""}" data-prayer="${name}"><div class="n">${name}</div><div class="t">${t}</div></div>`;
       }).join("")}
     </div>
+    <div class="prayer-detail" id="prayerDetail">${activePrayer ? detailHTML(activePrayer) : ""}</div>
     ${lastErr ? `<div class="err">${lastErr}</div>` : ""}`;
+}
+
+function detailHTML(name) {
+  if (!prayers || !prayers[name]) return "";
+  const now = new Date();
+  const nowM = now.getHours() * 60 + now.getMinutes();
+  const prayerM = toMinutes(prayers[name]);
+  const diff = prayerM - nowM;
+  const isPast = diff <= 0;
+  const absDiff = Math.abs(diff);
+  const hrs = Math.floor(absDiff / 60);
+  const mins = absDiff % 60;
+  const timeStr = hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`;
+  const list = PRAYER_ORDER;
+  const nextIdx = (list.indexOf(name) + 1) % list.length;
+  const nextName = list[nextIdx];
+  const nextTime = prayers[nextName] ? fmt12(prayers[nextName]) : "";
+  return `
+    <div class="detail-inner">
+      <span class="detail-name">${name}</span>
+      <span class="detail-time">${isPast ? `${timeStr} ago` : `in ${timeStr}`}</span>
+      ${nextTime ? `<span class="detail-next">→ ${nextName} at ${nextTime}</span>` : ""}
+    </div>`;
 }
 
 function catRowHTML() {
@@ -372,9 +529,15 @@ function catRowHTML() {
   const z = list[state.azkarIndex] || { count: "1" };
   const target = parseInt(z.count, 10) || 1;
   return `
-    <select class="cat-pick" id="catPick">
-      ${CATS.map((c) => `<option value="${c}" ${c === state.category ? "selected" : ""}>${c}</option>`).join("")}
-    </select>
+    <div class="custom-select" id="catPickSelect">
+      <div class="custom-select-trigger" id="catPickTrigger">
+        <span>${state.category}</span>
+        <span class="custom-select-arrow">▼</span>
+      </div>
+      <div class="custom-options" id="catPickOptions">
+        ${CATS.map((c) => `<div class="custom-option ${c === state.category ? "selected" : ""}" data-value="${c}">${c}</div>`).join("")}
+      </div>
+    </div>
     <span class="counter">${state.azkarCount} / ${target}</span>`;
 }
 
@@ -412,8 +575,41 @@ function renderHome() {
   `;
 }
 
+function renderMap() {
+  return `
+    <div class="map-view">
+      <div class="map-toolbar">
+        <button class="icon-btn" id="mapBackBtn">${icon.back}</button>
+        <div class="map-search-wrap">
+          <input class="map-search" id="mapSearch" placeholder="Search city…" autocomplete="off"/>
+          <div class="map-results" id="mapResults"></div>
+        </div>
+      </div>
+      <div id="leafletMap"></div>
+      <div class="map-footer">
+        <div class="map-loc-label" id="mapLocLabel">${state.locationName}</div>
+        <button class="btn-primary" id="useLocationBtn">✓ Use This Location</button>
+      </div>
+    </div>`;
+}
 
 function renderSettings() {
+  let activeCountry = "";
+  let activeCity = "";
+  for (const [country, cities] of Object.entries(PRESETS)) {
+    for (const [city, coords] of Object.entries(cities)) {
+      if (Math.abs(coords[0] - state.lat) < 0.001 && Math.abs(coords[1] - state.lng) < 0.001) {
+        activeCountry = country;
+        activeCity = city;
+        break;
+      }
+    }
+    if (activeCountry) break;
+  }
+
+  const locMethod = state.locationMethod || "city";
+  const locMethodTitle = (locMethod === 'preset' || locMethod === 'city' || locMethod === 'manual') ? 'City' : (locMethod === 'detect' ? 'GPS' : 'Map');
+
   return `
     <div class="app">
       <div class="settings-head">
@@ -423,15 +619,58 @@ function renderSettings() {
       </div>
 
       <div class="sec">Location</div>
-      <div class="row">
-        <label>City</label>
-        <input class="input" id="city" value="${state.city}" />
+      <div class="settings-card">
+        <div class="settings-card-header">
+          <div class="settings-card-title">${state.locationName ? state.locationName.split(',')[0] : "Not set"}</div>
+          <div class="badge">via ${locMethodTitle.toLowerCase()}</div>
+        </div>
+        <div class="segmented-control">
+          <div class="segment-btn ${locMethodTitle === 'GPS' ? 'active' : ''}" data-tab="gps">GPS</div>
+          <div class="segment-btn ${locMethodTitle === 'Map' ? 'active' : ''}" data-tab="map">Map</div>
+          <div class="segment-btn ${locMethodTitle === 'City' ? 'active' : ''}" data-tab="city">City</div>
+        </div>
+        
+        <div class="segment-content" id="tab-gps" style="display:${locMethodTitle === 'GPS' ? 'block' : 'none'}">
+          <button class="loc-btn" id="detectBtn">Detect My Location</button>
+        </div>
+        <div class="segment-content" id="tab-map" style="display:${locMethodTitle === 'Map' ? 'block' : 'none'}">
+          <button class="loc-btn" id="openMapBtn">Pick on Map</button>
+        </div>
+        <div class="segment-content" id="tab-city" style="display:${locMethodTitle === 'City' ? 'block' : 'none'}">
+          <div class="row">
+            <label>Country</label>
+            <select id="presetCountry">
+              <option value="">-- Select Country --</option>
+              ${Object.keys(PRESETS).map(c => `<option value="${c}" ${c === activeCountry ? "selected" : ""}>${c}</option>`).join("")}
+            </select>
+          </div>
+          <div class="row">
+            <label>City</label>
+            <select id="presetCity">
+              <option value="">-- Select City --</option>
+              ${activeCountry ? Object.keys(PRESETS[activeCountry]).map(c => `<option value="${c}" ${c === activeCity ? "selected" : ""}>${c}</option>`).join("") : ""}
+            </select>
+          </div>
+        </div>
       </div>
-      <div class="row">
-        <label>Country</label>
-        <input class="input" id="country" value="${state.country}" />
+      
+      <div class="advanced-collapse" id="advancedLocToggle">
+        <span>Advanced (manual coordinates)</span>
+        <span class="advanced-arrow">▼</span>
       </div>
-      <div class="row">
+      <div class="advanced-content" id="advancedLocContent" style="display:none">
+        <div class="row">
+          <label>Latitude</label>
+          <input class="input" type="number" id="latInput" step="0.0001" value="${state.lat.toFixed(4)}"/>
+        </div>
+        <div class="row">
+          <label>Longitude</label>
+          <input class="input" type="number" id="lngInput" step="0.0001" value="${state.lng.toFixed(4)}"/>
+        </div>
+        <button class="loc-btn" id="useCoordsBtn" style="margin:0 0 8px">Use These Coordinates</button>
+      </div>
+
+      <div class="row" style="margin-top:16px">
         <label>Calc method</label>
         <select id="method">
           ${METHODS.map(([v, n]) => `<option value="${v}" ${v === state.method ? "selected" : ""}>${n}</option>`).join("")}
@@ -486,6 +725,73 @@ function renderSettings() {
       </div>
       <div class="desc" style="direction:ltr;text-align:left">Tip: Chrome popups cap around 800×600. For a fully resizable window, open in a tab from the home screen.</div>
       `}
+
+      ${globalThis.electronAPI ? `
+      <div class="sec">Prayer Reminders</div>
+      <div class="row" style="align-items:center;gap:10px">
+        <label style="flex:1">Pre-Prayer Reminder</label>
+        <label class="toggle">
+          <input class="toggle-input" type="checkbox" id="remindersEnabled" ${state.remindersEnabled ? "checked" : ""}>
+          <div class="toggle-switch"></div>
+        </label>
+      </div>
+      <div class="row">
+        <label>Minutes before</label>
+        <input class="input" type="number" id="reminderMinutes" min="1" max="60" value="${state.reminderMinutes}" style="width:70px"/>
+      </div>
+      
+      <div class="row" style="align-items:center;gap:10px;margin-top:8px">
+        <label style="flex:1">Alert at exact prayer time</label>
+        <label class="toggle">
+          <input class="toggle-input" type="checkbox" id="prayerAlertEnabled" ${state.prayerAlertEnabled ? "checked" : ""}>
+          <div class="toggle-switch"></div>
+        </label>
+      </div>
+
+      <div class="row" style="flex-wrap:wrap;gap:8px;margin-top:8px">
+        ${["Fajr","Dhuhr","Asr","Maghrib","Isha"].map(p =>
+          `<label style="display:flex;align-items:center;gap:6px;font-size:0.85em;cursor:pointer">
+            <label class="toggle" style="transform:scale(0.8)">
+              <input class="toggle-input" type="checkbox" data-reminder-prayer="${p}" ${state.reminderPrayers.includes(p) ? "checked" : ""}>
+              <div class="toggle-switch"></div>
+            </label>
+            ${p}
+          </label>`
+        ).join("")}
+      </div>
+
+      <div class="sec" style="margin-top:12px">Iqama Reminders</div>
+      <div class="row" style="align-items:center;gap:10px">
+        <label style="flex:1">Enable</label>
+        <label class="toggle">
+          <input class="toggle-input" type="checkbox" id="iqamaEnabled" ${state.iqamaEnabled ? "checked" : ""}>
+          <div class="toggle-switch"></div>
+        </label>
+      </div>
+      <div class="row">
+        <label>Delay (5-15 mins)</label>
+        <input class="input" type="number" id="iqamaMinutes" min="5" max="15" value="${state.iqamaMinutes}" style="width:70px"/>
+      </div>
+
+      <div class="sec" style="margin-top:8px">Reminder Sound</div>
+      <div class="sound-grid">
+        ${[
+          ["adhan-makkah","Adhan (Makkah)"],
+          ["adhan-medina","Adhan (Medina)"],
+          ["adhan-egypt","Adhan (Egypt)"],
+          ["chime","Chime"],
+          ["bell","Bell"],
+          ["soft-ping","Soft Ping"],
+          ["silent","Silent"],
+        ].map(([id, label]) =>
+          `<label class="sound-option ${state.reminderSound === id ? "active" : ""}" data-sound="${id}">
+            <input type="radio" name="reminderSound" value="${id}" ${state.reminderSound === id ? "checked" : ""} style="display:none">
+            ${label}
+          </label>`
+        ).join("")}
+      </div>
+      <button class="loc-btn" id="testSoundBtn" style="margin-top:4px">Test Sound</button>
+      ` : ""}
     </div>
   `;
 }
@@ -535,8 +841,13 @@ function setHTML(el, html) {
 function render() {
   applyVars();
   const app = $("#app");
-  setHTML(app, state.view === "settings" ? renderSettings() : renderHome());
-  wire();
+  if (state.view === "map") {
+    setHTML(app, renderMap());
+    wireMap();
+  } else {
+    setHTML(app, state.view === "settings" ? renderSettings() : renderHome());
+    wire();
+  }
 }
 
 function patchCount(count, target) {
@@ -555,6 +866,13 @@ function patchAzkarCard() {
     const target = parseInt(z.count, 10) || 1;
     const counter = cat.querySelector(".counter");
     if (counter) counter.textContent = `${state.azkarCount} / ${target}`;
+
+    // Update custom select UI
+    const triggerText = cat.querySelector("#catPickTrigger span:first-child");
+    if (triggerText) triggerText.textContent = state.category;
+    cat.querySelectorAll(".custom-option").forEach(opt => {
+      opt.classList.toggle("selected", opt.dataset.value === state.category);
+    });
   }
   const nav = $("#navIndicator");
   if (nav) nav.textContent = navIndicatorText();
@@ -562,6 +880,16 @@ function patchAzkarCard() {
 
 function patchPrayerCard() {
   const el = $("#prayerRegion"); if (el) setHTML(el, prayerCardHTML());
+  // re-wire prayer tap after patch
+  wirePrayerTap();
+}
+
+function patchPrayerDetail() {
+  const el = $("#prayerDetail");
+  if (el) setHTML(el, activePrayer ? detailHTML(activePrayer) : "");
+  document.querySelectorAll(".prayer").forEach(d => {
+    d.classList.toggle("tapped", d.dataset.prayer === activePrayer);
+  });
 }
 
 // Settings in-place helpers
@@ -604,6 +932,7 @@ function wire() {
   );
 
   // Home interactions
+  wirePrayerTap();
   const tap = $("#azkarTap");
   if (tap) tap.addEventListener("click", () => {
     const list = currentDhikrList();
@@ -643,13 +972,27 @@ function wire() {
     storage.set({ azkarCount: 0 });
     patchCount(0, target);
   });
-  const cat = $("#catPick");
-  if (cat) cat.addEventListener("change", (e) => {
-    // manual pick disables auto morning/evening swap
-    state.autoTime = false;
-    storage.set({ autoTime: false });
-    update({ category: e.target.value, azkarIndex: 0, azkarCount: 0 });
-  });
+  const catTrigger = $("#catPickTrigger");
+  const catSelect = $("#catPickSelect");
+  if (catTrigger && catSelect) {
+    catTrigger.addEventListener("click", (e) => {
+      e.stopPropagation();
+      catSelect.classList.toggle("open");
+    });
+    catSelect.querySelectorAll(".custom-option").forEach((opt) => {
+      opt.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const val = opt.dataset.value;
+        state.autoTime = false;
+        storage.set({ autoTime: false });
+        catSelect.classList.remove("open");
+        update({ category: val, azkarIndex: 0, azkarCount: 0 });
+      });
+    });
+    document.addEventListener("click", () => {
+      catSelect.classList.remove("open");
+    });
+  }
   // openTab removed — no longer used
   const pinBtn = $("#pinBtn");
   if (pinBtn) pinBtn.addEventListener("click", () => {
@@ -680,24 +1023,202 @@ function wire() {
   });
 
   // Settings interactions
-  const city = $("#city");
-  if (city) city.addEventListener("change", async (e) => {
-    state.city = e.target.value.trim() || "Cairo";
-    storage.set({ city: state.city });
-    await loadPrayers(true); render();
-  });
-  const country = $("#country");
-  if (country) country.addEventListener("change", async (e) => {
-    state.country = e.target.value.trim() || "Egypt";
-    storage.set({ country: state.country });
-    await loadPrayers(true); render();
-  });
+  const presetCountry = $("#presetCountry");
+  const presetCity = $("#presetCity");
+  if (presetCountry && presetCity) {
+    presetCountry.addEventListener("change", async (e) => {
+      const country = e.target.value;
+      presetCity.innerHTML = '<option value="">-- Select City --</option>';
+      if (country && PRESETS[country]) {
+        Object.keys(PRESETS[country]).forEach(city => {
+          const opt = document.createElement("option");
+          opt.value = city;
+          opt.textContent = city;
+          presetCity.appendChild(opt);
+        });
+        const firstCity = Object.keys(PRESETS[country])[0];
+        presetCity.value = firstCity;
+        const coords = PRESETS[country][firstCity];
+        const lat = coords[0];
+        const lng = coords[1];
+        state.lat = lat;
+        state.lng = lng;
+        state.locationName = `${firstCity}, ${country.split(" (")[0]}`;
+        state.locationMethod = "preset";
+        storage.set({ lat, lng, locationName: state.locationName, locationMethod: "preset", prayerCache: null });
+
+        const latInput = $("#latInput");
+        const lngInput = $("#lngInput");
+        if (latInput) latInput.value = lat.toFixed(4);
+        if (lngInput) lngInput.value = lng.toFixed(4);
+        const locCurrent = $("#locCurrent");
+        if (locCurrent) locCurrent.textContent = `📌 ${state.locationName}`;
+
+        await loadPrayers(true);
+      }
+    });
+
+    presetCity.addEventListener("change", async (e) => {
+      const country = presetCountry.value;
+      const city = e.target.value;
+      if (country && city && PRESETS[country] && PRESETS[country][city]) {
+        const coords = PRESETS[country][city];
+        const lat = coords[0];
+        const lng = coords[1];
+        state.lat = lat;
+        state.lng = lng;
+        state.locationName = `${city}, ${country.split(" (")[0]}`;
+        state.locationMethod = "preset";
+        storage.set({ lat, lng, locationName: state.locationName, locationMethod: "preset", prayerCache: null });
+
+        const latInput = $("#latInput");
+        const lngInput = $("#lngInput");
+        if (latInput) latInput.value = lat.toFixed(4);
+        if (lngInput) lngInput.value = lng.toFixed(4);
+        const locCurrent = $("#locCurrent");
+        if (locCurrent) locCurrent.textContent = `📌 ${state.locationName}`;
+
+        await loadPrayers(true);
+      }
+    });
+  }
+
   const method = $("#method");
   if (method) method.addEventListener("change", async (e) => {
     state.method = parseInt(e.target.value, 10);
     storage.set({ method: state.method });
     await loadPrayers(true); render();
   });
+
+  // Smart Location UI Handlers
+  document.querySelectorAll(".segment-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".segment-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      document.querySelectorAll(".segment-content").forEach(c => c.style.display = "none");
+      const tab = btn.dataset.tab;
+      const content = $("#tab-" + tab);
+      if (content) content.style.display = "block";
+    });
+  });
+
+  const advToggle = $("#advancedLocToggle");
+  const advContent = $("#advancedLocContent");
+  if (advToggle && advContent) {
+    advToggle.addEventListener("click", () => {
+      advToggle.classList.toggle("open");
+      advContent.style.display = advToggle.classList.contains("open") ? "block" : "none";
+    });
+  }
+
+  const detectBtn = $("#detectBtn");
+  if (detectBtn) detectBtn.addEventListener("click", async () => {
+    detectBtn.textContent = "Detecting…";
+    detectBtn.disabled = true;
+    try {
+      const pos = await new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej, { timeout: 10000 }));
+      const lat = +pos.coords.latitude.toFixed(4);
+      const lng = +pos.coords.longitude.toFixed(4);
+      const name = await reverseGeocode(lat, lng);
+      state.lat = lat; state.lng = lng; state.locationName = name; state.locationMethod = "detect";
+      storage.set({ lat, lng, locationName: name, locationMethod: "detect", prayerCache: null });
+      await loadPrayers(true); render();
+    } catch { detectBtn.textContent = "Failed — try manual"; detectBtn.disabled = false; }
+  });
+
+  const openMapBtn = $("#openMapBtn");
+  if (openMapBtn) openMapBtn.addEventListener("click", () => update({ view: "map" }));
+
+  const useCoordsBtn = $("#useCoordsBtn");
+  if (useCoordsBtn) useCoordsBtn.addEventListener("click", async () => {
+    const lat = parseFloat($("#latInput").value);
+    const lng = parseFloat($("#lngInput").value);
+    if (isNaN(lat) || isNaN(lng)) return;
+    const name = await reverseGeocode(lat, lng);
+    state.lat = lat; state.lng = lng; state.locationName = name; state.locationMethod = "manual";
+    storage.set({ lat, lng, locationName: name, locationMethod: "manual", prayerCache: null });
+    await loadPrayers(true); render();
+  });
+
+  // Reminder handlers (Electron only)
+  const remEnabled = $("#remindersEnabled");
+  if (remEnabled) remEnabled.addEventListener("change", (e) => {
+    state.remindersEnabled = e.target.checked;
+    storage.set({ remindersEnabled: state.remindersEnabled });
+    syncReminders();
+  });
+
+  const prayerAlertEnabled = $("#prayerAlertEnabled");
+  if (prayerAlertEnabled) prayerAlertEnabled.addEventListener("change", (e) => {
+    state.prayerAlertEnabled = e.target.checked;
+    storage.set({ prayerAlertEnabled: state.prayerAlertEnabled });
+    syncReminders();
+  });
+
+  const remMins = $("#reminderMinutes");
+  if (remMins) remMins.addEventListener("change", (e) => {
+    state.reminderMinutes = Math.max(1, Math.min(60, parseInt(e.target.value, 10) || 10));
+    storage.set({ reminderMinutes: state.reminderMinutes });
+    syncReminders();
+  });
+
+  document.querySelectorAll("[data-reminder-prayer]").forEach(cb => {
+    cb.addEventListener("change", () => {
+      const checked = [...document.querySelectorAll("[data-reminder-prayer]:checked")].map(c => c.dataset.reminderPrayer);
+      state.reminderPrayers = checked;
+      storage.set({ reminderPrayers: checked });
+      syncReminders();
+    });
+  });
+
+  const iqamaEnabledCb = $("#iqamaEnabled");
+  if (iqamaEnabledCb) {
+    iqamaEnabledCb.addEventListener("change", (e) => {
+      state.iqamaEnabled = e.target.checked;
+      storage.set({ iqamaEnabled: state.iqamaEnabled });
+      syncReminders();
+    });
+  }
+
+  const iqamaMinsInput = $("#iqamaMinutes");
+  if (iqamaMinsInput) {
+    iqamaMinsInput.addEventListener("change", (e) => {
+      state.iqamaMinutes = Math.max(5, Math.min(15, parseInt(e.target.value, 10) || 10));
+      storage.set({ iqamaMinutes: state.iqamaMinutes });
+      syncReminders();
+    });
+  }
+
+  document.querySelectorAll("[data-sound]").forEach(lbl => {
+    lbl.addEventListener("click", () => {
+      state.reminderSound = lbl.dataset.sound;
+      storage.set({ reminderSound: state.reminderSound });
+      document.querySelectorAll("[data-sound]").forEach(l => l.classList.toggle("active", l.dataset.sound === state.reminderSound));
+      syncReminders();
+      const btn = $("#testSoundBtn");
+      if (activeAudio && !activeAudio.paused) {
+        if (btn) btn.textContent = "Stop Preview";
+        playSound(state.reminderSound, () => {
+          if (btn) btn.textContent = "Test Sound";
+        });
+      }
+    });
+  });
+
+  const testSoundBtn = $("#testSoundBtn");
+  if (testSoundBtn) {
+    testSoundBtn.addEventListener("click", () => {
+      if (activeAudio && !activeAudio.paused) {
+        playSound("silent");
+        testSoundBtn.textContent = "▶ Test Sound";
+      } else {
+        testSoundBtn.textContent = "⏹ Stop Preview";
+        playSound(state.reminderSound, () => {
+          testSoundBtn.textContent = "▶ Test Sound";
+        });
+      }
+    });
+  }
   document.querySelectorAll("[data-font]").forEach((b) =>
     b.addEventListener("click", () => {
       update({ font: b.dataset.font });
@@ -792,16 +1313,127 @@ function wire() {
   });
 }
 
+function wirePrayerTap() {
+  let tapTimer = null;
+  document.querySelectorAll(".prayer").forEach(div => {
+    div.addEventListener("click", () => {
+      const name = div.dataset.prayer;
+      if (!name || !prayers) return;
+      activePrayer = activePrayer === name ? null : name;
+      patchPrayerDetail();
+      clearTimeout(tapTimer);
+      if (activePrayer) tapTimer = setTimeout(() => { activePrayer = null; patchPrayerDetail(); }, 10000);
+    });
+  });
+}
+
+function playSound(soundId, onEndCb) {
+  if (activeAudio) {
+    try {
+      activeAudio.pause();
+      activeAudio.currentTime = 0;
+    } catch (e) {}
+    activeAudio = null;
+  }
+  if (soundId === "silent") {
+    if (onEndCb) onEndCb();
+    return;
+  }
+  const base = globalThis.chrome?.runtime?.getURL ? chrome.runtime.getURL("") : "";
+  const src = base + `sounds/${soundId}.mp3`;
+  try {
+    activeAudio = new Audio(src);
+    if (onEndCb) {
+      activeAudio.addEventListener("ended", onEndCb);
+      activeAudio.addEventListener("pause", onEndCb);
+    }
+    activeAudio.play();
+  } catch (e) {
+    if (onEndCb) onEndCb();
+  }
+}
+
+function wireMap() {
+  const mapBack = $("#mapBackBtn");
+  if (mapBack) mapBack.addEventListener("click", () => update({ view: "settings" }));
+  if (typeof L === "undefined") return;
+  // Fix default icon paths to our local leaflet folder
+  delete L.Icon.Default.prototype._getIconUrl;
+  L.Icon.Default.mergeOptions({ iconUrl: "leaflet/marker-icon.png", iconRetinaUrl: "leaflet/marker-icon-2x.png", shadowUrl: "leaflet/marker-shadow.png" });
+  const map = L.map("leafletMap").setView([state.lat, state.lng], 10);
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { attribution: "© OSM" }).addTo(map);
+  const marker = L.marker([state.lat, state.lng], { draggable: true }).addTo(map);
+  let pendingLat = state.lat, pendingLng = state.lng;
+  const labelEl = $("#mapLocLabel");
+  async function updatePin(lat, lng) {
+    pendingLat = lat; pendingLng = lng;
+    if (labelEl) labelEl.textContent = "Fetching…";
+    const name = await reverseGeocode(lat, lng);
+    if (labelEl) labelEl.textContent = name;
+  }
+  marker.on("dragend", () => { const ll = marker.getLatLng(); updatePin(ll.lat, ll.lng); });
+  map.on("click", (e) => { marker.setLatLng(e.latlng); updatePin(e.latlng.lat, e.latlng.lng); });
+  // Search
+  let searchTimer;
+  const searchEl = $("#mapSearch");
+  const resultsEl = $("#mapResults");
+  if (searchEl) searchEl.addEventListener("input", () => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(async () => {
+      const q = searchEl.value.trim(); if (!q) { if (resultsEl) resultsEl.innerHTML = ""; return; }
+      const results = await forwardGeocode(q);
+      if (resultsEl) setHTML(resultsEl, results.slice(0, 5).map(r =>
+        `<div class="map-result" data-lat="${r.lat}" data-lon="${r.lon}">${r.display_name}</div>`
+      ).join(""));
+      document.querySelectorAll(".map-result").forEach(r => r.addEventListener("click", () => {
+        const lat = parseFloat(r.dataset.lat), lon = parseFloat(r.dataset.lon);
+        map.setView([lat, lon], 12);
+        marker.setLatLng([lat, lon]);
+        updatePin(lat, lon);
+        if (resultsEl) resultsEl.innerHTML = "";
+        if (searchEl) searchEl.value = "";
+      }));
+    }, 400);
+  });
+  // Confirm
+  const useBtn = $("#useLocationBtn");
+  if (useBtn) useBtn.addEventListener("click", async () => {
+    const name = await reverseGeocode(pendingLat, pendingLng);
+    state.lat = +pendingLat.toFixed(4); state.lng = +pendingLng.toFixed(4);
+    state.locationName = name; state.locationMethod = "map";
+    storage.set({ lat: state.lat, lng: state.lng, locationName: name, locationMethod: "map", prayerCache: null });
+    await loadPrayers(true);
+    update({ view: "settings" });
+  });
+}
+
 // ---------- init ----------
 (async function init() {
   const data = await storage.get();
   state = { ...DEFAULTS, ...data };
 
+  // Migrate old city/country to lat/lng
+  if (!data.lat && data.city) {
+    try {
+      const r = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(data.city + " " + (data.country || ""))}&format=json&limit=1`);
+      const j = await r.json();
+      if (j[0]) {
+        state.lat = +parseFloat(j[0].lat).toFixed(4);
+        state.lng = +parseFloat(j[0].lon).toFixed(4);
+        state.locationName = data.city + (data.country ? ", " + data.country : "");
+        storage.set({ lat: state.lat, lng: state.lng, locationName: state.locationName, prayerCache: null });
+      }
+    } catch {}
+  }
+
   if (globalThis.electronAPI) {
     document.body.classList.add("electron");
     globalThis.electronAPI.resizeWindow(state.popupW, state.popupH);
     globalThis.electronAPI.setAlwaysOnTop(true);
-    
+    // Listen for sound play requests from main process
+    if (globalThis.electronAPI.onPlaySound) {
+      globalThis.electronAPI.onPlaySound((file) => playSound(file));
+    }
     let resizeTimer;
     window.addEventListener("resize", () => {
       clearTimeout(resizeTimer);
