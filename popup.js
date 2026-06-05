@@ -30,6 +30,7 @@ const DEFAULTS = {
   prayerAlertEnabled: true,
   iqamaEnabled: false,
   iqamaMinutes: 10,
+  ignoreUpdateUntil: 0,
 };
 
 const FONT_MAP = {
@@ -1440,6 +1441,39 @@ function wireMap() {
       resizeTimer = setTimeout(() => {
         update({ popupW: window.innerWidth, popupH: window.innerHeight });
       }, 500);
+    });
+  }
+
+  if (globalThis.electronAPI?.onUpdateAvailable) {
+    globalThis.electronAPI.onUpdateAvailable((version, url) => {
+      const now = Date.now();
+      if (now < (state.ignoreUpdateUntil || 0)) return; // ignored by user
+
+      let banner = document.getElementById("updateBanner");
+      if (!banner) {
+        banner = document.createElement("div");
+        banner.id = "updateBanner";
+        const header = document.querySelector(".header");
+        if (header) header.parentNode.insertBefore(banner, header.nextSibling);
+        else document.body.prepend(banner);
+      }
+      banner.innerHTML = `
+        <div><span>🚀</span> Update Available: v${version}</div>
+        <div class="update-actions">
+          <button id="updateDownloadBtn">Download</button>
+          <button id="updateDismissBtn" class="btn-dismiss">Dismiss (7 Days)</button>
+        </div>
+      `;
+      banner.style.display = "block";
+
+      document.getElementById("updateDownloadBtn").onclick = () => {
+        globalThis.electronAPI.openExternal(url);
+      };
+      document.getElementById("updateDismissBtn").onclick = () => {
+        banner.style.display = "none";
+        state.ignoreUpdateUntil = now + 7 * 24 * 60 * 60 * 1000;
+        storage.set({ ignoreUpdateUntil: state.ignoreUpdateUntil });
+      };
     });
   }
 

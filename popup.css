@@ -1045,3 +1045,50 @@ body.electron .header input {
 .toggle-input:checked + .toggle-switch::before {
   transform: translateX(16px);
 }
+
+/* ---------- update banner ---------- */
+#updateBanner {
+  display: none;
+  background: var(--accent);
+  color: #fff;
+  padding: 10px 14px;
+  font-size: 14px;
+  font-weight: 500;
+  text-align: center;
+  border-bottom: 1px solid rgba(0,0,0,0.1);
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  z-index: 100;
+}
+#updateBanner span {
+  opacity: 0.9;
+  margin-right: 8px;
+}
+#updateBanner .update-actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 6px;
+}
+#updateBanner button {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: #fff;
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+#updateBanner button:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+#updateBanner button.btn-dismiss {
+  background: transparent;
+  text-decoration: underline;
+  opacity: 0.8;
+}
+#updateBanner button.btn-dismiss:hover {
+  background: transparent;
+  opacity: 1;
+}

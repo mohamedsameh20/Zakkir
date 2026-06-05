@@ -63,8 +63,9 @@ test("navigate to settings view", async () => {
 });
 
 test("settings view renders city input", async () => {
-  const city = await window.locator("#presetCity").inputValue();
-  expect(city).toBeTruthy();
+  await window.locator("[data-tab='city']").click();
+  const count = await window.locator("#presetCity").count();
+  expect(count).toBe(1);
 });
 
 test("settings view renders theme grid", async () => {

@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, Notification } = require('electron');
+const { app, BrowserWindow, ipcMain, Notification, shell } = require('electron');
 const path = require('path');
 
 app.name = 'zakkir-desktop';
@@ -56,6 +56,9 @@ app.whenReady().then(() => {
       createWindow();
     }
   });
+
+  checkForUpdates();
+  setInterval(checkForUpdates, 4 * 60 * 60 * 1000); // every 4 hours
 
   // Reminder scheduler — check every 60 seconds
   setInterval(() => {
@@ -164,3 +167,24 @@ ipcMain.on('set-prayer-times', (event, times, settings) => {
   prayerSchedule = times;
   reminderSettings = { ...reminderSettings, ...settings };
 });
+
+ipcMain.on('open-external', (event, url) => {
+  shell.openExternal(url);
+});
+
+async function checkForUpdates() {
+  try {
+    const res = await fetch('https://api.github.com/repos/mohamedsameh20/Zakkir/releases/latest');
+    const data = await res.json();
+    if (data && data.tag_name) {
+      const latestVersion = data.tag_name.replace('v', '');
+      if (latestVersion !== app.getVersion()) {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('update-available', latestVersion, data.html_url);
+        }
+      }
+    }
+  } catch (e) {
+    console.error('Update check failed:', e);
+  }
+}
