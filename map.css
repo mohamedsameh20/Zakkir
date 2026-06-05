@@ -1,0 +1,25 @@
+html, body { margin: 0; height: 100%; font-family: system-ui, -apple-system, sans-serif; background: #0f1115; color: #e6e8ee; }
+#topbar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+  background: rgba(15, 17, 21, 0.96);
+  border-bottom: 1px solid #262b38;
+  padding: 10px 14px;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  flex-wrap: wrap;
+}
+#info { font-size: 13px; color: #cfd3dc; }
+.actions { display: flex; gap: 6px; align-items: center; }
+#search {
+  background: #161922; color: #e6e8ee; border: 1px solid #262b38;
+  border-radius: 8px; padding: 7px 10px; font-size: 13px; width: 220px;
+}
+#search:focus { outline: none; border-color: #60a5fa; }
+button {
+  background: #1d2230; color: #e6e8ee; border: 1px solid #262b38;
+  border-radius: 8px; padding: 7px 12px; font-size: 13px; font-weight: 600; cursor: pointer;
+}
+button:hover { border-color: #60a5fa; }
+#useBtn { background: #60a5fa; color: #0b0f1a; border-color: #60a5fa; }
+#useBtn:hover { filter: brightness(1.05); }
+#map { position: absolute; top: 60px; bottom: 0; left: 0; right: 0; }
+@media (max-width: 600px) { #search { width: 140px; } #map { top: 96px; } }

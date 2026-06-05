@@ -1,0 +1,65 @@
+{
+  "manifest_version": 3,
+  "name": "Zakkir",
+  "version": "1.5.0",
+  "description": "Prayer times + Azkar (Hisn al-Muslim) in your toolbar.",
+  "permissions": [
+    "storage",
+    "alarms",
+    "notifications",
+    "geolocation"
+  ],
+  "host_permissions": [
+    "https://api.aladhan.com/*",
+    "https://*.basemaps.cartocdn.com/*",
+    "https://*.tile.openstreetmap.org/*",
+    "https://nominatim.openstreetmap.org/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icon_16.png",
+      "48": "icon_48.png",
+      "128": "icon.png"
+    }
+  },
+  "icons": {
+    "16": "icon_16.png",
+    "48": "icon_48.png",
+    "128": "icon.png"
+  },
+  "background": {
+    "scripts": [
+      "background.js"
+    ]
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "zakkir@lovable.app",
+      "strict_min_version": "142.0",
+      "data_collection_permissions": {
+        "required": [
+          "none"
+        ]
+      }
+    }
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "popup.html",
+        "azkar.json",
+        "map.html",
+        "vendor/leaflet.js",
+        "vendor/leaflet.css",
+        "vendor/marker-icon.png",
+        "vendor/marker-icon-2x.png",
+        "vendor/marker-shadow.png",
+        "icon_48.png"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
+  ]
+}
