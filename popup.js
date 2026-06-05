@@ -31,6 +31,11 @@ const DEFAULTS = {
   iqamaEnabled: false,
   iqamaMinutes: 10,
   ignoreUpdateUntil: 0,
+  scheduleMonth: null,
+  scheduleDateMode: "g",
+  scheduleCache: {},
+  sunnahFastHighlight: true,
+  updateAlertsEnabled: true,
 };
 
 const FONT_MAP = {
@@ -454,6 +459,7 @@ function maybeResetDaily() {
 // ---------- icons ----------
 const icon = {
   gear: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>`,
+  cal: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>`,
   back: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 6l-6 6 6 6"/></svg>`,
   prev: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 6l-6 6 6 6"/></svg>`,
   next: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>`,
@@ -479,6 +485,7 @@ function headerHTML() {
       ${globalThis.electronAPI ? "" : `<button class="icon-btn" id="pinBtn" title="${pinned ? "Close pinned window" : "Pin (keep open)"}"><span>${pinned ? icon.unpin : icon.pin}</span></button>`}
       ${globalThis.electronAPI ? `<button class="icon-btn" id="minimizeBtn" title="Minimize"><span>${icon.minimize}</span></button>` : ""}
       ${globalThis.electronAPI ? `<button class="icon-btn" id="closeBtn" title="Close"><span>${icon.close}</span></button>` : ""}
+      <button class="icon-btn" data-go="schedule" title="Monthly schedule"><span>${icon.cal}</span></button>
       <button class="icon-btn" data-go="settings" title="Settings"><span>${icon.gear}</span></button>
     </div>`;
 }
@@ -594,6 +601,300 @@ function renderMap() {
     </div>`;
 }
 
+// ---------- Monthly schedule ----------
+const MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+
+// Aladhan calendar endpoint returns times like "04:23 (EET)" — strip suffix.
+function cleanTime(s) {
+  if (!s) return "00:00";
+  const m = String(s).match(/^(\d{1,2}):(\d{2})/);
+  return m ? `${m[1].padStart(2, "0")}:${m[2]}` : s;
+}
+
+
+function currentScheduleYM() {
+  if (state.scheduleMonth && /^\d{4}-\d{2}$/.test(state.scheduleMonth)) return state.scheduleMonth;
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+function stepScheduleMonth(delta) {
+  const [y, m] = currentScheduleYM().split("-").map(Number);
+  const d = new Date(y, m - 1 + delta, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+function scheduleCacheKey(state, ym) {
+  const useCoords = state.useCoords && state.lat != null && state.lng != null;
+  return useCoords
+    ? `v3|coords|${state.lat}|${state.lng}|${state.method}|${ym}`
+    : `v3|city|${state.city}|${state.country}|${state.method}|${ym}`;
+}
+
+// Notable Hijri days — keyed as "hMonthNumber|hDayNumber"
+const HIJRI_EVENTS = {
+  "1|1": "Islamic New Year",
+  "1|10": "Day of Ashura",
+  "3|12": "Mawlid an-Nabi",
+  "7|27": "Isra & Mi'raj",
+  "8|15": "Mid-Sha'ban",
+  "9|1": "1st of Ramadan",
+  "9|27": "Laylat al-Qadr (likely)",
+  "10|1": "Eid al-Fitr",
+  "12|9": "Day of Arafah",
+  "12|10": "Eid al-Adha",
+};
+function hijriEventName(hMonthNum, hDay) {
+  return HIJRI_EVENTS[`${Number(hMonthNum)}|${Number(hDay)}`] || "";
+}
+
+let _scheduleData = null;     // { ym, key, days: [{g, h, timings}], loading, error }
+let _scheduleLoadingKey = null;
+
+async function fetchMonth(ym) {
+  const key = scheduleCacheKey(state, ym);
+  const cached = state.scheduleCache?.[key];
+  const fresh = cached && (Date.now() - (cached.fetchedAt || 0) < 24 * 3600 * 1000);
+  if (cached) {
+    _scheduleData = { ym, key, days: cached.days, error: null, loading: !fresh };
+  } else {
+    _scheduleData = { ym, key, days: null, error: null, loading: true };
+  }
+  // Always reflect the new _scheduleData in the DOM on the next tick, so
+  // a cache hit (fresh or stale) doesn't leave a stale "Loading…" body
+  // when fetchMonth is called after the initial render.
+  if (state.view === "schedule") {
+    Promise.resolve().then(() => { if (state.view === "schedule") patchSchedule(); });
+  }
+  if (fresh) return;
+  if (_scheduleLoadingKey === key) return;
+  _scheduleLoadingKey = key;
+  try {
+    const [y, m] = ym.split("-").map(Number);
+    const useCoords = state.useCoords && state.lat != null && state.lng != null;
+    const url = useCoords
+      ? `https://api.aladhan.com/v1/calendar/${y}/${m}?latitude=${state.lat}&longitude=${state.lng}&method=${state.method}`
+      : `https://api.aladhan.com/v1/calendarByCity/${y}/${m}?city=${encodeURIComponent(state.city)}&country=${encodeURIComponent(state.country)}&method=${state.method}`;
+    const r = await fetch(url);
+    const j = await r.json();
+    if (!Array.isArray(j?.data)) throw new Error("bad response");
+    const days = j.data.map((d) => {
+      const hj = d.date?.hijri;
+      return {
+        g: d.date?.gregorian?.day || "",
+        weekday: d.date?.gregorian?.weekday?.en || "",
+        h: hj ? `${hj.day} ${hj.month.en}` : "",
+        hDay: hj?.day || "",
+        hMonth: hj?.month?.en || "",
+        hMonthAr: hj?.month?.ar || "",
+        hMonthNum: hj?.month?.number || null,
+        hYear: hj?.year || "",
+        timings: {
+          Fajr: cleanTime(d.timings.Fajr),
+          Dhuhr: cleanTime(d.timings.Dhuhr),
+          Asr: cleanTime(d.timings.Asr),
+          Maghrib: cleanTime(d.timings.Maghrib),
+          Isha: cleanTime(d.timings.Isha),
+        },
+      };
+    });
+    const entry = { days, fetchedAt: Date.now() };
+    state.scheduleCache = { ...(state.scheduleCache || {}), [key]: entry };
+    storage.set({ scheduleCache: state.scheduleCache });
+    _scheduleData = { ym, key, days, error: null, loading: false };
+  } catch (e) {
+    if (_scheduleData) _scheduleData.error = "Failed to load schedule — check your connection.";
+    if (_scheduleData) _scheduleData.loading = false;
+    if (!_scheduleData?.days) _scheduleData = { ym, key, days: null, error: "Failed to load schedule.", loading: false };
+  } finally {
+    _scheduleLoadingKey = null;
+    if (state.view === "schedule") patchSchedule();
+  }
+}
+
+function scheduleHeaderHTML() {
+  const ym = currentScheduleYM();
+  const [y, m] = ym.split("-").map(Number);
+  const monthName = MONTH_NAMES[m - 1];
+  // Hijri label: derive a range from first/last day so month transitions are visible.
+  let hijriLabel = "";
+  const days = _scheduleData?.days || [];
+  if (days.length) {
+    const first = days[0];
+    const last = days[days.length - 1];
+    if (first?.hMonth && last?.hMonth) {
+      if (first.hMonth === last.hMonth && first.hYear === last.hYear) {
+        hijriLabel = `${first.hMonth} ${first.hYear} AH`;
+      } else {
+        const yA = first.hYear, yB = last.hYear;
+        hijriLabel = yA === yB
+          ? `${first.hMonth} → ${last.hMonth} ${yB} AH`
+          : `${first.hMonth} ${yA} → ${last.hMonth} ${yB} AH`;
+      }
+    }
+  }
+  const mode = state.scheduleDateMode === "h" ? "h" : "g";
+  return `
+    <div class="sched-head">
+      <button class="icon-btn" id="schedPrev" title="Previous month">${icon.prev}</button>
+      <div class="sched-title">
+        <div class="sched-month">${monthName} ${y}</div>
+        ${hijriLabel ? `<div class="sched-hijri">${hijriLabel}</div>` : ""}
+      </div>
+      <button class="icon-btn" id="schedNext" title="Next month">${icon.next}</button>
+    </div>
+    <div class="sched-mode" role="tablist">
+      <button class="sched-mode-btn ${mode === "g" ? "active" : ""}" data-mode="g" role="tab">Gregorian</button>
+      <button class="sched-mode-btn ${mode === "h" ? "active" : ""}" data-mode="h" role="tab">Hijri</button>
+    </div>`;
+}
+
+function scheduleBodyHTML() {
+  if (_scheduleData?.error && !_scheduleData?.days) {
+    return `<div class="sched-msg">${_scheduleData.error} <button class="loc-btn" id="schedRetry">Retry</button></div>`;
+  }
+  if (!_scheduleData?.days) {
+    return `<div class="sched-msg">Loading schedule…</div>`;
+  }
+  const mode = state.scheduleDateMode === "h" ? "h" : "g";
+  const ym = currentScheduleYM();
+  const today = new Date();
+  const todayYM = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
+  const todayDay = today.getDate();
+  const isCurrentMonth = ym === todayYM;
+  let prevHMonth = null;
+  const rows = _scheduleData.days.map((d) => {
+    const isToday = isCurrentMonth && parseInt(d.g, 10) === todayDay;
+    const rollover = prevHMonth !== null && d.hMonth && d.hMonth !== prevHMonth;
+    prevHMonth = d.hMonth || prevHMonth;
+    const evt = hijriEventName(d.hMonthNum, d.hDay);
+    const wd = (d.weekday || "").toLowerCase();
+    const isSunnahFast = state.sunnahFastHighlight && (wd === "monday" || wd === "thursday");
+    const fastTitle = wd === "monday" ? "Sunnah fast — Monday" : "Sunnah fast — Thursday";
+    const classes = [
+      isToday ? "today" : "",
+      rollover ? "hijri-rollover" : "",
+      evt ? "hijri-event" : "",
+      isSunnahFast ? "sunnah-fast" : "",
+    ].filter(Boolean).join(" ");
+    const evtBadge = evt ? `<span class="sched-event" title="${evt}">★</span>` : "";
+    const fastBadge = isSunnahFast ? `<span class="sched-fast" title="${fastTitle}">صوم</span>` : "";
+    let dateCell;
+    if (mode === "h") {
+      const hijriMain = d.hDay
+        ? (rollover
+            ? `<b>${d.hDay}</b><span class="wd">${d.hMonth} ${d.hYear}</span>`
+            : `<b>${d.hDay}</b><span class="wd">${(d.hMonth || "").slice(0, 8)}</span>`)
+        : "";
+      dateCell = `<td class="d h-primary">${hijriMain}${evtBadge}${fastBadge}</td>`;
+    } else {
+      dateCell = `<td class="d"><b>${d.g}</b><span class="wd">${(d.weekday || "").slice(0, 3)}</span>${evtBadge}${fastBadge}</td>`;
+    }
+    return `<tr class="${classes}">
+      ${dateCell}
+      <td>${fmt12(d.timings.Fajr)}</td>
+      <td>${fmt12(d.timings.Dhuhr)}</td>
+      <td>${fmt12(d.timings.Asr)}</td>
+      <td>${fmt12(d.timings.Maghrib)}</td>
+      <td>${fmt12(d.timings.Isha)}</td>
+    </tr>`;
+  }).join("");
+  const dateHeader = mode === "h" ? "Hijri" : "Date";
+  return `
+    <div class="sched-table-wrap">
+      <table class="sched-table">
+        <thead><tr><th>${dateHeader}</th><th>Fajr</th><th>Dhuhr</th><th>Asr</th><th>Maghrib</th><th>Isha</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+    ${_scheduleData.loading ? `<div class="sched-msg subtle">Updating…</div>` : ""}`;
+}
+
+function scheduleFooterHTML() {
+  const useCoords = state.useCoords && state.lat != null && state.lng != null;
+  const where = useCoords
+    ? (state.locationName || `${Number(state.lat).toFixed(2)}, ${Number(state.lng).toFixed(2)}`)
+    : `${state.city}, ${state.country}`;
+  const methodName = (METHODS.find(([v]) => v === state.method) || [, `Method ${state.method}`])[1];
+  return `
+    <div class="sched-foot">
+      <span>${where} · ${methodName}</span>
+      <button class="sched-csv" id="schedCsv" title="Download CSV">Export CSV</button>
+    </div>`;
+}
+
+function renderSchedule() {
+  return `
+    <div class="app">
+      <div class="settings-head">
+        <button class="icon-btn" data-go="home">${icon.back}</button>
+        <h1>Schedule</h1>
+        <span style="width:30px"></span>
+      </div>
+      <div id="schedHead">${scheduleHeaderHTML()}</div>
+      <div id="schedBody">${scheduleBodyHTML()}</div>
+      <div id="schedFoot">${scheduleFooterHTML()}</div>
+    </div>
+  `;
+}
+
+function patchSchedule() {
+  const head = $("#schedHead"); if (head) setHTML(head, scheduleHeaderHTML());
+  const body = $("#schedBody"); if (body) setHTML(body, scheduleBodyHTML());
+  const foot = $("#schedFoot"); if (foot) setHTML(foot, scheduleFooterHTML());
+  wireSchedule();
+}
+
+function downloadScheduleCsv() {
+  if (!_scheduleData?.days) return;
+  const ym = currentScheduleYM();
+  const header = ["Gregorian", "Weekday", "Hijri", "Hijri Month", "Hijri Year", "Event", "Fajr", "Dhuhr", "Asr", "Maghrib", "Isha"];
+  const rows = _scheduleData.days.map((d) => [
+    `${ym}-${String(d.g).padStart(2, "0")}`,
+    d.weekday || "",
+    d.hDay || "",
+    d.hMonth || "",
+    d.hYear || "",
+    hijriEventName(d.hMonthNum, d.hDay),
+    d.timings.Fajr, d.timings.Dhuhr, d.timings.Asr, d.timings.Maghrib, d.timings.Isha,
+  ]);
+  const csv = [header, ...rows].map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
+  const blob = new Blob([csv], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = `zakkir-schedule-${ym}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function wireSchedule() {
+  const prev = $("#schedPrev");
+  if (prev) prev.addEventListener("click", () => {
+    state.scheduleMonth = stepScheduleMonth(-1);
+    storage.set({ scheduleMonth: state.scheduleMonth });
+    fetchMonth(state.scheduleMonth);
+    patchSchedule();
+  });
+  const next = $("#schedNext");
+  if (next) next.addEventListener("click", () => {
+    state.scheduleMonth = stepScheduleMonth(1);
+    storage.set({ scheduleMonth: state.scheduleMonth });
+    fetchMonth(state.scheduleMonth);
+    patchSchedule();
+  });
+  const retry = $("#schedRetry");
+  if (retry) retry.addEventListener("click", () => { fetchMonth(currentScheduleYM()); patchSchedule(); });
+  const csv = $("#schedCsv");
+  if (csv) csv.addEventListener("click", downloadScheduleCsv);
+  document.querySelectorAll(".sched-mode-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const mode = btn.getAttribute("data-mode") === "h" ? "h" : "g";
+      if (state.scheduleDateMode === mode) return;
+      state.scheduleDateMode = mode;
+      storage.set({ scheduleDateMode: mode });
+      patchSchedule();
+    });
+  });
+}
+
 function renderSettings() {
   let activeCountry = "";
   let activeCity = "";
@@ -676,6 +977,24 @@ function renderSettings() {
         <select id="method">
           ${METHODS.map(([v, n]) => `<option value="${v}" ${v === state.method ? "selected" : ""}>${n}</option>`).join("")}
         </select>
+      </div>
+
+      <div class="sec">Schedule</div>
+      <div class="row">
+        <label>Highlight Mon/Thu (Sunnah fasting)</label>
+        <label class="toggle">
+          <input type="checkbox" id="sunnahFastHighlight" class="toggle-input" ${state.sunnahFastHighlight ? "checked" : ""}/>
+          <span class="toggle-switch"></span>
+        </label>
+      </div>
+
+      <div class="sec">Updates</div>
+      <div class="row">
+        <label>Show Update Alerts</label>
+        <label class="toggle">
+          <input type="checkbox" id="updateAlertsEnabled" class="toggle-input" ${state.updateAlertsEnabled ? "checked" : ""}/>
+          <span class="toggle-switch"></span>
+        </label>
       </div>
 
       <div class="sec">Arabic Font</div>
@@ -846,7 +1165,10 @@ function render() {
     setHTML(app, renderMap());
     wireMap();
   } else {
-    setHTML(app, state.view === "settings" ? renderSettings() : renderHome());
+    const html = state.view === "settings" ? renderSettings()
+      : state.view === "schedule" ? renderSchedule()
+      : renderHome();
+    setHTML(app, html);
     wire();
   }
 }
@@ -931,6 +1253,14 @@ function wire() {
   document.querySelectorAll("[data-go]").forEach((b) =>
     b.addEventListener("click", () => update({ view: b.dataset.go }))
   );
+
+  if (state.view === "schedule") {
+    const ym = currentScheduleYM();
+    if (!_scheduleData || _scheduleData.ym !== ym) {
+      fetchMonth(ym);
+    }
+    wireSchedule();
+  }
 
   // Home interactions
   wirePrayerTap();
@@ -1187,6 +1517,22 @@ function wire() {
       state.iqamaMinutes = Math.max(5, Math.min(15, parseInt(e.target.value, 10) || 10));
       storage.set({ iqamaMinutes: state.iqamaMinutes });
       syncReminders();
+    });
+  }
+
+  const sunnahFastHighlight = $("#sunnahFastHighlight");
+  if (sunnahFastHighlight) {
+    sunnahFastHighlight.addEventListener("change", (e) => {
+      state.sunnahFastHighlight = e.target.checked;
+      storage.set({ sunnahFastHighlight: state.sunnahFastHighlight });
+    });
+  }
+
+  const updateAlertsEnabled = $("#updateAlertsEnabled");
+  if (updateAlertsEnabled) {
+    updateAlertsEnabled.addEventListener("change", (e) => {
+      state.updateAlertsEnabled = e.target.checked;
+      storage.set({ updateAlertsEnabled: state.updateAlertsEnabled });
     });
   }
 
@@ -1447,21 +1793,20 @@ function wireMap() {
   if (globalThis.electronAPI?.onUpdateAvailable) {
     globalThis.electronAPI.onUpdateAvailable((version, url) => {
       const now = Date.now();
-      if (now < (state.ignoreUpdateUntil || 0)) return; // ignored by user
+      if (!state.updateAlertsEnabled || now < (state.ignoreUpdateUntil || 0)) return; // ignored by user
 
       let banner = document.getElementById("updateBanner");
       if (!banner) {
         banner = document.createElement("div");
         banner.id = "updateBanner";
-        const header = document.querySelector(".header");
-        if (header) header.parentNode.insertBefore(banner, header.nextSibling);
-        else document.body.prepend(banner);
+        document.body.appendChild(banner);
       }
       banner.innerHTML = `
-        <div><span>🚀</span> Update Available: v${version}</div>
+        <div class="update-title"><span>🚀</span> Zakkir Update Available: v${version}</div>
         <div class="update-actions">
-          <button id="updateDownloadBtn">Download</button>
-          <button id="updateDismissBtn" class="btn-dismiss">Dismiss (7 Days)</button>
+          <button id="updateDownloadBtn" class="btn-primary">Download</button>
+          <button id="updateRemindBtn" class="btn-secondary">Remind Later (3d)</button>
+          <button id="updateNeverBtn" class="btn-dismiss">Never Show Again</button>
         </div>
       `;
       banner.style.display = "block";
@@ -1469,10 +1814,16 @@ function wireMap() {
       document.getElementById("updateDownloadBtn").onclick = () => {
         globalThis.electronAPI.openExternal(url);
       };
-      document.getElementById("updateDismissBtn").onclick = () => {
+      document.getElementById("updateRemindBtn").onclick = () => {
         banner.style.display = "none";
-        state.ignoreUpdateUntil = now + 7 * 24 * 60 * 60 * 1000;
+        state.ignoreUpdateUntil = now + 3 * 24 * 60 * 60 * 1000;
         storage.set({ ignoreUpdateUntil: state.ignoreUpdateUntil });
+      };
+      document.getElementById("updateNeverBtn").onclick = () => {
+        banner.style.display = "none";
+        state.updateAlertsEnabled = false;
+        storage.set({ updateAlertsEnabled: false });
+        if (state.view === "settings") render();
       };
     });
   }

@@ -1046,49 +1046,214 @@ body.electron .header input {
   transform: translateX(16px);
 }
 
-/* ---------- update banner ---------- */
+/* ---------- update toast ---------- */
 #updateBanner {
   display: none;
-  background: var(--accent);
-  color: #fff;
-  padding: 10px 14px;
+  position: fixed;
+  bottom: 24px;
+  left: 20px;
+  right: 20px;
+  background: var(--surface);
+  color: var(--ink);
+  padding: 16px;
+  border: 1px solid var(--accent);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.15), 0 0 0 1px color-mix(in oklab, var(--accent) 30%, transparent);
+  z-index: 9999;
+  font-family: inherit;
+  animation: slideUpFade 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes slideUpFade {
+  0% { transform: translateY(20px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+#updateBanner .update-title {
   font-size: 14px;
-  font-weight: 500;
-  text-align: center;
-  border-bottom: 1px solid rgba(0,0,0,0.1);
-  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-  z-index: 100;
+  font-weight: 600;
+  margin-bottom: 12px;
+  text-align: left;
 }
 #updateBanner span {
-  opacity: 0.9;
-  margin-right: 8px;
+  margin-right: 6px;
 }
 #updateBanner .update-actions {
   display: flex;
-  justify-content: center;
-  gap: 12px;
-  margin-top: 6px;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 #updateBanner button {
-  background: rgba(255, 255, 255, 0.2);
-  border: none;
-  color: #fff;
-  padding: 4px 12px;
-  border-radius: 4px;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--ink);
+  padding: 6px 12px;
+  border-radius: 8px;
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: all 0.2s;
+  flex: 1;
+  text-align: center;
 }
 #updateBanner button:hover {
-  background: rgba(255, 255, 255, 0.3);
+  background: color-mix(in oklab, var(--accent) 15%, transparent);
+  border-color: var(--accent);
+}
+#updateBanner button.btn-primary {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: var(--accent);
+}
+#updateBanner button.btn-primary:hover {
+  filter: brightness(1.1);
 }
 #updateBanner button.btn-dismiss {
   background: transparent;
+  border-color: transparent;
+  color: var(--muted);
   text-decoration: underline;
   opacity: 0.8;
 }
 #updateBanner button.btn-dismiss:hover {
-  background: transparent;
+  color: var(--ink);
   opacity: 1;
 }
+/* ===== Monthly schedule ===== */
+.sched-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 4px 0 10px;
+}
+.sched-title { text-align: center; flex: 1; }
+.sched-month { font-weight: 700; color: var(--ink); font-size: 15px; }
+.sched-hijri { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.sched-mode {
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  margin: 6px 0 8px;
+  background: color-mix(in oklab, var(--ink) 6%, transparent);
+  border-radius: 8px;
+}
+.sched-mode-btn {
+  flex: 1;
+  padding: 6px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  border-radius: 6px;
+  cursor: pointer;
+}
+.sched-mode-btn.active {
+  background: var(--card, var(--bg));
+  color: var(--ink);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+}
+.sched-table td.d.h-primary b { color: var(--ink); }
+.sched-table-wrap {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--surface);
+}
+.sched-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11.5px;
+}
+.sched-table thead th {
+  position: sticky;
+  top: 0;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-weight: 600;
+  text-align: left;
+  padding: 6px 6px;
+  border-bottom: 1px solid var(--line);
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.sched-table tbody td {
+  padding: 5px 6px;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink);
+  white-space: nowrap;
+}
+.sched-table tbody tr:last-child td { border-bottom: 0; }
+.sched-table td.d { color: var(--muted); }
+.sched-table td.d b { color: var(--ink); margin-right: 4px; }
+.sched-table td.d .wd { font-size: 10px; opacity: 0.75; }
+.sched-table tr.today td { background: color-mix(in oklab, var(--accent) 12%, transparent); }
+.sched-table tr.today td.d b { color: var(--accent); }
+.sched-table td.h {
+  color: var(--muted);
+  font-size: 10.5px;
+  white-space: nowrap;
+}
+.sched-table td.h b { color: var(--ink); margin-right: 3px; font-weight: 600; }
+.sched-table td.h .hy { opacity: 0.7; margin-left: 3px; font-size: 9.5px; }
+.sched-table tr.hijri-rollover td { border-top: 1px solid color-mix(in oklab, var(--accent) 55%, transparent); }
+.sched-table tr.hijri-rollover td.h { color: var(--accent); }
+.sched-table tr.hijri-event td.h { color: var(--accent); }
+.sched-table tr.hijri-event td { background: color-mix(in oklab, var(--accent) 5%, transparent); }
+.sched-event {
+  display: inline-block;
+  margin-left: 4px;
+  color: var(--accent);
+  font-size: 10px;
+  cursor: help;
+}
+/* Sunnah fasting (Mon/Thu) — distinct green tint, separate from accent */
+.sched-table tr.sunnah-fast td {
+  background: color-mix(in oklab, #16a34a 10%, transparent);
+}
+.sched-table tr.sunnah-fast td:first-child {
+  box-shadow: inset 3px 0 0 color-mix(in oklab, #16a34a 70%, transparent);
+}
+.sched-table tr.sunnah-fast.today td {
+  background: color-mix(in oklab, #16a34a 14%, color-mix(in oklab, var(--accent) 10%, transparent));
+}
+.sched-fast {
+  display: inline-block;
+  margin-left: 5px;
+  padding: 1px 5px;
+  border-radius: 6px;
+  background: color-mix(in oklab, #16a34a 22%, transparent);
+  color: #16a34a;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  vertical-align: middle;
+  cursor: help;
+}
+.sched-msg {
+  padding: 14px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 12px;
+}
+.sched-msg.subtle { padding: 6px; font-size: 10.5px; }
+.sched-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.sched-csv {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--ink);
+  border-radius: 8px;
+  padding: 5px 10px;
+  font-size: 11px;
+  cursor: pointer;
+}
+.sched-csv:hover { border-color: var(--accent); color: var(--accent); }
