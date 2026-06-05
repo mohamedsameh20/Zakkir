@@ -176,14 +176,15 @@ async function checkForUpdates() {
   try {
     const res = await fetch('https://api.github.com/repos/mohamedsameh20/Zakkir/releases/latest');
     const data = await res.json();
-    if (data && data.tag_name) {
-      const latestVersion = data.tag_name.replace('v', '');
-      if (latestVersion !== app.getVersion()) {
-        if (mainWindow && !mainWindow.isDestroyed()) {
-          mainWindow.webContents.send('update-available', latestVersion, data.html_url);
+      if (data && data.tag_name) {
+        const latestVersion = data.tag_name.replace('v', '');
+        const cmp = latestVersion.localeCompare(app.getVersion(), undefined, { numeric: true, sensitivity: 'base' });
+        if (cmp > 0) { // Only notify if latestVersion is greater
+          if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('update-available', latestVersion, data.html_url);
+          }
         }
       }
-    }
   } catch (e) {
     console.error('Update check failed:', e);
   }
