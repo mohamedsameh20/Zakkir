@@ -57,8 +57,7 @@ app.whenReady().then(() => {
     }
   });
 
-  checkForUpdates();
-  setInterval(checkForUpdates, 4 * 60 * 60 * 1000); // every 4 hours
+
 
   // Reminder scheduler — check every 60 seconds
   setInterval(() => {
