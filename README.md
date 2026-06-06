@@ -6,9 +6,9 @@ Mini desktop app for prayer times and Azkar.
 
 | Platform         | Download                                                                                                                           | Install                                                     |
 | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
-| Windows          | [Zakkir-Setup-1.3.2.exe](https://github.com/mohamedsameh20/Zakkir/releases/download/v1.3.2/Zakkir-Setup-1.3.2.exe)                 | Run the installer                                           |
-| Debian / Ubuntu  | [zakkir-desktop_1.3.2_amd64.deb](https://github.com/mohamedsameh20/Zakkir/releases/download/v1.3.2/zakkir-desktop_1.3.2_amd64.deb) | `sudo dpkg -i zakkir-desktop_1.3.2_amd64.deb`               |
-| Linux (AppImage) | [Zakkir-1.3.2.AppImage](https://github.com/mohamedsameh20/Zakkir/releases/download/v1.3.2/Zakkir-1.3.2.AppImage)                   | `chmod +x Zakkir-1.3.2.AppImage && ./Zakkir-1.3.2.AppImage` |
+| Windows          | [Zakkir-Setup-1.3.3.exe](https://github.com/mohamedsameh20/Zakkir/releases/download/v1.3.3/Zakkir-Setup-1.3.3.exe)                 | Run the installer                                           |
+| Debian / Ubuntu  | [zakkir-desktop_1.3.3_amd64.deb](https://github.com/mohamedsameh20/Zakkir/releases/download/v1.3.3/zakkir-desktop_1.3.3_amd64.deb) | `sudo dpkg -i zakkir-desktop_1.3.3_amd64.deb`               |
+| Linux (AppImage) | [Zakkir-1.3.3.AppImage](https://github.com/mohamedsameh20/Zakkir/releases/download/v1.3.3/Zakkir-1.3.3.AppImage)                   | `chmod +x Zakkir-1.3.3.AppImage && ./Zakkir-1.3.3.AppImage` |
 
 ---
 
