@@ -57,7 +57,14 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
-  const settingsPath = path.join(app.getPath('userData'), 'settings.json');
+  const settingsPath = process.env.NODE_ENV === 'test'
+    ? path.join(app.getPath('temp'), 'zakkir-test-settings.json')
+    : path.join(app.getPath('userData'), 'settings.json');
+
+  if (process.env.NODE_ENV === 'test' && fs.existsSync(settingsPath)) {
+    try { fs.unlinkSync(settingsPath); } catch (e) {}
+  }
+
   let settingsData = {};
   try {
     if (fs.existsSync(settingsPath)) {

@@ -253,11 +253,11 @@ const storage = {
       }
     }),
   set: (patch) => {
-    if (globalThis.chrome?.storage) chrome.storage.local.set(patch);
-    else {
-      if (globalThis.electronAPI?.saveSettings) {
-        globalThis.electronAPI.saveSettings(patch);
-      }
+    if (globalThis.chrome?.storage) {
+      chrome.storage.local.set(patch);
+    } else if (globalThis.electronAPI?.saveSettings) {
+      globalThis.electronAPI.saveSettings(patch);
+    } else {
       try {
         const raw = localStorage.getItem("azkar");
         const cur = raw ? JSON.parse(raw) : {};
