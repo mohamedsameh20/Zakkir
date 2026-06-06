@@ -66,11 +66,9 @@ app.whenReady().then(() => {
 
   ipcMain.on('save-settings', (event, patch) => {
     settingsData = { ...settingsData, ...patch };
-    try {
-      fs.writeFileSync(settingsPath, JSON.stringify(settingsData));
-    } catch (e) {
-      console.error('Failed to save settings', e);
-    }
+    fs.writeFile(settingsPath, JSON.stringify(settingsData), (err) => {
+      if (err) console.error('Failed to save settings', err);
+    });
   });
 
   createWindow();
