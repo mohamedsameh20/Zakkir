@@ -19,8 +19,8 @@ const firedToday = new Set(); // "Prayer-YYYY-MM-DD-N" keys to avoid double-firi
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 420,
-    height: 580,
+    width: 560,
+    height: 680,
     frame: false,
     show: false,
     resizable: true,
