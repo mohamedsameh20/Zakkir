@@ -1,5 +1,6 @@
 const { app, BrowserWindow, ipcMain, Notification, shell } = require('electron');
 const path = require('path');
+const fs = require('fs');
 
 app.name = 'zakkir-desktop';
 app.setPath('userData', path.join(app.getPath('appData'), 'zakkir-desktop'));
@@ -49,6 +50,29 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  const settingsPath = path.join(app.getPath('userData'), 'settings.json');
+  let settingsData = {};
+  try {
+    if (fs.existsSync(settingsPath)) {
+      settingsData = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
+    }
+  } catch (e) {
+    console.error('Failed to load settings', e);
+  }
+
+  ipcMain.handle('load-settings', () => {
+    return settingsData;
+  });
+
+  ipcMain.on('save-settings', (event, patch) => {
+    settingsData = { ...settingsData, ...patch };
+    try {
+      fs.writeFileSync(settingsPath, JSON.stringify(settingsData));
+    } catch (e) {
+      console.error('Failed to save settings', e);
+    }
+  });
+
   createWindow();
 
   app.on('activate', () => {

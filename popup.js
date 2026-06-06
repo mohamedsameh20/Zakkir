@@ -240,6 +240,11 @@ const storage = {
   get: () =>
     new Promise((res) => {
       if (globalThis.chrome?.storage) chrome.storage.local.get(DEFAULTS, res);
+      else if (globalThis.electronAPI?.loadSettings) {
+        globalThis.electronAPI.loadSettings().then(raw => {
+          res(raw ? { ...DEFAULTS, ...raw } : { ...DEFAULTS });
+        }).catch(() => res({ ...DEFAULTS }));
+      }
       else {
         try {
           const raw = localStorage.getItem("azkar");
@@ -250,6 +255,9 @@ const storage = {
   set: (patch) => {
     if (globalThis.chrome?.storage) chrome.storage.local.set(patch);
     else {
+      if (globalThis.electronAPI?.saveSettings) {
+        globalThis.electronAPI.saveSettings(patch);
+      }
       try {
         const raw = localStorage.getItem("azkar");
         const cur = raw ? JSON.parse(raw) : {};

@@ -9,4 +9,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onPlaySound: (cb) => ipcRenderer.on('play-sound', (_, file) => cb(file)),
   openExternal: (url) => ipcRenderer.send('open-external', url),
   onUpdateAvailable: (cb) => ipcRenderer.on('update-available', (_, version, url) => cb(version, url)),
+  loadSettings: () => ipcRenderer.invoke('load-settings'),
+  saveSettings: (patch) => ipcRenderer.send('save-settings', patch),
 });
