@@ -1831,6 +1831,9 @@ function wireMap() {
   maybeResetDaily();
   applyAutoCategory();
   render();
+  // Tell the main process the UI is ready — it will now show the window.
+  // This ensures the user never sees or clicks the app before state is set up.
+  if (globalThis.electronAPI?.signalReady) globalThis.electronAPI.signalReady();
   await loadPrayers();
   // Re-evaluate auto category now that real prayer times are loaded.
   const switched = applyAutoCategory();

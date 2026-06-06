@@ -11,4 +11,5 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onUpdateAvailable: (cb) => ipcRenderer.on('update-available', (_, version, url) => cb(version, url)),
   loadSettings: () => ipcRenderer.invoke('load-settings'),
   saveSettings: (patch) => ipcRenderer.send('save-settings', patch),
+  signalReady: () => ipcRenderer.send('app-ready'),
 });

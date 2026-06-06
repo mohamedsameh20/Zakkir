@@ -36,9 +36,16 @@ function createWindow() {
 
   mainWindow.loadFile(path.join(__dirname, 'popup.html'));
 
-  mainWindow.once('ready-to-show', () => {
-    mainWindow.show();
+  // Don't show the window until the renderer signals it's fully initialised
+  // (storage loaded, azkar data ready, first render done). This prevents the
+  // user from interacting before state is set up and seeing a jarring freeze.
+  ipcMain.once('app-ready', () => {
+    if (mainWindow && !mainWindow.isDestroyed()) mainWindow.show();
   });
+  // Safety fallback: show after 3 s in case the signal never arrives
+  setTimeout(() => {
+    if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.isVisible()) mainWindow.show();
+  }, 3000);
 
   // F12 toggles DevTools for debugging in packaged builds
   mainWindow.webContents.on('before-input-event', (event, input) => {
