@@ -12,6 +12,7 @@ const DEFAULTS = {
   lat: null,
   lng: null,
   prayerCache: null,
+  notificationsEnabled: true,
   reminderEnabled: false,
   reminderMinutes: 10,
   athanEnabled: true,
@@ -109,7 +110,7 @@ async function tick() {
   } catch {}
 
   // Reminders
-  const anyReminder = state.reminderEnabled || state.iqamaEnabled || state.athanEnabled;
+  const anyReminder = state.notificationsEnabled && (state.reminderEnabled || state.iqamaEnabled || state.athanEnabled);
   if (anyReminder) {
     const preMins = Math.max(0, state.reminderMinutes ?? 10);
     const iqMins = Math.max(0, state.iqamaMinutes ?? 10);
