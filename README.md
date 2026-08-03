@@ -4,6 +4,14 @@ A lightweight, always-on-top desktop app for **prayer times** and **Azkar** (His
 
 Prayer times come live from [Aladhan](https://aladhan.com); Azkar are bundled locally so the app works offline.
 
+## Download
+
+| Platform         | Download                                                                                                                           | Install                                                     |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| Windows          | [Zakkir-Setup-1.4.0.exe](https://github.com/mohamedsameh20/Zakkir/releases/download/v1.4.0/Zakkir-Setup-1.4.0.exe)                 | Run the installer                                           |
+| Debian / Ubuntu  | [zakkir-desktop_1.4.0_amd64.deb](https://github.com/mohamedsameh20/Zakkir/releases/download/v1.4.0/zakkir-desktop_1.4.0_amd64.deb) | `sudo dpkg -i zakkir-desktop_1.4.0_amd64.deb`               |
+| Linux (AppImage) | [Zakkir-1.4.0.AppImage](https://github.com/mohamedsameh20/Zakkir/releases/download/v1.4.0/Zakkir-1.4.0.AppImage)                   | `chmod +x Zakkir-1.4.0.AppImage && ./Zakkir-1.4.0.AppImage` |
+
 ## Features
 
 - **Prayer times** with a live next-prayer countdown and progress toward the next prayer.
@@ -38,14 +46,6 @@ Prayer times come live from [Aladhan](https://aladhan.com); Azkar are bundled lo
 |                      Window                      |
 | :----------------------------------------------: |
 | ![Settings Window](Screenshots/Settings_Window.png) |
-
-## Installation
-
-| Platform         | Download                                                                                                                           | Install                                                     |
-| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
-| Windows          | [Zakkir-Setup-1.4.0.exe](https://github.com/mohamedsameh20/Zakkir/releases/download/v1.4.0/Zakkir-Setup-1.4.0.exe)                 | Run the installer                                           |
-| Debian / Ubuntu  | [zakkir-desktop_1.4.0_amd64.deb](https://github.com/mohamedsameh20/Zakkir/releases/download/v1.4.0/zakkir-desktop_1.4.0_amd64.deb) | `sudo dpkg -i zakkir-desktop_1.4.0_amd64.deb`               |
-| Linux (AppImage) | [Zakkir-1.4.0.AppImage](https://github.com/mohamedsameh20/Zakkir/releases/download/v1.4.0/Zakkir-1.4.0.AppImage)                   | `chmod +x Zakkir-1.4.0.AppImage && ./Zakkir-1.4.0.AppImage` |
 
 ## Development
 
