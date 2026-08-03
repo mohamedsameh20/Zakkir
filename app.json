@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "1f0586bd-3756-403e-bbf9-699335612735"
+      }
+    },
+    "android": {
+      "package": "com.salem77i.zakkirdesktop"
+    }
+  }
+}

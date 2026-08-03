@@ -1,0 +1,31 @@
+{
+  "expo": {
+    "name": "Zakkir",
+    "slug": "zakkir-desktop",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "scheme": "zakkir",
+    "extra": {
+      "eas": {
+        "projectId": "1f0586bd-3756-403e-bbf9-699335612735"
+      }
+    },
+    "android": {
+      "package": "com.mohamedsameh20.zakkir",
+      "icon": "../icon.png",
+      "adaptiveIcon": {
+        "foregroundImage": "../icon.png",
+        "backgroundColor": "#2f6f61"
+      },
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "POST_NOTIFICATIONS"
+      ]
+    },
+    "ios": {
+      "bundleIdentifier": "com.mohamedsameh20.zakkir"
+    }
+  }
+}
