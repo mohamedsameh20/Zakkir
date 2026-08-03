@@ -2,7 +2,7 @@
 
 pkgs.stdenv.mkDerivation {
   pname = "zakkir-desktop";
-  version = "1.3.3";
+  version = "1.4.0";
 
   src = ./.;
 
@@ -15,7 +15,7 @@ pkgs.stdenv.mkDerivation {
 
     # Install resource files
     mkdir -p $out/share/zakkir-desktop
-    cp -r package.json popup.html popup.js popup.css azkar.json icon.png icon_16.png icon_48.png main.js preload.js leaflet sounds $out/share/zakkir-desktop/
+    cp -r package.json popup.html popup.js popup.css azkar.json icon.png icon_16.png icon_48.png main.js preload.js leaflet sounds fonts $out/share/zakkir-desktop/
 
     # Create the launcher script wrapping electron
     mkdir -p $out/bin
