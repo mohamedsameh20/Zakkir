@@ -29,6 +29,9 @@
       "popup.css",
       "popup.js",
       "azkar.json",
+      "fonts/**",
+      "sounds/**",
+      "leaflet/**",
       "icon*.png"
     ],
     "linux": {
