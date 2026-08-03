@@ -8,6 +8,7 @@ app.setPath('userData', path.join(app.getPath('appData'), 'zakkir-desktop'));
 let mainWindow = null;
 let prayerSchedule = null;
 let reminderSettings = {
+  notificationsEnabled: true,
   remindersEnabled: false,
   reminderMinutes: 10,
   reminderPrayers: [],
@@ -20,8 +21,8 @@ const firedToday = new Set(); // "Prayer-YYYY-MM-DD-N" keys to avoid double-firi
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 560,
-    height: 680,
+    width: 763,
+    height: 800,
     frame: false,
     show: false,
     resizable: true,
@@ -101,6 +102,8 @@ app.whenReady().then(() => {
     const now = new Date();
     const todayStr = now.toISOString().slice(0, 10);
     const nowM = now.getHours() * 60 + now.getMinutes();
+    // Master switch — when notifications are disabled, nothing fires.
+    if (!reminderSettings.notificationsEnabled) return;
     for (const name of (reminderSettings.reminderPrayers || [])) {
       const timeStr = prayerSchedule[name];
       if (!timeStr) continue;
