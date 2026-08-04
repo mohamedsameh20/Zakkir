@@ -12,7 +12,7 @@ let reminderSettings = {
   remindersEnabled: false,
   reminderMinutes: 10,
   reminderPrayers: [],
-  reminderSound: 'adhan-makkah',
+  reminderSound: 'adhan-1',
   prayerAlertEnabled: true,
   iqamaEnabled: false,
   iqamaMinutes: 10

@@ -24,6 +24,16 @@ const fonts = fontNames.map(([fileName, familyName]) => {
   return `@font-face{font-family:'${familyName}';src:url(data:font/ttf;base64,${data}) format('truetype');font-display:swap;}`;
 }).join("");
 
+const soundNames = ["adhan-1", "adhan-2", "adhan-3", "chime", "bell", "soft-ping"];
+const soundsObj = {};
+soundNames.forEach((name) => {
+  const soundPath = path.join(root, "sounds", `${name}.mp3`);
+  if (fs.existsSync(soundPath)) {
+    const data = fs.readFileSync(soundPath).toString("base64");
+    soundsObj[name] = `data:audio/mp3;base64,${data}`;
+  }
+});
+
 const patchedJs = js
   .replace(/const url = globalThis\.chrome\?\.runtime\?\.getURL \? chrome\.runtime\.getURL\("azkar\.json"\) : "azkar\.json";/, "const url = 'data:application/json,' + encodeURIComponent(JSON.stringify(window.__ZAKKIR_AZKAR__));")
   .replace("const raw = localStorage.getItem(\"azkar\");", "const raw = localStorage.getItem(\"azkar\");");
@@ -32,13 +42,14 @@ const bridge = `
   window.__ZAKKIR_MOBILE__ = true;
   document.documentElement.classList.add('zakkir-mobile');
   window.__ZAKKIR_AZKAR__ = ${azkar};
+  window.__ZAKKIR_SOUNDS__ = ${JSON.stringify(soundsObj)};
   window.addEventListener('message', function(event) {
     try { var message = JSON.parse(event.data); if (message.type === 'settings' && window.__resolveSettings) window.__resolveSettings(message.value); } catch (_) {}
   });
   window.electronAPI = {
     loadSettings: function() { return new Promise(function(resolve) { var done = false; var finish = function(value) { if (done) return; done = true; clearTimeout(timer); window.__resolveSettings = null; resolve(value || {}); }; var timer = setTimeout(function() { finish({}); }, 3000); window.__resolveSettings = finish; window.ReactNativeWebView.postMessage(JSON.stringify({type:'load-settings'})); }); },
     saveSettings: function(patch) { window.ReactNativeWebView.postMessage(JSON.stringify({type:'save-settings',patch:patch})); },
-    setPrayerTimes: function() {}, signalReady: function() {}, onPlaySound: function() {}, onUpdateAvailable: function() {},
+    setPrayerTimes: function(times, settings) { window.ReactNativeWebView.postMessage(JSON.stringify({type:'schedule-notifications', times: times || {}, settings: settings || {}})); }, signalReady: function() {}, onPlaySound: function() {}, onUpdateAvailable: function() {},
     openExternal: function() {}, resizeWindow: function() {}, setAlwaysOnTop: function() {}, minimizeWindow: function() {}, closeWindow: function() {}
   };
   window.__ZAKKIR_HAPTIC__ = function(kind) {
