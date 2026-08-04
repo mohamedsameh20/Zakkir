@@ -51,6 +51,7 @@ const DEFAULTS = {
   scheduleCache: {},
   // Highlight Mondays & Thursdays (Sunnah fasting days)
   sunnahFastHighlight: true,
+  prayerCollapsed: false,
 };
 
 // Transient (not persisted)
@@ -90,7 +91,38 @@ const THEMES = [
   ["frutiger",   "Frutiger Aero"],
   // Bold and anti-design
   ["neobrutal",  "Neobrutalist"],
-  ["webbrutal",  "Web Brutalist"],
+  // Monochrome and ethereal glass
+  ["monochrome",        "Monochrome Glass"],
+  ["monochrome-dark",   "Monochrome Dark Glass"],
+  ["nebula",             "Nebula Glass Glow"],
+  ["aurora",             "Northern Aurora Glass"],
+  ["sahara-glass",       "Oasis Sahara Glass"],
+  ["nebula-dark",        "Nebula Cosmic Dark"],
+  ["aurora-dark",        "Aurora Midnight Dark"],
+  ["sahara-glass-dark",  "Sahara Nocturnal Glass"],
+  // macOS-inspired glass systems
+  ["macos-ventura",      "macOS Ventura Glass"],
+  ["macos-sequoia",      "macOS Sequoia Mist"],
+  ["macos-sonoma",       "macOS Sonoma Sunset"],
+  ["crystal",            "Crystal Diamond Glass"],
+  ["mist",               "Neutral Mist Glass"],
+  ["midnight",           "Midnight Indigo Glass"],
+  ["jade",               "Translucent Jade Glass"],
+  ["slatestudio",        "Slate Pro Studio Glass"],
+  ["macos-ventura-dark", "macOS Ventura Dark"],
+  ["macos-sequoia-dark", "macOS Sequoia Dark"],
+  ["macos-sonoma-dark",  "macOS Sonoma Dark"],
+  ["crystal-dark",       "Crystal Diamond Dark"],
+  ["mist-dark",          "Neutral Mist Dark"],
+  ["midnight-dark",      "Midnight Indigo Dark"],
+  ["jade-dark",          "Translucent Jade Dark"],
+  ["slatestudio-dark",   "Slate Pro Studio Dark"],
+  // Fresh picks
+  ["onyx",             "Onyx"],
+  ["frutiger-sunset", "Frutiger Sunset"],
+  ["prism",            "Prism"],
+  ["opal",             "Opal"],
+  ["fajr",             "Fajr"],
   // Dark counterparts
   ["metro-dark",       "Metro Flat Dark"],
   ["material-dark",    "Material Dark"],
@@ -99,13 +131,20 @@ const THEMES = [
   ["liquidglass-dark", "Liquid Glass Dark"],
   ["frutiger-dark",    "Frutiger Twilight"],
   ["editorial-dark",   "Editorial Night"],
-  ["softclay-dark",    "Dark Clay"],
-  ["webbrutal-dark",   "Web Brutalist Dark"],
   // Structural systems
   ["editorial", "Editorial Ink"],
-  ["blueprint", "Blueprint"],
-  ["softclay",  "Soft Clay"],
   ["control",   "Control Room"],
+  // Additional design systems
+  ["swiss",       "Swiss"],
+  ["scandi",      "Scandinavian"],
+  ["porcelain",   "Porcelain"],
+  ["terracotta",  "Terracotta"],
+  ["dusk",        "Dusk"],
+  ["swiss-dark",      "Swiss Dark"],
+  ["scandi-dark",     "Scandinavian Dark"],
+  ["porcelain-dark",  "Porcelain Dark"],
+  ["terracotta-dark", "Terracotta Dark"],
+  ["dusk-dark",       "Dusk Dark"],
   // Special
   ["glass",     "Aurora Glass"],
   ["noor",      "Noor"],
@@ -140,7 +179,6 @@ const THEMES = [
   ["lemon-l",   "Lemon"],
   // Dark
   ["dark",      "Dark"],
-  ["midnight",  "Midnight"],
   ["slate",     "Slate"],
   ["coffee",    "Coffee"],
   ["nord",      "Nord"],
@@ -168,9 +206,25 @@ const THEME_BASES = {
   "aqua-dark": "aqua",
   "liquidglass-dark": "liquidglass",
   "frutiger-dark": "frutiger",
+  "frutiger-sunset": "frutiger",
   "editorial-dark": "editorial",
-  "softclay-dark": "softclay",
-  "webbrutal-dark": "webbrutal",
+  "monochrome-dark": "monochrome",
+  "nebula-dark": "nebula",
+  "aurora-dark": "aurora",
+  "sahara-glass-dark": "sahara-glass",
+  "macos-ventura-dark": "macos-ventura",
+  "macos-sequoia-dark": "macos-sequoia",
+  "macos-sonoma-dark": "macos-sonoma",
+  "crystal-dark": "crystal",
+  "mist-dark": "mist",
+  "midnight-dark": "midnight",
+  "jade-dark": "jade",
+  "slatestudio-dark": "slatestudio",
+  "swiss-dark": "swiss",
+  "scandi-dark": "scandi",
+  "porcelain-dark": "porcelain",
+  "terracotta-dark": "terracotta",
+  "dusk-dark": "dusk",
 };
 
 // Extensive palette — single accent color, mix of vivid and soft/light tones
@@ -480,6 +534,7 @@ const icon = {
   prev: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 6l-6 6 6 6"/></svg>`,
   next: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>`,
   reset: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/></svg>`,
+  chevronDown: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>`,
   expand: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9V3h6M21 9V3h-6M3 15v6h6M21 15v6h-6"/></svg>`,
   pin: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 17v5"/><path d="M9 10.76V6a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v4.76l2 3.24H7l2-3.24Z"/></svg>`,
   unpin: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3l18 18"/><path d="M12 17v5"/><path d="M9 10.76V6a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v4.76l2 3.24H7l2-3.24Z"/></svg>`,
@@ -525,14 +580,23 @@ function focusedLine() {
 
 function prayerCardHTML() {
   const np = nextPrayer();
+  const nextName = np ? np.name : (lastErr ? "Unavailable" : "Loading…");
+  const countdown = np ? `${np.h}h ${String(np.m).padStart(2, "0")}m` : "—";
   return `
+    <div class="prayer-collapsed-row">
+      <div class="prayer-collapsed-main"><span class="eyebrow">Next prayer</span><strong>${nextName}</strong></div>
+      <span class="prayer-collapsed-countdown">${countdown}</span>
+      <button type="button" class="prayer-collapse" aria-label="Show prayer times" aria-expanded="false" title="Show prayer times">${icon.chevronDown}</button>
+    </div>
+    <div class="prayer-expanded-content">
+      <div class="prayer-expanded-inner">
     <div class="prayer-hero">
       <div class="next-line">
         <span class="eyebrow">Next prayer</span>
-        <span class="hijri">${hijri || ""}</span>
+        <div class="prayer-meta"><span class="hijri">${hijri || ""}</span><button type="button" class="prayer-collapse" aria-label="Minimize prayer times" aria-expanded="true" title="Minimize prayer times">${icon.chevronDown}</button></div>
       </div>
       <div class="next-prayer">
-        <div class="next-name">${np ? np.name : (lastErr ? "Unavailable" : "Loading…")}</div>
+        <div class="next-name">${nextName}</div>
         ${np ? `<div class="next-countdown"><strong>${np.h}<small>h</small></strong><span>:</span><strong>${String(np.m).padStart(2, "0")}<small>m</small></strong></div>` : ""}
       </div>
     </div>
@@ -549,7 +613,23 @@ function prayerCardHTML() {
       }).join("")}
     </div>
     ${focusedLine()}
+      </div>
+    </div>
     ${lastErr ? `<div class="err">${lastErr}</div>` : ""}`;
+}
+
+function wirePrayerCollapse() {
+  document.querySelectorAll(".prayer-collapse").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      state.prayerCollapsed = !state.prayerCollapsed;
+      storage.set({ prayerCollapsed: state.prayerCollapsed });
+      document.querySelectorAll(".prayer-collapse").forEach((item) => {
+        item.setAttribute("aria-expanded", String(!state.prayerCollapsed));
+      });
+      $("#prayerRegion")?.classList.toggle("is-collapsed", state.prayerCollapsed);
+    });
+  });
 }
 
 // ---------- themed dropdown (replaces native <select> in our UI) ----------
@@ -631,13 +711,22 @@ function azkarCardHTML() {
   const z = list[state.azkarIndex] || { content: "—", count: "1", description: "" };
   const target = parseInt(z.count, 10) || 1;
   const pct = Math.min(100, (state.azkarCount / target) * 100);
+  const overallPct = list.length ? Math.min(100, ((state.azkarIndex + 1) / list.length) * 100) : 0;
   const reading = splitOpeningFormula(z.content);
+  const morning = state.category === MORNING_CAT;
   return `
-    <div class="progress"><div style="width:${pct}%"></div></div>
-    ${reading.preamble ? `<div class="dhikr-preamble dhikr-preamble-${reading.preambleKind}" lang="ar">${reading.preamble}</div>` : ""}
-    <div class="dhikr" lang="ar">${reading.body}</div>
-    ${z.description ? `<div class="desc">${z.description}</div>` : ""}
-    <div class="tap-hint">Tap anywhere to count</div>`;
+    <div class="azkar-context ${morning ? "is-morning" : "is-evening"}" aria-live="polite">
+      <span class="azkar-context-balance" aria-hidden="true"></span>
+      <div class="azkar-context-copy"><strong lang="ar">${morning ? MORNING_CAT : EVENING_CAT}</strong></div>
+      <span class="counter azkar-current-count" aria-label="Current dhikr progress"><span class="azkar-count-cur">${state.azkarCount}</span><span class="azkar-count-sep" aria-hidden="true">/</span><span class="azkar-count-total">${target}</span></span>
+    </div>
+    <div class="progress azkar-current-progress"><div style="transform:scaleX(${pct / 100})"></div></div>
+    <div class="azkar-body-wrapper">
+      ${reading.preamble ? `<div class="dhikr-preamble dhikr-preamble-${reading.preambleKind}" lang="ar">${reading.preamble}</div>` : ""}
+      <div class="dhikr" lang="ar">${reading.body}</div>
+      ${z.description ? `<div class="desc">${z.description}</div>` : ""}
+    </div>
+    <div class="azkar-overall-track" role="progressbar" aria-label="Overall azkar progress" aria-valuemin="0" aria-valuemax="${list.length}" aria-valuenow="${state.azkarIndex + 1}"><div style="transform:scaleX(${overallPct / 100})"></div></div>`;
 }
 
 function navIndicatorText() {
@@ -645,19 +734,84 @@ function navIndicatorText() {
   return `${state.azkarIndex + 1} / ${list.length || 0}`;
 }
 
+let azkarNavigationBusy = false;
+let azkarTransitionTimer = null;
+function animateAzkarSwap(direction, paint) {
+  const el = $("#azkarTap");
+  if (!el) { paint(); return; }
+  if (azkarNavigationBusy) return;
+  azkarNavigationBusy = true;
+  if (azkarTransitionTimer) clearTimeout(azkarTransitionTimer);
+
+  const startHeight = el.getBoundingClientRect().height;
+  el.style.height = `${startHeight}px`;
+
+  const innerContent = el.querySelector(".azkar-body-wrapper") || el.querySelector(".dhikr") || el;
+
+  innerContent.style.transition = "transform 0.12s cubic-bezier(0.4, 0, 1, 1), opacity 0.12s ease";
+  innerContent.style.transform = `translateX(${direction > 0 ? -50 : 50}px)`;
+  innerContent.style.opacity = "0.2";
+
+  window.setTimeout(() => {
+    paint();
+    const newEl = $("#azkarTap");
+    if (!newEl) { azkarNavigationBusy = false; return; }
+    newEl.style.height = "auto";
+    const nextHeight = newEl.getBoundingClientRect().height;
+    newEl.style.height = `${startHeight}px`;
+
+    const newInner = newEl.querySelector(".azkar-body-wrapper") || newEl.querySelector(".dhikr") || newEl;
+    newInner.style.transition = "none";
+    newInner.style.transform = `translateX(${direction > 0 ? 40 : -40}px)`;
+    newInner.style.opacity = "0.2";
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        newInner.style.transition = "transform 0.22s cubic-bezier(0.175, 0.885, 0.32, 1.1), opacity 0.2s ease";
+        newInner.style.transform = "translateX(0)";
+        newInner.style.opacity = "1";
+        newEl.style.transition = "height 0.2s cubic-bezier(0.22, 1, 0.36, 1)";
+        newEl.style.height = `${nextHeight}px`;
+      });
+    });
+
+    azkarTransitionTimer = window.setTimeout(() => {
+      newEl.style.transition = "";
+      newEl.style.height = "";
+      if (newInner) {
+        newInner.style.transition = "";
+        newInner.style.transform = "";
+        newInner.style.opacity = "";
+      }
+      azkarNavigationBusy = false;
+      azkarTransitionTimer = null;
+    }, 230);
+  }, 110);
+}
+
+function navigateAzkar(direction) {
+  const list = currentDhikrList();
+  if (!list.length || azkarNavigationBusy) return;
+  const paint = () => {
+    state.azkarIndex = (state.azkarIndex + direction + list.length) % list.length;
+    state.azkarCount = 0;
+    storage.set({ azkarIndex: state.azkarIndex, azkarCount: 0 });
+    patchAzkarCard();
+  };
+  animateAzkarSwap(direction, paint);
+}
+
 function renderHome() {
   return `
     <div class="app home-view">
       <div class="header" id="headerRegion">${headerHTML()}</div>
-      <section class="card prayer-card" id="prayerRegion" aria-label="Prayer times">${prayerCardHTML()}</section>
-      <div class="cat-row" id="catRegion">${catRowHTML()}</div>
+      <section class="card prayer-card ${state.prayerCollapsed ? "is-collapsed" : ""}" id="prayerRegion" aria-label="Prayer times">${prayerCardHTML()}</section>
       <button type="button" class="azkar-card" id="azkarTap" aria-label="Count this dhikr">${azkarCardHTML()}</button>
       <div class="nav-row">
         <button class="nav-btn" data-nav="-1" title="Previous dhikr">${icon.prev}<span>Previous</span></button>
         <button class="nav-btn reset-btn" id="resetBtn" title="Reset count">${icon.reset}<span>Reset</span></button>
         <button class="nav-btn" data-nav="1" title="Next dhikr"><span>Next</span>${icon.next}</button>
       </div>
-      <div class="nav-indicator" id="navIndicator">${navIndicatorText()}</div>
     </div>
   `;
 }
@@ -1111,7 +1265,7 @@ function themeCardsHTML(themes, featured = false) {
 const CLASSIC_THEME_INDEX = THEMES.findIndex(([id]) => id === "light");
 const DESIGN_ERA_THEME_COUNT = 3;
 const GLASS_THEME_COUNT = 3;
-const BOLD_THEME_COUNT = 2;
+const BOLD_THEME_COUNT = 1;
 const GLASS_THEME_START = DESIGN_ERA_THEME_COUNT;
 const BOLD_THEME_START = GLASS_THEME_START + GLASS_THEME_COUNT;
 const FEATURED_THEME_COUNT = BOLD_THEME_START + BOLD_THEME_COUNT;
@@ -1249,7 +1403,7 @@ function applyVars() {
     document.body.classList.remove("theme-" + id);
     if (THEME_BASES[id]) document.body.classList.remove("theme-" + THEME_BASES[id]);
   }
-  const theme = validThemes.includes(state.theme) ? state.theme : "dark";
+  const theme = validThemes.includes(state.theme) ? state.theme : DEFAULTS.theme;
   document.body.classList.add("theme-" + theme);
   if (THEME_BASES[theme]) document.body.classList.add("theme-" + THEME_BASES[theme]);
   document.body.classList.toggle("neobrutal-high", state.neobrutalContrast === "high");
@@ -1289,32 +1443,76 @@ function render() {
 }
 
 function patchCount(count, target) {
-  const counter = document.querySelector("#catRegion .counter");
-  if (counter) counter.textContent = `${count} / ${target}`;
-  const bar = document.querySelector("#azkarTap .progress > div");
-  if (bar) bar.style.width = `${Math.min(100, (count / target) * 100)}%`;
+  const contextCounter = document.querySelector("#azkarTap .azkar-current-count");
+  if (contextCounter) {
+    const cur = contextCounter.querySelector(".azkar-count-cur");
+    if (cur) cur.textContent = count;
+    const total = contextCounter.querySelector(".azkar-count-total");
+    if (total) total.textContent = target;
+  }
+  const bar = document.querySelector("#azkarTap .azkar-current-progress > div");
+  if (bar) bar.style.transform = `scaleX(${Math.min(1, count / target)})`;
+  const list = currentDhikrList();
+  const overallProgress = document.querySelector("#azkarTap .azkar-overall-track");
+  if (overallProgress) overallProgress.setAttribute("aria-valuenow", String(list.length ? state.azkarIndex + 1 : 0));
+  const overallBar = document.querySelector("#azkarTap .azkar-overall-track > div");
+  if (overallBar) overallBar.style.transform = `scaleX(${list.length ? Math.min(1, (state.azkarIndex + 1) / list.length) : 0})`;
 }
 
 function patchAzkarCard() {
-  const el = $("#azkarTap"); if (el) setHTML(el, azkarCardHTML());
-  const cat = $("#catRegion");
-  if (cat) {
-    setHTML(cat, catRowHTML());
-    wireDropdowns({
-      catPick: (v) => {
-        state.autoTime = false;
-        storage.set({ autoTime: false });
-        update({ category: v, azkarIndex: 0, azkarCount: 0 });
-      },
-    }, cat);
+  const el = $("#azkarTap");
+  if (el) {
+    const list = currentDhikrList();
+    const z = list[state.azkarIndex] || { content: "—", count: "1", description: "" };
+    const target = parseInt(z.count, 10) || 1;
+    const bodyWrapper = el.querySelector(".azkar-body-wrapper");
+
+    if (bodyWrapper) {
+      const reading = splitOpeningFormula(z.content);
+      const morning = state.category === MORNING_CAT;
+      const contextCopy = el.querySelector(".azkar-context-copy strong");
+      if (contextCopy) contextCopy.textContent = morning ? "أذكار الصباح" : "أذكار المساء";
+      const context = el.querySelector(".azkar-context");
+      if (context) {
+        context.classList.toggle("is-morning", morning);
+        context.classList.toggle("is-evening", !morning);
+      }
+
+      bodyWrapper.innerHTML = `
+        ${reading.preamble ? `<div class="dhikr-preamble dhikr-preamble-${reading.preambleKind}" lang="ar">${reading.preamble}</div>` : ""}
+        <div class="dhikr" lang="ar">${reading.body}</div>
+        ${z.description ? `<div class="desc">${z.description}</div>` : ""}`;
+
+      patchCount(state.azkarCount, target);
+    } else {
+      setHTML(el, azkarCardHTML());
+    }
   }
-  const nav = $("#navIndicator");
-  if (nav) nav.textContent = navIndicatorText();
 }
 
 function patchPrayerCard() {
-  const el = $("#prayerRegion"); if (el) setHTML(el, prayerCardHTML());
-  wirePrayerClicks();
+  const el = $("#prayerRegion");
+  if (!el) return;
+  const np = nextPrayer();
+  const nextName = np ? np.name : (lastErr ? "Unavailable" : "Loading…");
+  const currentName = el.querySelector(".next-name")?.textContent.trim();
+  if (!currentName || currentName !== nextName) {
+    setHTML(el, prayerCardHTML());
+    el.classList.toggle("is-collapsed", state.prayerCollapsed);
+    wirePrayerClicks();
+    wirePrayerCollapse();
+    return;
+  }
+  if (np) {
+    const compact = el.querySelector(".prayer-collapsed-countdown");
+    if (compact) compact.textContent = `${np.h}h ${String(np.m).padStart(2, "0")}m`;
+    const hours = el.querySelector(".next-countdown strong:first-child");
+    const minutes = el.querySelector(".next-countdown strong:last-child");
+    if (hours) hours.innerHTML = `${np.h}<small>h</small>`;
+    if (minutes) minutes.innerHTML = `${String(np.m).padStart(2, "0")}<small>m</small>`;
+    const progress = el.querySelector(".prayer-progress > div");
+    if (progress) progress.style.width = `${np.pct}%`;
+  }
 }
 
 function wirePrayerClicks() {
@@ -1403,6 +1601,7 @@ function wire() {
 
 
   // Home interactions
+  wirePrayerCollapse();
   const tap = $("#azkarTap");
   if (tap) tap.addEventListener("click", () => {
     const list = currentDhikrList();
@@ -1410,12 +1609,9 @@ function wire() {
     const target = parseInt(z.count, 10) || 1;
     const next = state.azkarCount + 1;
     if (next >= target) {
-      // finish: patch in place, then advance with a full render
+      // finish: patch in place, then advance through the same animated path as navigation
       patchCount(target, target);
-      setTimeout(() => {
-        const ni = (state.azkarIndex + 1) % list.length;
-        update({ azkarIndex: ni, azkarCount: 0 });
-      }, 280);
+      setTimeout(() => navigateAzkar(1), 280);
     } else {
       // in-place patch: no full re-render, no flicker
       state.azkarCount = next;
@@ -1425,10 +1621,8 @@ function wire() {
   });
   document.querySelectorAll("[data-nav]").forEach((b) =>
     b.addEventListener("click", () => {
-      const list = currentDhikrList(); if (!list.length) return;
       const dir = parseInt(b.dataset.nav, 10);
-      const i = (state.azkarIndex + dir + list.length) % list.length;
-      update({ azkarIndex: i, azkarCount: 0 });
+      navigateAzkar(dir);
     })
   );
   const reset = $("#resetBtn");
@@ -1598,16 +1792,51 @@ function wireSettings() {
     matrix:     { bg: "#000a00", a: "#22ff66" },
     wine:       { bg: "#1a0e14", a: "#f9a8d4" },
   };
-  document.querySelectorAll("[data-theme-sw]").forEach((el) => {
-    const t = THEME_SW[el.dataset.themeSw];
-    if (t) {
-      el.style.cssText = `background:${t.bg};border:1px solid var(--line);position:relative;`;
-      el.textContent = "";
-      const dot = document.createElement("span");
-      dot.className = `sw-scene sw-${t.style || "plain"}`;
-      dot.style.setProperty("--sw-accent", t.a);
-      el.appendChild(dot);
+  // Auto-preview: derive bg/accent from each theme's own CSS variables when
+  // no curated swatch entry exists, so every theme card shows a preview.
+  function isLightSwatch(bg) {
+    const m = String(bg).match(/#([0-9a-f]{6})\b/i) || String(bg).match(/#([0-9a-f]{3})\b/i);
+    if (!m) return false;
+    const hex = m[1].length === 3 ? m[1].split("").map((c) => c + c).join("") : m[1];
+    const r = parseInt(hex.slice(0, 2), 16) / 255;
+    const g = parseInt(hex.slice(2, 4), 16) / 255;
+    const b = parseInt(hex.slice(4, 6), 16) / 255;
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.62;
+  }
+  const cssThemeSwatches = (() => {
+    const map = new Map();
+    const themeRe = /(?:body|html)\.theme-([a-z0-9-]+)(?:\b|,)/;
+    const collect = (rules) => {
+      for (const rule of rules) {
+        if (rule.selectorText) {
+          const m = themeRe.exec(rule.selectorText);
+          if (!m || map.has(m[1])) continue;
+          const decl = {};
+          for (const prop of rule.style) {
+            if (prop.startsWith("--")) decl[prop] = rule.style.getPropertyValue(prop).trim();
+          }
+          if (!decl["--bg"] && !decl["--accent"] && !rule.style.background) continue;
+          const bg = decl["--bg"] || rule.style.background || "#ffffff";
+          map.set(m[1], { bg, a: decl["--accent"] || "#888888", light: isLightSwatch(bg) });
+        } else if (rule.cssRules) {
+          collect(Array.from(rule.cssRules));
+        }
+      }
+    };
+    for (const sheet of document.styleSheets) {
+      try { collect(Array.from(sheet.cssRules)); } catch { /* cross-origin sheets are unreadable */ }
     }
+    return map;
+  })();
+  document.querySelectorAll("[data-theme-sw]").forEach((el) => {
+    const t = THEME_SW[el.dataset.themeSw] || cssThemeSwatches.get(el.dataset.themeSw);
+    if (!t) return;
+    el.style.cssText = `background:${t.bg};border:1px solid var(--line);position:relative;`;
+    el.textContent = "";
+    const dot = document.createElement("span");
+    dot.className = `sw-scene sw-${t.style || (t.light ? "light" : "plain")}`;
+    dot.style.setProperty("--sw-accent", t.a);
+    el.appendChild(dot);
   });
   const arSize = $("#arSize");
   if (arSize) arSize.addEventListener("input", (e) => {
