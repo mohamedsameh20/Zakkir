@@ -1818,18 +1818,27 @@ body.theme-control .switch span::before { border-radius: 1px; box-shadow: none; 
 .prayer-actions button:disabled { cursor: default; opacity: .55; }
 .notification-timeline { position: relative; padding: 0 14px 8px 28px; }
 .notification-timeline::before { content: ""; position: absolute; top: 5px; bottom: 20px; left: 19px; width: 1px; background: var(--line); }
+.timeline-item.timing-overridden .notification-range { opacity: .38; }
+.timeline-item.timing-overridden .timeline-copy > span::after { content: " · custom timing active"; color: var(--accent); }
 .timeline-item { position: relative; display: grid; grid-template-columns: 1fr auto; align-items: start; gap: 10px; min-height: 58px; padding: 9px 0; }
 .timeline-marker { position: absolute; left: -13px; top: 14px; width: 9px; height: 9px; border: 2px solid var(--line); border-radius: 50%; background: var(--surface); }
 .timeline-item.enabled .timeline-marker { border-color: var(--accent); background: var(--accent); box-shadow: 0 0 0 3px color-mix(in oklab,var(--accent) 15%,transparent); }
 .timeline-copy { display: grid; gap: 3px; min-width: 0; }
 .timeline-copy strong { color: var(--ink); font-size: .82em; }
 .timeline-copy > span { color: var(--muted); font-size: .7em; line-height: 1.35; }
-.timeline-copy select { width: max-content; max-width: 100%; margin-top: 3px; padding: 5px 8px; border-radius: 7px; font-size: .72em; }
+.notification-range { display: grid; grid-template-columns: minmax(110px,1fr) auto; align-items: center; gap: 10px; width: min(240px,100%); margin-top: 5px; }
+.notification-range input[type="range"] { width: 100%; max-width: none; margin: 0; cursor: pointer; }
+.notification-range output { min-width: 45px; color: var(--accent); font-size: .82em; font-weight: 800; font-variant-numeric: tabular-nums; text-align: right; }
+.notification-range output small { margin-left: 2px; color: var(--muted); font-size: .72em; font-weight: 600; }
+.notification-range input:disabled { cursor: default; opacity: .5; }
 .notification-confirmation { display: flex; align-items: flex-start; gap: 8px; margin-top: 9px; padding: 10px 12px; border: 1px solid color-mix(in oklab,var(--accent) 35%,var(--line)); border-radius: 10px; background: color-mix(in oklab,var(--accent) 8%,var(--surface)); }
 .notification-confirmation.paused { border-color: var(--line); background: var(--surface-2); }
 .confirmation-dot { flex: 0 0 auto; width: 8px; height: 8px; margin-top: 4px; border-radius: 50%; background: var(--accent); }
 .notification-confirmation.paused .confirmation-dot { background: var(--muted); }
 .notification-confirmation p { margin: 0; color: var(--ink); font-size: .72em; line-height: 1.45; }
+.notification-status { margin: 8px 0 0; color: var(--muted); font-size: .7em; line-height: 1.45; }
+.notification-status.ok { color: var(--accent); }
+.notification-status.err { color: #d1495b; }
 .notification-summary > div {
   display: flex;
   align-items: baseline;
@@ -1867,6 +1876,31 @@ body.theme-control .switch span::before { border-radius: 1px; box-shadow: none; 
   gap: 6px;
   padding: 0 14px 14px;
 }
+.prayer-timing { margin: 0 14px; border-top: 1px solid var(--line); padding: 10px 0 14px; }
+.prayer-timing-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.prayer-timing-head strong { color: var(--ink); font-size: .78em; }
+.prayer-timing-head p { margin: 3px 0 0; color: var(--muted); font-size: .68em; }
+.timing-help { margin: 0 0 9px; color: var(--muted); font-size: .68em; line-height: 1.4; }
+.prayer-selection-head { display: flex; align-items: center; justify-content: space-between; margin: 0 14px; padding: 11px 0 8px; border-top: 1px solid var(--line); }
+.prayer-selection-head strong { color: var(--ink); font-size: .78em; }
+.athan-line { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 2px 14px 12px; }
+.athan-copy { display: grid; gap: 2px; }
+.athan-copy strong { color: var(--ink); font-size: .85em; }
+.athan-copy span { color: var(--muted); font-size: .72em; }
+.prayer-timing-list { display: grid; gap: 4px; padding: 0 14px 14px; }
+.prayer-timing-row { display: grid; grid-template-columns: minmax(64px,1fr) auto auto; align-items: center; gap: 12px; padding: 11px 0; border-top: 1px solid var(--line); }
+.prayer-timing-row:first-child { border-top: 0; }
+.prayer-check { display: inline-flex; align-items: center; gap: 9px; cursor: pointer; min-width: 0; }
+.prayer-check input { accent-color: var(--accent); width: 16px; height: 16px; margin: 0; }
+.prayer-check strong { color: var(--ink); font-size: .98em; }
+.prayer-timing-row.on .prayer-check strong { color: var(--accent); }
+.minute-group { display: grid; gap: 3px; }
+.minute-group > span { color: var(--muted); font-size: .7em; }
+.minute-field { display: flex; align-items: center; width: 88px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface-2); overflow: hidden; }
+.minute-field:focus-within { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in oklab,var(--accent) 14%,transparent); }
+.minute-field input { width: 50px; padding: 8px 2px 8px 10px; border: 0; outline: 0; background: transparent; color: var(--ink); font: inherit; font-size: .95em; font-weight: 750; font-variant-numeric: tabular-nums; }
+.minute-field small { padding-right: 8px; color: var(--muted); font-size: .68em; }
+.minute-field input:disabled { cursor: default; opacity: .5; }
 .pt {
   display: flex; flex-direction: row; align-items: center; gap: 8px;
   background: var(--surface);

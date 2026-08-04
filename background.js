@@ -15,12 +15,15 @@ const DEFAULTS = {
   notificationsEnabled: true,
   reminderEnabled: false,
   reminderMinutes: 10,
+  reminderMinutesByPrayer: {},
   athanEnabled: true,
   reminderPrayers: { Fajr: true, Dhuhr: true, Asr: true, Maghrib: true, Isha: true },
   iqamaEnabled: false,
   iqamaMinutes: 10,
+  iqamaMinutesByPrayer: {},
   badgeEnabled: false,
   _sentReminders: {},
+  _lastTick: null,
 };
 
 function todayKey() { return new Date().toISOString().slice(0, 10); }
@@ -68,21 +71,78 @@ async function ensurePrayers(state) {
   }
 }
 
-function notify(id, title, message) {
+function isPrayerEnabled(reminderPrayers, prayerName) {
+  if (Array.isArray(reminderPrayers)) return reminderPrayers.includes(prayerName);
+  if (reminderPrayers && typeof reminderPrayers === "object") return Boolean(reminderPrayers[prayerName]);
+  return true;
+}
+
+function playNotificationSound(soundName) {
+  if (!soundName || soundName === "silent") return;
   try {
-    chrome.notifications.create(id, {
-      type: "basic",
-      iconUrl: chrome.runtime.getURL("icon_48.png"),
-      title,
-      message,
-      priority: 2,
-    });
-  } catch (e) { /* notifications may be unavailable */ }
+    const file = soundName.startsWith("adhan") ? `${soundName}.mp3` : `${soundName}.mp3`;
+    const audio = new Audio(chrome.runtime.getURL(`sounds/${file}`));
+    audio.play().catch(() => {});
+  } catch (_) {}
+}
+
+function notify(id, title, message, soundName) {
+  return new Promise((resolve) => {
+    try {
+      if (soundName) playNotificationSound(soundName);
+      chrome.notifications.create(id, {
+        type: "basic",
+        iconUrl: chrome.runtime.getURL("icon_48.png"),
+        title,
+        message,
+        priority: 2,
+      }, (createdId) => {
+        const error = chrome.runtime.lastError;
+        if (error) resolve({ ok: false, error: error.message || String(error) });
+        else resolve({ ok: true, id: createdId || id });
+      });
+    } catch (e) {
+      resolve({ ok: false, error: e?.message || String(e) });
+    }
+  });
+}
+
+function getNextReminder(state, prayers) {
+  if (!prayers) return null;
+  const nowM = new Date().getHours() * 60 + new Date().getMinutes();
+  const enabled = state.reminderPrayers || {};
+  const preMins = Math.max(0, state.reminderMinutes ?? 10);
+  const iqMins = Math.max(0, state.iqamaMinutes ?? 10);
+  const upcoming = [];
+  for (const name of PRAYER_ORDER) {
+    const p = toMin(prayers[name]);
+    if (Number.isNaN(p)) continue;
+    if (isPrayerEnabled(enabled, name)) {
+      if (preMins > 0) {
+        const pre = Math.max(1, state.reminderMinutesByPrayer?.[name] ?? preMins);
+        upcoming.push({ label: `${name} before`, at: p - pre });
+      }
+      if (state.athanEnabled) upcoming.push({ label: `${name} at`, at: p });
+      if (iqMins > 0) {
+        const iq = Math.max(1, state.iqamaMinutesByPrayer?.[name] ?? iqMins);
+        upcoming.push({ label: `${name} iqama`, at: p + iq });
+      }
+    }
+  }
+  const next = upcoming
+    .map((e) => ({ ...e, at: ((e.at % 1440) + 1440) % 1440, days: 0 }))
+    .filter((e) => e.at >= nowM)
+    .sort((a, b) => a.at - b.at)[0];
+  if (!next) return null;
+  const h = Math.floor(next.at / 60);
+  const m = next.at % 60;
+  return { label: next.label, time: `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}` };
 }
 
 async function tick() {
   const state = await getState();
   const prayers = await ensurePrayers(state);
+  try { await chrome.storage.local.set({ _lastTick: new Date().toISOString() }); } catch {}
 
   if (!prayers) {
     try { chrome.action.setBadgeText({ text: "" }); } catch {}
@@ -110,41 +170,44 @@ async function tick() {
   } catch {}
 
   // Reminders
-  const anyReminder = state.notificationsEnabled && (state.reminderEnabled || state.iqamaEnabled || state.athanEnabled);
-  if (anyReminder) {
+  const enabled = state.reminderPrayers || {};
+  const anyEnabled = PRAYER_ORDER.some((n) => isPrayerEnabled(enabled, n));
+  if (state.notificationsEnabled && (anyEnabled || state.athanEnabled)) {
     const preMins = Math.max(0, state.reminderMinutes ?? 10);
     const iqMins = Math.max(0, state.iqamaMinutes ?? 10);
-    const enabled = state.reminderPrayers || {};
+    const sound = state.reminderSound || "adhan-1";
     const today = todayKey();
     const sent = { ...(state._sentReminders || {}) };
 
     for (const p of list) {
-      if (!enabled[p.name]) continue;
+      if (!isPrayerEnabled(enabled, p.name)) continue;
 
       // Pre-athan reminder
-      if (state.reminderEnabled && preMins > 0) {
-        const trigger = p.m - preMins;
-        const key = `${today}|${p.name}|pre`;
-        if (nowM >= trigger && nowM < trigger + 2 && !sent[key]) {
-          notify(key, `${p.name} in ${preMins} min`, `Prayer time at ${prayers[p.name]}.`);
-          sent[key] = true;
+      if (preMins > 0) {
+        const prayerPreMins = Math.max(1, state.reminderMinutesByPrayer?.[p.name] ?? preMins);
+        const trigger = p.m - prayerPreMins;
+        const key = `${today}|${p.name}|pre|${prayerPreMins}`;
+        if (nowM >= trigger && nowM < p.m && !sent[key]) {
+          const result = await notify(key, `${p.name} in ${prayerPreMins} min`, `Prayer time at ${prayers[p.name]}.`, sound);
+          if (result.ok) sent[key] = true;
         }
       }
       // At-time notification (athan)
       if (state.athanEnabled) {
         const keyAt = `${today}|${p.name}|at`;
-        if (nowM >= p.m && nowM < p.m + 2 && !sent[keyAt]) {
-          notify(keyAt, `${p.name} now`, `It's time for ${p.name} (${prayers[p.name]}).`);
-          sent[keyAt] = true;
+        if (nowM >= p.m && nowM < p.m + 15 && !sent[keyAt]) {
+          const result = await notify(keyAt, `${p.name} now`, `It's time for ${p.name} (${prayers[p.name]}).`, sound);
+          if (result.ok) sent[keyAt] = true;
         }
       }
       // Iqama reminder (after athan)
-      if (state.iqamaEnabled && iqMins > 0) {
-        const iq = p.m + iqMins;
-        const keyIq = `${today}|${p.name}|iq`;
-        if (nowM >= iq && nowM < iq + 2 && !sent[keyIq]) {
-          notify(keyIq, `${p.name} Iqama`, `Iqama time — ${iqMins} min after athan.`);
-          sent[keyIq] = true;
+      if (iqMins > 0) {
+        const prayerIqMins = Math.max(1, state.iqamaMinutesByPrayer?.[p.name] ?? iqMins);
+        const iq = p.m + prayerIqMins;
+        const keyIq = `${today}|${p.name}|iq|${prayerIqMins}`;
+        if (nowM >= iq && nowM < iq + 30 && !sent[keyIq]) {
+          const result = await notify(keyIq, `${p.name} Iqama`, `Iqama time — ${prayerIqMins} min after athan.`, sound);
+          if (result.ok) sent[keyIq] = true;
         }
       }
     }
@@ -168,8 +231,37 @@ function ensureAlarm() {
 chrome.runtime.onInstalled.addListener(() => { ensureAlarm(); tick(); });
 chrome.runtime.onStartup?.addListener(() => { ensureAlarm(); tick(); });
 chrome.alarms.onAlarm.addListener((a) => { if (a.name === "tick") tick(); });
-chrome.runtime.onMessage.addListener((msg) => {
+chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg && msg.type === "refresh") { ensureAlarm(); tick(); }
+  if (msg && msg.type === "test-notification") {
+    (async () => {
+      const state = await getState();
+      const result = await notify(`zakkir-test-${Date.now()}`, "Zakkir notification test", "Notifications are working. You will be reminded before and after each prayer you selected.", state.reminderSound || "adhan-1");
+      sendResponse(result);
+    })();
+    return true;
+  }
+  if (msg && msg.type === "status") {
+    (async () => {
+      const state = await getState();
+      const prayers = await ensurePrayers(state);
+      const next = await getNextReminder(state, prayers);
+      sendResponse({
+        lastTick: state._lastTick || null,
+        notificationsEnabled: state.notificationsEnabled,
+        athanEnabled: state.athanEnabled,
+        reminderPrayers: state.reminderPrayers,
+        reminderMinutes: state.reminderMinutes,
+        reminderMinutesByPrayer: state.reminderMinutesByPrayer,
+        iqamaMinutes: state.iqamaMinutes,
+        iqamaMinutesByPrayer: state.iqamaMinutesByPrayer,
+        cacheDate: state.prayerCache?.date || null,
+        hasPrayers: !!prayers,
+        next: next,
+      });
+    })();
+    return true;
+  }
 });
 // Run once on script load (covers SW wake-ups)
 ensureAlarm();

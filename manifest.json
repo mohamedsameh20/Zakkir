@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Zakkir",
-  "version": "1.51",
+  "version": "1.52",
   "description": "Prayer times + Azkar (Hisn al-Muslim) in your toolbar.",
   "permissions": [
     "storage",
@@ -55,7 +55,8 @@
         "vendor/marker-icon.png",
         "vendor/marker-icon-2x.png",
         "vendor/marker-shadow.png",
-        "icon_48.png"
+        "icon_48.png",
+        "sounds/*"
       ],
       "matches": [
         "<all_urls>"
