@@ -31,11 +31,13 @@ const DEFAULTS = {
   notificationsEnabled: true,
   remindersEnabled: false,
   reminderMinutes: 10,
+  reminderMinutesByPrayer: {},
   reminderPrayers: ["Fajr","Dhuhr","Asr","Maghrib","Isha"],
   reminderSound: "adhan-makkah",
   prayerAlertEnabled: true,
   iqamaEnabled: false,
   iqamaMinutes: 10,
+  iqamaMinutesByPrayer: {},
   ignoreUpdateUntil: 0,
   scheduleMonth: null,
   scheduleDateMode: "g",
@@ -577,11 +579,13 @@ function syncReminders() {
       notificationsEnabled: state.notificationsEnabled,
       remindersEnabled: state.remindersEnabled,
       reminderMinutes: state.reminderMinutes,
+      reminderMinutesByPrayer: state.reminderMinutesByPrayer,
       reminderPrayers: state.reminderPrayers,
       reminderSound: state.reminderSound,
       prayerAlertEnabled: state.prayerAlertEnabled,
       iqamaEnabled: state.iqamaEnabled,
       iqamaMinutes: state.iqamaMinutes,
+      iqamaMinutesByPrayer: state.iqamaMinutesByPrayer,
     });
   }
 }
@@ -1368,22 +1372,29 @@ function settingsSectionHTML(id, title, description, body) {
   </section>`;
 }
 
-function minuteOptions(value, values) {
-  const options = values.includes(value) ? values : [...values, value].sort((a, b) => a - b);
-  return options.map((minutes) => `<option value="${minutes}" ${value === minutes ? "selected" : ""}>${minutes} min</option>`).join("");
+function minuteSliderHTML(id, value, label, disabled) {
+  const minutes = Math.min(60, Math.max(1, Number(value) || 10));
+  return `<div class="notification-range"><input id="${id}" type="range" min="1" max="60" step="1" value="${minutes}" aria-label="${label}" ${disabled ? "disabled" : ""}/><output for="${id}"><span data-minute-output="${id}">${minutes}</span><small>min</small></output></div>`;
+}
+
+function prayerMinute(map, prayer, fallback) {
+  return Math.min(60, Math.max(1, Number(map?.[prayer]) || fallback));
+}
+
+function prayerTimingHTML(prayer, disabled) {
+  const before = prayerMinute(state.reminderMinutesByPrayer, prayer, state.reminderMinutes);
+  const after = prayerMinute(state.iqamaMinutesByPrayer, prayer, state.iqamaMinutes);
+  const on = (state.reminderPrayers || []).includes(prayer);
+  return `<div class="prayer-timing-row ${on ? "on" : ""}" data-prayer-timing="${prayer}"><label class="prayer-check"><input type="checkbox" data-rp="${prayer}" ${on ? "checked" : ""} ${disabled ? "disabled" : ""}/><strong>${prayer}</strong></label><label class="minute-group"><span>Before</span><span class="minute-field"><input type="number" inputmode="numeric" min="1" max="60" step="1" value="${before}" data-prayer-minutes="before" aria-label="Minutes before ${prayer}" ${disabled ? "disabled" : ""}/><small>min</small></span></label><label class="minute-group"><span>After</span><span class="minute-field"><input type="number" inputmode="numeric" min="1" max="60" step="1" value="${after}" data-prayer-minutes="after" aria-label="Minutes after ${prayer}" ${disabled ? "disabled" : ""}/><small>min</small></span></label></div>`;
 }
 
 function notificationSummary() {
   if (!state.notificationsEnabled) return "Prayer notifications are paused. Your choices are saved.";
   const prayers = (state.reminderPrayers || []).filter((prayer) => PRAYER_ORDER.includes(prayer));
-  if (!prayers.length) return "Choose at least one prayer to start receiving notifications.";
-  const moments = [];
-  if (state.remindersEnabled) moments.push(`${state.reminderMinutes} minutes before`);
-  if (state.prayerAlertEnabled) moments.push("at athan");
-  if (state.iqamaEnabled) moments.push(`${state.iqamaMinutes} minutes after`);
-  if (!moments.length) return "Choose when you would like to be notified.";
+  if (!prayers.length) return "Choose at least one prayer to start receiving reminders.";
   const prayerText = prayers.length === PRAYER_ORDER.length ? "all five prayers" : prayers.join(", ");
-  return `You will be notified ${moments.join(", ")} for ${prayerText}.`;
+  const atAthan = state.prayerAlertEnabled ? " You will also be notified at the exact prayer time." : "";
+  return `You will be reminded before and after athan for ${prayerText}.${atAthan}`;
 }
 
 function syncNotificationUI() {
@@ -1392,25 +1403,15 @@ function syncNotificationUI() {
   config?.classList.toggle("is-paused", !enabled);
   const master = $("#notificationsEnabled");
   if (master) master.checked = enabled;
-  for (const [id, active] of [["remindersEnabled", state.remindersEnabled], ["prayerAlertEnabled", state.prayerAlertEnabled], ["iqamaEnabled", state.iqamaEnabled]]) {
-    const input = $("#" + id);
-    if (!input) continue;
-    input.checked = active;
-    input.disabled = !enabled;
-    input.closest(".timeline-item")?.classList.toggle("enabled", active);
-  }
-  for (const [id, active, value] of [["reminderMinutes", state.remindersEnabled, state.reminderMinutes], ["iqamaMinutes", state.iqamaEnabled, state.iqamaMinutes]]) {
-    const select = $("#" + id);
-    if (!select) continue;
-    select.disabled = !enabled || !active;
-    select.value = String(value);
-  }
+  const athan = $("#prayerAlertEnabled");
+  if (athan) { athan.checked = !!state.prayerAlertEnabled; athan.disabled = !enabled; }
   document.querySelectorAll("[data-rp]").forEach((input) => {
     const active = (state.reminderPrayers || []).includes(input.dataset.rp);
     input.checked = active;
     input.disabled = !enabled;
-    input.closest(".pt")?.classList.toggle("on", active);
+    input.closest("[data-prayer-timing]")?.classList.toggle("on", active);
   });
+  document.querySelectorAll("[data-prayer-minutes]").forEach((input) => { input.disabled = !enabled; });
   document.querySelectorAll("[data-prayer-action]").forEach((button) => { button.disabled = !enabled; });
   const summary = document.querySelector(".notification-confirmation p");
   if (summary) summary.textContent = notificationSummary();
@@ -1445,14 +1446,10 @@ function settingsBodyHTML(id) {
     return `
     <div class="notification-master settings-card"><div><strong>Prayer notifications</strong><span>Receive timely reminders around each prayer.</span></div><label class="switch" aria-label="Prayer notifications"><input type="checkbox" id="notificationsEnabled" ${state.notificationsEnabled ? "checked" : ""}/><span></span></label></div>
     <div class="notification-config ${notificationsOff ? "is-paused" : ""}" aria-disabled="${notificationsOff}">
-      <div class="notification-block settings-card"><div class="notification-block-head"><div><span class="notification-kicker">When to notify</span><strong>Prayer timeline</strong></div></div>
-        <div class="notification-timeline">
-          <div class="timeline-item ${state.remindersEnabled ? "enabled" : ""}"><span class="timeline-marker"></span><div class="timeline-copy"><strong>Before athan</strong><span>Give me time to prepare.</span><select id="reminderMinutes" aria-label="Minutes before athan" ${!state.remindersEnabled || notificationsOff ? "disabled" : ""}>${minuteOptions(state.reminderMinutes, [5,10,15,20,30,45,60])}</select></div><label class="switch"><input type="checkbox" id="remindersEnabled" ${state.remindersEnabled ? "checked" : ""} ${notificationsOff ? "disabled" : ""}/><span></span></label></div>
-          <div class="timeline-item ${state.prayerAlertEnabled ? "enabled" : ""}"><span class="timeline-marker"></span><div class="timeline-copy"><strong>At athan</strong><span>Notify me when prayer time begins.</span></div><label class="switch"><input type="checkbox" id="prayerAlertEnabled" ${state.prayerAlertEnabled ? "checked" : ""} ${notificationsOff ? "disabled" : ""}/><span></span></label></div>
-          <div class="timeline-item ${state.iqamaEnabled ? "enabled" : ""}"><span class="timeline-marker"></span><div class="timeline-copy"><strong>After athan</strong><span>Remind me for iqama.</span><select id="iqamaMinutes" aria-label="Minutes after athan" ${!state.iqamaEnabled || notificationsOff ? "disabled" : ""}>${minuteOptions(state.iqamaMinutes, [5,10,15,20,25,30])}</select></div><label class="switch"><input type="checkbox" id="iqamaEnabled" ${state.iqamaEnabled ? "checked" : ""} ${notificationsOff ? "disabled" : ""}/><span></span></label></div>
-        </div>
+      <div class="notification-block settings-card"><div class="notification-block-head"><div><span class="notification-kicker">When to notify</span><strong>Prayer reminders</strong></div><div class="prayer-actions"><button type="button" data-prayer-action="all" ${notificationsOff ? "disabled" : ""}>All</button><button type="button" data-prayer-action="clear" ${notificationsOff ? "disabled" : ""}>None</button></div></div>
+        <div class="athan-line"><div class="athan-copy"><strong>At athan</strong><span>Notify when the exact prayer time begins.</span></div><label class="switch" aria-label="Notify at athan"><input type="checkbox" id="prayerAlertEnabled" ${state.prayerAlertEnabled ? "checked" : ""} ${notificationsOff ? "disabled" : ""}/><span></span></label></div>
+        <div class="prayer-timing-list">${PRAYER_ORDER.map((p) => prayerTimingHTML(p, notificationsOff)).join("")}</div>
       </div>
-      <div class="notification-block settings-card"><div class="notification-block-head"><div><span class="notification-kicker">Prayers</span><strong>Apply reminders to</strong></div><div class="prayer-actions"><button type="button" data-prayer-action="all" ${notificationsOff ? "disabled" : ""}>All</button><button type="button" data-prayer-action="clear" ${notificationsOff ? "disabled" : ""}>Clear</button></div></div><div class="prayer-toggles">${PRAYER_ORDER.map((p) => `<label class="pt ${(state.reminderPrayers || []).includes(p) ? "on" : ""}"><input type="checkbox" data-rp="${p}" ${(state.reminderPrayers || []).includes(p) ? "checked" : ""} ${notificationsOff ? "disabled" : ""}/><span>${p}</span></label>`).join("")}</div></div>
       <div class="settings-card"><div class="settings-card-title">Reminder sound</div><div class="sound-grid">${SOUNDS.map(([id, label]) => `<label class="sound-option ${state.reminderSound === id ? "active" : ""}" data-sound="${id}"><input type="radio" name="reminderSound" value="${id}" ${state.reminderSound === id ? "checked" : ""} style="display:none">${label}</label>`).join("")}</div><div class="sound-actions"><button class="loc-btn" id="testSoundBtn">Test Sound</button></div></div>
     </div>
     <div class="notification-confirmation ${state.notificationsEnabled ? "" : "paused"}"><span class="confirmation-dot"></span><p>${notificationSummary()}</p></div>`;
@@ -2357,11 +2354,16 @@ function wireSettings() {
     syncNotificationUI();
   });
   const rm = $("#reminderMinutes");
-  if (rm) rm.addEventListener("change", (e) => {
+  if (rm) rm.addEventListener("input", (e) => {
     state.reminderMinutes = parseInt(e.target.value, 10) || 10;
+    const output = document.querySelector('[data-minute-output="reminderMinutes"]');
+    if (output) output.textContent = state.reminderMinutes;
+    const summary = document.querySelector(".notification-confirmation p");
+    if (summary) summary.textContent = notificationSummary();
+  });
+  if (rm) rm.addEventListener("change", () => {
     storage.set({ reminderMinutes: state.reminderMinutes });
     syncReminders();
-    syncNotificationUI();
   });
   const ie = $("#iqamaEnabled");
   if (ie) ie.addEventListener("change", (e) => {
@@ -2371,11 +2373,16 @@ function wireSettings() {
     syncNotificationUI();
   });
   const im = $("#iqamaMinutes");
-  if (im) im.addEventListener("change", (e) => {
+  if (im) im.addEventListener("input", (e) => {
     state.iqamaMinutes = parseInt(e.target.value, 10) || 10;
+    const output = document.querySelector('[data-minute-output="iqamaMinutes"]');
+    if (output) output.textContent = state.iqamaMinutes;
+    const summary = document.querySelector(".notification-confirmation p");
+    if (summary) summary.textContent = notificationSummary();
+  });
+  if (im) im.addEventListener("change", () => {
     storage.set({ iqamaMinutes: state.iqamaMinutes });
     syncReminders();
-    syncNotificationUI();
   });
   document.querySelectorAll("[data-prayer-action]").forEach((button) =>
     button.addEventListener("click", () => {
@@ -2397,6 +2404,21 @@ function wireSettings() {
       syncNotificationUI();
     })
   );
+  document.querySelectorAll("[data-prayer-minutes]").forEach((input) => {
+    input.addEventListener("input", () => {
+      const minutes = Math.min(60, Math.max(1, parseInt(input.value, 10) || 1));
+      const prayer = input.closest("[data-prayer-timing]")?.dataset.prayerTiming;
+      if (!prayer) return;
+      const key = input.dataset.prayerMinutes === "before" ? "reminderMinutesByPrayer" : "iqamaMinutesByPrayer";
+      state[key] = { ...state[key], [prayer]: minutes };
+    });
+    input.addEventListener("change", () => {
+      input.value = String(Math.min(60, Math.max(1, parseInt(input.value, 10) || 1)));
+      const key = input.dataset.prayerMinutes === "before" ? "reminderMinutesByPrayer" : "iqamaMinutesByPrayer";
+      storage.set({ [key]: state[key] });
+      syncReminders();
+    });
+  });
   const sf = $("#sunnahFastHighlight");
   if (sf) sf.addEventListener("change", (e) => {
     state.sunnahFastHighlight = e.target.checked;

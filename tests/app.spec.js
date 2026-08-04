@@ -215,8 +215,8 @@ test("notifications section renders master switch and sound picker", async () =>
   expect(sounds).toBe(7);
   const testBtn = await window.locator("#testSoundBtn").count();
   expect(testBtn).toBe(1);
-  const timeline = await window.locator(".timeline-item").count();
-  expect(timeline).toBe(3);
+  const rows = await window.locator(".prayer-timing-row").count();
+  expect(rows).toBe(5);
 });
 
 test("notifications master switch pauses the config", async () => {
@@ -225,8 +225,10 @@ test("notifications master switch pauses the config", async () => {
   await window.waitForTimeout(200);
   const paused = await window.locator(".notification-config.is-paused").count();
   expect(paused).toBe(1);
-  const disabledToggles = await window.locator("#remindersEnabled:disabled, #prayerAlertEnabled:disabled, #iqamaEnabled:disabled").count();
-  expect(disabledToggles).toBe(3);
+  const athanDisabled = await window.locator("#prayerAlertEnabled:disabled").count();
+  expect(athanDisabled).toBe(1);
+  const prayersDisabled = await window.locator("[data-rp]:disabled").count();
+  expect(prayersDisabled).toBe(5);
   const summary = await window.locator(".notification-confirmation p").textContent();
   expect(summary).toContain("paused");
   const pausedConf = await window.locator(".notification-confirmation.paused").count();
@@ -250,8 +252,29 @@ test("notifications All/Clear updates prayer toggles", async () => {
   await window.waitForTimeout(200);
   const allChecked = await window.locator("[data-rp]:checked").count();
   expect(allChecked).toBe(5);
-  const onTiles = await window.locator(".pt.on").count();
+  const onTiles = await window.locator("[data-prayer-timing].on").count();
   expect(onTiles).toBe(5);
+});
+
+test("notification timing inputs support every minute", async () => {
+  await toSection("notifications");
+  const fajrBefore = window.locator('[data-prayer-timing="Fajr"] input[data-prayer-minutes="before"]');
+  const maghribAfter = window.locator('[data-prayer-timing="Maghrib"] input[data-prayer-minutes="after"]');
+  await fajrBefore.fill("7");
+  await maghribAfter.fill("13");
+
+  await expect(fajrBefore).toHaveAttribute("min", "1");
+  await expect(fajrBefore).toHaveAttribute("max", "60");
+  await expect(fajrBefore).toHaveValue("7");
+  await expect(maghribAfter).toHaveValue("13");
+});
+
+test("notification timing offers independent controls for each prayer", async () => {
+  await toSection("notifications");
+  await expect(window.locator(".prayer-timing-list")).toBeVisible();
+  await expect(window.locator("[data-prayer-timing]")).toHaveCount(5);
+  await expect(window.locator('[data-prayer-timing="Fajr"] input[data-prayer-minutes="before"]')).toHaveAttribute("min", "1");
+  await expect(window.locator('[data-prayer-timing="Maghrib"] input[data-prayer-minutes="after"]')).toHaveAttribute("max", "60");
 });
 
 test("window section renders zoom and size sliders", async () => {
