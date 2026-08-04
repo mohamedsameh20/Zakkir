@@ -1,11 +1,14 @@
-const { app, BrowserWindow, ipcMain, Notification, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, Notification, shell, Menu, Tray } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const { normalizeSettings, migrateSettings, dueEvents } = require('./notification-scheduler');
 
 app.name = 'zakkir-desktop';
 app.setPath('userData', path.join(app.getPath('appData'), 'zakkir-desktop'));
 
 let mainWindow = null;
+let tray = null;
+let isQuitting = false;
 let prayerSchedule = null;
 let reminderSettings = {
   notificationsEnabled: true,
@@ -13,13 +16,42 @@ let reminderSettings = {
   reminderMinutes: 10,
   reminderMinutesByPrayer: {},
   reminderPrayers: [],
-  reminderSound: 'adhan-makkah',
+  reminderSound: 'adhan-1',
   prayerAlertEnabled: true,
   iqamaEnabled: false,
   iqamaMinutes: 10,
   iqamaMinutesByPrayer: {}
 };
-const firedToday = new Set(); // "Prayer-YYYY-MM-DD-N" keys to avoid double-firing
+let sentNotificationKeys = new Set();
+
+function persistNotificationKeys() {
+  if (!global.settingsData) return;
+  const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const kept = [...sentNotificationKeys].filter((key) => {
+    const date = new Date(`${key.split('|')[0]}T00:00:00`);
+    return Number.isNaN(date.getTime()) || date.getTime() >= cutoff;
+  });
+  sentNotificationKeys = new Set(kept);
+  global.settingsData._sentNotifications = kept;
+  try { fs.writeFileSync(global.settingsPath, JSON.stringify(global.settingsData)); }
+  catch (error) { console.error('Failed to persist notification state', error); }
+}
+
+function createTray() {
+  if (tray) return;
+  try {
+    tray = new Tray(path.join(__dirname, 'icon_16.png'));
+    tray.setToolTip('Zakkir — Prayer times & Azkar');
+    tray.setContextMenu(Menu.buildFromTemplate([
+      { label: 'Open Zakkir', click: () => mainWindow?.show() },
+      { type: 'separator' },
+      { label: 'Quit', click: () => { isQuitting = true; app.quit(); } },
+    ]));
+    tray.on('double-click', () => mainWindow?.show());
+  } catch (error) {
+    console.error('Tray unavailable; keeping the process alive without a tray icon', error);
+  }
+}
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -33,11 +65,19 @@ function createWindow() {
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
-      nodeIntegration: false
+      nodeIntegration: false,
+      backgroundThrottling: false
     }
   });
 
   mainWindow.loadFile(path.join(__dirname, 'popup.html'));
+
+  mainWindow.on('close', (event) => {
+    if (!isQuitting) {
+      event.preventDefault();
+      mainWindow.hide();
+    }
+  });
 
   // Don't show the window until the renderer signals it's fully initialised
   // (storage loaded, azkar data ready, first render done). This prevents the
@@ -71,24 +111,30 @@ app.whenReady().then(() => {
   let settingsData = {};
   try {
     if (fs.existsSync(settingsPath)) {
-      settingsData = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
+      settingsData = migrateSettings(JSON.parse(fs.readFileSync(settingsPath, 'utf-8')));
     }
   } catch (e) {
     console.error('Failed to load settings', e);
   }
+  settingsData = migrateSettings(settingsData);
 
   ipcMain.handle('load-settings', () => {
     return settingsData;
   });
 
   ipcMain.on('save-settings', (event, patch) => {
-    settingsData = { ...settingsData, ...patch };
+    settingsData = migrateSettings({ ...settingsData, ...patch });
+    global.settingsData = settingsData;
     fs.writeFile(settingsPath, JSON.stringify(settingsData), (err) => {
       if (err) console.error('Failed to save settings', err);
     });
   });
 
   createWindow();
+  createTray();
+  sentNotificationKeys = new Set(settingsData._sentNotifications || []);
+  global.settingsData = settingsData;
+  global.settingsPath = settingsPath;
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
@@ -100,51 +146,51 @@ app.whenReady().then(() => {
 
 const PRAYER_MESSAGES = {
   Fajr: [
-    { title: "صلاة الفجر 🌅", body: "﴿أَقِمِ ٱلصَّلَوٰةَ لِدُلُوكِ ٱلشَّمْسِ إِلَىٰ غَسَقِ ٱلَّيْلِ وَقُرْءَانَ ٱلْفَجْرِ ۖ إِنَّ قُرْءَانَ ٱلْفَجْرِ كَانَ مَشْهُودًا﴾" },
+    { title: "صلاة الفجر 🌅", body: "«أَقِمِ الصَّلَاةَ لِدُلُوكِ الشَّمْسِ إِلَى غَسَقِ اللَّيْلِ وَقُرْآنَ الْفَجْرِ ۖ إِنَّ قُرْآنَ الْفَجْرِ كَانَ مَشْهُودًا»" },
     { title: "صلاة الفجر 🌅", body: "«مَنْ صَلَّى الصُّبْحَ فَهُوَ فِي ذِمَّةِ اللَّهِ» — صحيح مسلم" },
     { title: "صلاة الفجر 🌅", body: "«رَكْعَتَا الْفَجْرِ خَيْرٌ مِنَ الدُّنْيَا وَمَا فِيهَا» — صحيح مسلم" },
-    { title: "صلاة الفجر 🌅", body: "«بَشِّرِ الْمَشَّائِينَ فِي الظُّلَمِ إِلَى الْمَسَاجِدِ بِالنُّورِ التَّامِّ يَوْمَ الْقِيَامَةِ»" },
+    { title: "صلاة الفجر 🌅", body: "«بَشِّرِ الْمَشَّائِينَ فِي الظُّلَمِ إِلَى الْمَسَاجِدِ بِالنُّورِ التَّامِّ يَوْمَ الْقِيَامَةِ» — سنن أبي داود والترمذي" },
     { title: "صلاة الفجر 🌅", body: "«مَنْ صَلَّى الْبَرْدَيْنِ دَخَلَ الْجَنَّةَ» — متفق عليه" },
     { title: "صلاة الفجر 🌅", body: "«أَثْقَلُ الصَّلَاةِ عَلَى الْمُنَافِقِينَ صَلَاةُ الْعِشَاءِ وَصَلَاةُ الْفَجْرِ» — متفق عليه" },
     { title: "صلاة الفجر 🌅", body: "«لَنْ يَلِجَ النَّارَ أَحَدٌ صَلَّى قَبْلَ طُلُوعِ الشَّمْسِ وَقَبْلَ غُرُوبِهَا» — صحيح مسلم" },
     { title: "صلاة الفجر 🌅", body: "قال عمر رضي الله عنه: «لَأَنْ أَشْهَدَ صَلَاةَ الصُّبْحِ فِي الْجَمَاعَةِ أَحَبُّ إِلَيَّ مِنْ قِيَامِ لَيْلَةٍ»" },
-    { title: "صلاة الفجر 🌅", body: "«مَنْ بَاتَ طَاهِرًا بَاتَ فِي شِعَارِهِ مَلَكٌ... فَيَقُولُ الْمَلَكُ: اللَّهُمَّ اغْفِرْ لِعَبْدِكَ فُلَانٍ»" }
+    { title: "صلاة الفجر 🌅", body: "«مَنْ بَاتَ طَاهِرًا بَاتَ فِي شِعَارِهِ مَلَكٌ... فَيَقُولُ الْمَلَكُ: اللَّهُمَّ اغْفِرْ لِعَبْدِكَ فُلَانٍ» — صحيح ابن حبان" }
   ],
   Dhuhr: [
-    { title: "صلاة الظهر ☀️", body: "﴿وَمِنْ ءَانَآئِ ٱلَّيْلِ فَسَبِّحْ وَأَطْرَافَ ٱلنَّهَارِ لَعَلَّكَ تَرْضَىٰ﴾" },
-    { title: "صلاة الظهر ☀️", body: "«إِنَّ أَوَّلَ مَا يُحَاسَبُ بِهِ الْعَبْدُ يَوْمَ الْقِيَامَةِ مِنْ عَمَلِهِ صَلَاتُهُ» — الترمذي" },
-    { title: "صلاة الظهر ☀️", body: "«إِذَا زَالَتِ الشَّمْسُ فُتِحَتْ أَبْوَابُ السَّمَاءِ... فَأُحِبُّ أَنْ يَصْعَدَ لِي فِيهِنَّ عَمَلٌ صَالِحٌ»" },
-    { title: "صلاة الظهر ☀️", body: "«أَرْبَعٌ قَبْلَ الظُّهْرِ لَيْسَ فِيهِنَّ تَسْلِيمٌ تُفْتَحُ لَهُنَّ أَبْوَابُ السَّمَاءِ» — أبو داود" },
-    { title: "صلاة الظهر ☀️", body: "«مَنْ حَافَظَ عَلَى أَرْبَعِ رَكَعَاتٍ قَبْلَ الظُّهْرِ وَأَرْبَعٍ بَعْدَهَا حَرَّمَهُ اللَّهُ عَلَى النَّارِ»" }
+    { title: "صلاة الظهر ☀️", body: "«وَمِنْ آنَاءِ اللَّيْلِ فَسَبِّحْ وَأَطْرَافَ النَّهَارِ لَعَلَّكَ تَرْضَى»" },
+    { title: "صلاة الظهر ☀️", body: "«إِنَّ أَوَّلَ مَا يُحَاسَبُ بِهِ الْعَبْدُ يَوْمَ الْقِيَامَةِ مِنْ عَمَلِهِ صَلَاتُهُ» — سنن الترمذي" },
+    { title: "صلاة الظهر ☀️", body: "«إِذَا زَالَتِ الشَّمْسُ فُتِحَتْ أَبْوَابُ السَّمَاءِ... فَأُحِبُّ أَنْ يَصْعَدَ لِي فِيهِنَّ عَمَلٌ صَالِحٌ» — سنن الترمذي" },
+    { title: "صلاة الظهر ☀️", body: "«أَرْبَعٌ قَبْلَ الظُّهْرِ لَيْسَ فِيهِنَّ تَسْلِيمٌ تُفْتَحُ لَهُنَّ أَبْوَابُ السَّمَاءِ» — سنن أبي داود" },
+    { title: "صلاة الظهر ☀️", body: "«مَنْ حَافَظَ عَلَى أَرْبَعِ رَكَعَاتٍ قَبْلَ الظُّهْرِ وَأَرْبَعٍ بَعْدَهَا حَرَّمَهُ اللَّهُ عَلَى النَّارِ» — سنن الترمذي" }
   ],
   Asr: [
-    { title: "صلاة العصر (الصلاة الوسطى) 🌤️", body: "﴿حَٰفِظُواْ عَلَى ٱلصَّلَوَٰتِ وَٱلصَّلَوٰةِ ٱلْوُسْطَىٰ وَقُومُواْ لِلَّهِ قَٰنِتِينَ﴾" },
+    { title: "صلاة العصر (الصلاة الوسطى) 🌤️", body: "«حَافِظُوا عَلَى الصَّلَوَاتِ وَالصَّلَاةِ الْوُسْطَى وَقُومُوا لِلَّهِ قَانِتِينَ»" },
     { title: "صلاة العصر 🌤️", body: "«مَنْ تَرَكَ صَلَاةَ الْعَصْرِ فَقَدْ حَبِطَ عَمَلُهُ» — صحيح البخاري" },
     { title: "صلاة العصر 🌤️", body: "«الَّذِي تَفُوتُهُ صَلَاةُ الْعَصْرِ كَأَنَّمَا وُتِرَ أَهْلَهُ وَمَالَهُ» — متفق عليه" },
     { title: "صلاة العصر 🌤️", body: "«مَنْ صَلَّى الْبَرْدَيْنِ دَخَلَ الْجَنَّةَ» — متفق عليه" },
     { title: "صلاة العصر 🌤️", body: "قال بريدة رضي الله عنه: «بَكِّرُوا بِصَلَاةِ الْعَصْرِ، فَإِنَّ النَّبِيَّ ﷺ قَالَ: مَنْ تَرَكَ صَلَاةَ الْعَصْرِ فَقَدْ حَبِطَ عَمَلُهُ»" }
   ],
   Maghrib: [
-    { title: "صلاة المغرب 🌅", body: "﴿وَسَبِّحْ بِحَمْدِ رَبِّكَ قَبْلَ طُلُوعِ ٱلشَّمْسِ وَقَبْلَ ٱلْغُرُوبِ﴾" },
-    { title: "صلاة المغرب 🌅", body: "﴿فَسُبْحَانَ ٱللَّهِ حِينَ تُمْسُونَ وَحِينَ تُصْبِحُونَ﴾" },
-    { title: "صلاة المغرب 🌅", body: "«لَا تَزَالُ أُمَّتِي بِخَيْرٍ - أَوْ عَلَى الْفِطْرَةِ - مَا لَمْ يُؤَخِّرُوا الْمَغْرِبَ حَتَّى تَشْتَبِكَ النُّجُومُ»" },
-    { title: "صلاة المغرب 🌅", body: "«إِذَا أَقْبَلَ اللَّيْلُ مِنْ هَا هُنَا، وَأَدْبَرَ النَّهَارُ مِنْ هَا هُنَا، وَغَرَبَتِ الشَّمْسُ، فَقَدْ أَفْطَرَ الصَّائِمُ»" }
+    { title: "صلاة المغرب 🌅", body: "«وَسَبِّحْ بِحَمْدِ رَبِّكَ قَبْلَ طُلُوعِ الشَّمْسِ وَقَبْلَ الْغُرُوبِ»" },
+    { title: "صلاة المغرب 🌅", body: "«فَسُبْحَانَ اللَّهِ حِينَ تُمْسُونَ وَحِينَ تُصْبِحُونَ»" },
+    { title: "صلاة المغرب 🌅", body: "«لَا تَزَالُ أُمَّتِي بِخَيْرٍ - أَوْ عَلَى الْفِطْرَةِ - مَا لَمْ يُؤَخِّرُوا الْمَغْرِبَ حَتَّى تَشْتَبِكَ النُّجُومُ» — سنن أبي داود" },
+    { title: "صلاة المغرب 🌅", body: "«إِذَا أَقْبَلَ اللَّيْلُ مِنْ هَا هُنَا، وَأَدْبَرَ النَّهَارُ مِنْ هَا هُنَا، وَغَرَبَتِ الشَّمْسُ، فَقَدْ أَفْطَرَ الصَّائِمُ» — متفق عليه" }
   ],
   Isha: [
-    { title: "صلاة العشاء 🌙", body: "﴿وَمِنَ ٱلَّيْلِ فَتَهَجَّدْ بِهِۦ نَافِلَةً لَّكَ عَسَىٰٓ أَن يَبْعَثَكَ رَبُّكَ مَقَامًا مَّحْمُودًا﴾" },
+    { title: "صلاة العشاء 🌙", body: "«وَمِنَ اللَّيْلِ فَتَهَجَّدْ بِهِ نَافِلَةً لَكَ عَسَى أَنْ يَبْعَثَكَ رَبُّكَ مَقَامًا مَحْمُودًا»" },
     { title: "صلاة العشاء 🌙", body: "«مَنْ شَهِدَ الْعِشَاءَ فِي جَمَاعَةٍ كَانَ لَهُ قِيَامُ نِصْفِ لَيْلَةٍ» — صحيح مسلم" },
     { title: "صلاة العشاء 🌙", body: "«لَوْ يَعْلَمُونَ مَا فِي الْعَتَمَةِ وَالصُّبْحِ لَأَتَوْهُمَا وَلَوْ حَبْوًا» — متفق عليه" },
-    { title: "صلاة العشاء 🌙", body: "﴿كَانُواْ قَلِيلًا مِّنَ ٱلَّيْلِ مَا يَهْجَعُونَ * وَبِٱلْأَسْحَارِ هُمْ يَسْتَغْفِرُونَ﴾" }
+    { title: "صلاة العشاء 🌙", body: "«كَانُوا قَلِيلًا مِنَ اللَّيْلِ مَا يَهْجَعُونَ * وَبِالْأَسْحَارِ هُمْ يَسْتَغْفِرُونَ»" }
   ]
 };
 
 const PRE_PRAYER_MESSAGES = [
-  { title: "اقتراب موعد الصلاة ⏳", body: "«مَنْ تَطَهَّرَ فِي بَيْتِهِ، ثُمَّ مَشَى إِلَى بَيْتٍ مِنْ بُيُوتِ اللَّهِ... كَانَتْ خَطْوَتَاهُ إِحْدَاهُمَا تَحُطُّ خَطِيئَةً، وَالْأُخْرَى تَرْفَعُ دَرَجَةً»" },
-  { title: "اقتراب موعد الصلاة ⏳", body: "«إِسْبَاغُ الْوُضُوءِ عَلَى الْمَكَارِهِ، وَكَثْرَةُ الْخُطَا إِلَى الْمَسَاجِدِ، وَانْتِظَارُ الصَّلَاةِ بَعْدَ الصَّلَاةِ... يَمْحُو اللَّهُ بِهِ الْخَطَايَا»" },
-  { title: "اقتراب موعد الصلاة ⏳", body: "﴿إِنَّ ٱللَّهَ يُحِبُّ ٱلتَّوَّٰبِينَ وَيُحِبُّ ٱلْمُتَطَهِّرِينَ﴾" },
+  { title: "اقتراب موعد الصلاة ⏳", body: "«مَنْ تَطَهَّرَ فِي بَيْتِهِ، ثُمَّ مَشَى إِلَى بَيْتٍ مِنْ بُيُوتِ اللَّهِ... كَانَتْ خَطْوَتَاهُ إِحْدَاهُمَا تَحُطُّ خَطِيئَةً، وَالْأُخْرَى تَرْفَعُ دَرَجَةً» — صحيح مسلم" },
+  { title: "اقتراب موعد الصلاة ⏳", body: "«إِسْبَاغُ الْوُضُوءِ عَلَى الْمَكَارِهِ، وَكَثْرَةُ الْخُطَا إِلَى الْمَسَاجِدِ، وَانْتِظَارُ الصَّلَاةِ بَعْدَ الصَّلَاةِ... يَمْحُو اللَّهُ بِهِ الْخَطَايَا» — صحيح مسلم" },
+  { title: "اقتراب موعد الصلاة ⏳", body: "«إِنَّ اللَّهَ يُحِبُّ التَّوَّابِينَ وَيُحِبُّ الْمُتَطَهِّرِينَ»" },
   { title: "اقتراب موعد الصلاة ⏳", body: "قال معاذ رضي الله عنه: «إِذَا صَلَّيْتَ صَلَاةً، فَصَلِّ صَلَاةَ مُوَدِّعٍ، لَا تَظُنَّ أَنَّكَ تَعُودُ إِلَيْهَا أَبَدًا»" },
-  { title: "اقتراب موعد الصلاة ⏳", body: "قال وكيع بن الجراح: «مَنْ لَمْ يَأْخُذْ أُهْبَةَ الصَّلَاةِ قَبْلَ وَقْتِهَا لَمْ يَكُنْ وَقَّرَهَا»" },
-  { title: "اقتراب موعد الصلاة ⏳", body: "«الدُّعَاءُ لَا يُرَدُّ بَيْنَ الْأَذَانِ وَالْإِقَامَةِ» — صحيح الترمذي" },
+  { title: "اقتراب موعد الصلاة ⏳", body: "قال وكيع بن الجراح رحمه الله: «مَنْ لَمْ يَأْخُذْ أُهْبَةَ الصَّلَاةِ قَبْلَ وَقْتِهَا لَمْ يَكُنْ وَقَّرَهَا»" },
+  { title: "اقتراب موعد الصلاة ⏳", body: "«الدُّعَاءُ لَا يُرَدُّ بَيْنَ الْأَذَانِ وَالْإِقَامَةِ» — سنن الترمذي" },
   { title: "اقتراب موعد الصلاة ⏳", body: "كتب عمر رضي الله عنه لعماله: «إِنَّ أَهَمَّ أُمُورِكُمْ عِنْدِي الصَّلَاةُ، فَمَنْ حَفِظَهَا وَحَافَظَ عَلَيْهَا حَفِظَ دِينَهُ»" }
 ];
 
@@ -161,92 +207,29 @@ function getRandomNotificationMessage(prayerName, isPre = false) {
   return list[idx];
 }
 
-  // Reminder scheduler — check every 60 seconds
-  setInterval(() => {
+  function runNotificationScheduler() {
     if (!prayerSchedule) return;
-    const now = new Date();
-    const todayStr = now.toISOString().slice(0, 10);
-    const nowM = now.getHours() * 60 + now.getMinutes();
-    // Master switch — when notifications are disabled, nothing fires.
-    if (!reminderSettings.notificationsEnabled) return;
-    for (const name of (reminderSettings.reminderPrayers || [])) {
-      const timeStr = prayerSchedule[name];
-      if (!timeStr) continue;
-      const [h, m] = timeStr.split(':').map(Number);
-      const prayerM = h * 60 + m;
-
-      // 1. Normal Reminder (Before Adhan)
-      {
-        const reminderMinutes = reminderSettings.reminderMinutesByPrayer?.[name] ?? reminderSettings.reminderMinutes;
-        const diff = prayerM - nowM;
-        const fireKey = `${name}-${todayStr}-${reminderMinutes}`;
-        if (diff === reminderMinutes && !firedToday.has(fireKey)) {
-          firedToday.add(fireKey);
-          if (Notification.isSupported()) {
-            const msg = getRandomNotificationMessage(name, true);
-            new Notification({
-              title: `${msg.title} (بعد ${diff} دقيقة)`,
-              body: msg.body,
-              icon: path.join(__dirname, 'icon.png'),
-            }).show();
-          }
-          if (mainWindow && !mainWindow.isDestroyed()) {
-            mainWindow.webContents.send('play-sound', reminderSettings.reminderSound);
-          }
-        }
-      }
-
-      // 2. Exact Prayer Time Alert
-      if (reminderSettings.prayerAlertEnabled) {
-        const diff = prayerM - nowM;
-        const nowKey = `${name}-now-${todayStr}`;
-        if (diff === 0 && !firedToday.has(nowKey)) {
-          firedToday.add(nowKey);
-          if (Notification.isSupported()) {
-            const msg = getRandomNotificationMessage(name, false);
-            new Notification({
-              title: msg.title,
-              body: msg.body,
-              icon: path.join(__dirname, 'icon.png'),
-            }).show();
-          }
-          if (mainWindow && !mainWindow.isDestroyed()) {
-            mainWindow.webContents.send('play-sound', reminderSettings.reminderSound);
-          }
-        }
-      }
-
-      // 3. Iqama Reminder (After Adhan)
-      {
-        const iqamaMinutes = reminderSettings.iqamaMinutesByPrayer?.[name] ?? reminderSettings.iqamaMinutes;
-        const elapsed = nowM - prayerM;
-        const iqamaKey = `${name}-iqama-${todayStr}-${iqamaMinutes}`;
-        if (elapsed === iqamaMinutes && !firedToday.has(iqamaKey)) {
-          firedToday.add(iqamaKey);
-          if (Notification.isSupported()) {
-            new Notification({
-              title: `إقامة صلاة ${name}`,
-              body: `حان وقت الإقامة — بعد ${iqamaMinutes} دقيقة من الأذان.`,
-              icon: path.join(__dirname, 'icon.png'),
-            }).show();
-          }
-          if (mainWindow && !mainWindow.isDestroyed()) {
-            mainWindow.webContents.send('play-sound', reminderSettings.reminderSound);
-          }
-        }
-      }
+    for (const event of dueEvents(prayerSchedule, reminderSettings, new Date())) {
+      if (sentNotificationKeys.has(event.key)) continue;
+      sentNotificationKeys.add(event.key);
+      const msg = event.type === 'pre' ? getRandomNotificationMessage(event.prayer, true) : getRandomNotificationMessage(event.prayer, false);
+      const title = event.type === 'pre' ? `${msg.title} (بعد ${event.minutes} دقيقة)` : event.type === 'iqama' ? `إقامة صلاة ${event.prayer}` : msg.title;
+      const body = event.type === 'iqama' ? `حان وقت الإقامة — بعد ${event.minutes} دقيقة من الأذان.` : msg.body;
+      if (Notification.isSupported()) new Notification({ title, body, icon: path.join(__dirname, 'icon.png') }).show();
+      if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('play-sound', reminderSettings.reminderSound);
+      persistNotificationKeys();
     }
-    // Clean firedToday for old dates
-    for (const key of firedToday) {
-      if (!key.includes(todayStr)) firedToday.delete(key);
-    }
-  }, 60_000);
+  }
+  setInterval(runNotificationScheduler, 15_000);
+  setTimeout(runNotificationScheduler, 1_000);
+});
+
+app.on('before-quit', () => {
+  isQuitting = true;
 });
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.quit();
-  }
+  // Keep the tray process alive so notifications continue after the window closes.
 });
 
 // IPC handlers
@@ -272,7 +255,7 @@ ipcMain.on('close-window', (event) => {
 
 ipcMain.on('set-prayer-times', (event, times, settings) => {
   prayerSchedule = times;
-  reminderSettings = { ...reminderSettings, ...settings };
+  reminderSettings = normalizeSettings({ ...reminderSettings, ...settings });
 });
 
 ipcMain.on('open-external', (event, url) => {

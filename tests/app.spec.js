@@ -211,8 +211,11 @@ test("notifications section renders master switch and sound picker", async () =>
   await toSection("notifications");
   const master = await window.locator("#notificationsEnabled").count();
   expect(master).toBe(1);
+  expect(await window.locator("#remindersEnabled").count()).toBe(1);
+  expect(await window.locator("#prayerAlertEnabled").count()).toBe(1);
+  expect(await window.locator("#iqamaEnabled").count()).toBe(1);
   const sounds = await window.locator(".sound-grid .sound-option").count();
-  expect(sounds).toBe(7);
+  expect(sounds).toBe(6);
   const testBtn = await window.locator("#testSoundBtn").count();
   expect(testBtn).toBe(1);
   const rows = await window.locator(".prayer-timing-row").count();
@@ -225,8 +228,8 @@ test("notifications master switch pauses the config", async () => {
   await window.waitForTimeout(200);
   const paused = await window.locator(".notification-config.is-paused").count();
   expect(paused).toBe(1);
-  const athanDisabled = await window.locator("#prayerAlertEnabled:disabled").count();
-  expect(athanDisabled).toBe(1);
+  const eventDisabled = await window.locator("#remindersEnabled:disabled, #prayerAlertEnabled:disabled, #iqamaEnabled:disabled").count();
+  expect(eventDisabled).toBe(3);
   const prayersDisabled = await window.locator("[data-rp]:disabled").count();
   expect(prayersDisabled).toBe(5);
   const summary = await window.locator(".notification-confirmation p").textContent();
@@ -240,20 +243,24 @@ test("notifications master switch pauses the config", async () => {
   expect(resumed).toBe(0);
 });
 
-test("notifications All/Clear updates prayer toggles", async () => {
+test("notification event toggles update the summary", async () => {
   await toSection("notifications");
-  await window.locator("[data-prayer-action='clear']").click();
+  await toggleCheckbox("remindersEnabled", false);
   await window.waitForTimeout(200);
-  const cleared = await window.locator("[data-rp]:checked").count();
-  expect(cleared).toBe(0);
   const summary = await window.locator(".notification-confirmation p").textContent();
-  expect(summary).toContain("at least one prayer");
-  await window.locator("[data-prayer-action='all']").click();
+  expect(summary).not.toContain("before athan");
+  await toggleCheckbox("iqamaEnabled", true);
   await window.waitForTimeout(200);
-  const allChecked = await window.locator("[data-rp]:checked").count();
-  expect(allChecked).toBe(5);
-  const onTiles = await window.locator("[data-prayer-timing].on").count();
-  expect(onTiles).toBe(5);
+  const updated = await window.locator(".notification-confirmation p").textContent();
+  expect(updated).toContain("after athan");
+});
+
+test("notification prayer selection remains configurable", async () => {
+  await toSection("notifications");
+  expect(await window.locator("[data-rp]:checked").count()).toBeGreaterThan(0);
+  await window.locator("[data-rp]").first().uncheck();
+  const summary = await window.locator(".notification-confirmation p").textContent();
+  expect(summary).not.toContain("Fajr");
 });
 
 test("notification timing inputs support every minute", async () => {
