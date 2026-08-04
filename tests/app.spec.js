@@ -79,6 +79,27 @@ test("minimize button exists", async () => {
   expect(btn).toBe(1);
 });
 
+test("prayer times can be collapsed and restored", async () => {
+  const prayerCard = window.locator("#prayerRegion");
+  await prayerCard.locator('.prayer-collapse[aria-label="Minimize prayer times"]').click();
+  await expect(prayerCard).toHaveClass(/is-collapsed/);
+  await prayerCard.locator('.prayer-collapse[aria-label="Show prayer times"]').click();
+  await expect(prayerCard).not.toHaveClass(/is-collapsed/);
+});
+
+test("azkar card shows its time-based morning or evening type", async () => {
+  const label = window.locator("#azkarTap .azkar-context-copy strong");
+  await expect(label).toBeVisible();
+  await expect(label).toHaveText(/أذكار (الصباح|المساء)/);
+});
+
+test("azkar card keeps only useful progress UI", async () => {
+  await expect(window.locator("#catRegion, .azkar-progress-footer, .tap-hint, #navIndicator")).toHaveCount(0);
+  await expect(window.locator("#azkarTap .azkar-current-count")).toBeVisible();
+  await expect(window.locator("#azkarTap .azkar-overall-track")).toHaveCount(1);
+  await expect(window.locator("#azkarTap .azkar-overall-count")).toHaveCount(0);
+});
+
 test("close button exists", async () => {
   const btn = await window.locator("#closeBtn").count();
   expect(btn).toBe(1);
@@ -95,7 +116,7 @@ test("navigate to settings view", async () => {
 test("settings view renders location tabs and city input", async () => {
   await toSection("general");
   await window.locator("[data-tab='city']").click();
-  await window.waitForTimeout(300);
+  await window.locator("#presetCountry").waitFor({ state: "attached" });
   const country = await window.locator("#presetCountry").count();
   const city = await window.locator("#presetCity").count();
   expect(country).toBe(1);
@@ -117,9 +138,55 @@ test("appearance section renders theme grids with dark counterparts", async () =
   const themes = await window.locator(".theme-grid [data-theme]").count();
   expect(themes).toBeGreaterThan(5);
   const darkCards = await window.locator('.theme-grid [data-theme$="-dark"]').count();
-  expect(darkCards).toBe(9);
+  expect(darkCards).toBeGreaterThan(9);
   const palettes = await window.locator(".palette-grid [data-palette]").count();
   expect(palettes).toBeGreaterThan(3);
+});
+
+test("every theme card shows a painted preview swatch", async () => {
+  await toSection("appearance");
+  const painted = await window.locator(".theme-grid [data-theme-sw]").evaluateAll((els) => {
+    return els.map((el) => {
+      const cs = getComputedStyle(el);
+      const hasScene = !!el.querySelector(".sw-scene");
+      const paintedBg = cs.backgroundColor !== "rgba(0, 0, 0, 0)" || cs.backgroundImage !== "none";
+      return { theme: el.dataset.themeSw, paintedBg, hasScene };
+    });
+  });
+  expect(painted.length).toBeGreaterThan(50);
+  const empty = painted.filter((p) => !p.paintedBg && !p.hasScene);
+  expect(empty).toEqual([]);
+});
+
+test("appearance theme grid stays inside the window bounds", async () => {
+  await toSection("appearance");
+  for (const width of [763, 680, 600, 420, 360]) {
+    await app.evaluate(({ BrowserWindow }, nextWidth) => {
+      BrowserWindow.getAllWindows()[0].setSize(nextWidth, 800);
+    }, width);
+    await window.waitForTimeout(150);
+    const bounds = await window.locator(".settings-section").evaluate((section) => {
+      const sectionBox = section.getBoundingClientRect();
+      const gridBoxes = [...section.querySelectorAll(".theme-grid")].map((grid) => {
+        const box = grid.getBoundingClientRect();
+        return { left: box.left, right: box.right, top: box.top, bottom: box.bottom };
+      });
+      return {
+        viewportWidth: window.innerWidth,
+        section: { left: sectionBox.left, right: sectionBox.right },
+        grids: gridBoxes,
+        documentWidth: document.documentElement.scrollWidth,
+      };
+    });
+    expect(bounds.section.left).toBeGreaterThanOrEqual(0);
+    expect(bounds.section.right).toBeLessThanOrEqual(bounds.viewportWidth + 1);
+    expect(bounds.documentWidth).toBeLessThanOrEqual(bounds.viewportWidth + 1);
+    for (const grid of bounds.grids) {
+      expect(grid.left).toBeGreaterThanOrEqual(bounds.section.left - 1);
+      expect(grid.right).toBeLessThanOrEqual(bounds.section.right + 1);
+    }
+  }
+  await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(763, 800));
 });
 
 test("frutiger is the default theme", async () => {
@@ -240,19 +307,25 @@ test("home view still shows prayers after round-trip", async () => {
 // --- Azkar Navigation ---
 
 test("azkar next button works", async () => {
-  const navBefore = await window.locator("#navIndicator").textContent();
+  const dhikrBefore = await window.locator("#azkarTap .dhikr").textContent();
+  const overallBefore = await window.locator("#azkarTap .azkar-overall-track").getAttribute("aria-valuenow");
   await window.locator("[data-nav='1']").click();
-  await window.waitForTimeout(300);
-  const navAfter = await window.locator("#navIndicator").textContent();
-  expect(navAfter).not.toBe(navBefore);
+  await window.waitForTimeout(500);
+  const dhikrAfter = await window.locator("#azkarTap .dhikr").textContent();
+  const overallAfter = await window.locator("#azkarTap .azkar-overall-track").getAttribute("aria-valuenow");
+  expect(dhikrAfter).not.toBe(dhikrBefore);
+  expect(overallAfter).not.toBe(overallBefore);
 });
 
 test("azkar prev button works", async () => {
-  const navBefore = await window.locator("#navIndicator").textContent();
+  const dhikrBefore = await window.locator("#azkarTap .dhikr").textContent();
+  const overallBefore = await window.locator("#azkarTap .azkar-overall-track").getAttribute("aria-valuenow");
   await window.locator("[data-nav='-1']").click();
-  await window.waitForTimeout(300);
-  const navAfter = await window.locator("#navIndicator").textContent();
-  expect(navAfter).not.toBe(navBefore);
+  await window.waitForTimeout(500);
+  const dhikrAfter = await window.locator("#azkarTap .dhikr").textContent();
+  const overallAfter = await window.locator("#azkarTap .azkar-overall-track").getAttribute("aria-valuenow");
+  expect(dhikrAfter).not.toBe(dhikrBefore);
+  expect(overallAfter).not.toBe(overallBefore);
 });
 
 // --- Settings Round-Trip Stress Test (freeze detection) ---

@@ -24,6 +24,7 @@ const DEFAULTS = {
   autoTime: true,
   azkarIndex: 0,
   azkarCount: 0,
+  azkarHintDismissed: false,
   azkarResetDate: null,
   prayerCache: null,
   isElectronPinned: false,
@@ -41,11 +42,16 @@ const DEFAULTS = {
   scheduleCache: {},
   sunnahFastHighlight: true,
   updateAlertsEnabled: true,
+  prayerCollapsed: false,
+  azkarNavigation: "buttons-and-swipe",
 };
 
 // Transient (not persisted)
 let focusedPrayer = null;
 let countSaveTimer = null;
+let azkarNavigationBusy = false;
+let azkarTransitionTimer = null;
+let suppressAzkarTap = false;
 
 function persistAzkarCount(count) {
   clearTimeout(countSaveTimer);
@@ -53,6 +59,11 @@ function persistAzkarCount(count) {
     storage.set({ azkarCount: count });
     countSaveTimer = null;
   }, 180);
+}
+
+function cancelPendingAzkarCount() {
+  clearTimeout(countSaveTimer);
+  countSaveTimer = null;
 }
 
 const FONT_MAP = {
@@ -80,7 +91,39 @@ const THEMES = [
   ["frutiger",   "Frutiger Aero"],
   // Bold and anti-design
   ["neobrutal",  "Neobrutalist"],
-  ["webbrutal",  "Web Brutalist"],
+  // Monochrome System
+  ["monochrome",        "Monochrome Glass"],
+  ["monochrome-dark",   "Monochrome Dark Glass"],
+  // Cosmic, Aurora & Oasis Ethereal Glass
+  ["nebula",             "Nebula Glass Glow"],
+  ["aurora",             "Northern Aurora Glass"],
+  ["sahara-glass",       "Oasis Sahara Glass"],
+  ["nebula-dark",        "Nebula Cosmic Dark"],
+  ["aurora-dark",        "Aurora Midnight Dark"],
+  ["sahara-glass-dark",  "Sahara Nocturnal Glass"],
+  // macOS Professional Glassmorphic Systems
+  ["macos-ventura",     "macOS Ventura Glass"],
+  ["macos-sequoia",     "macOS Sequoia Mist"],
+  ["macos-sonoma",      "macOS Sonoma Sunset"],
+  ["crystal",           "Crystal Diamond Glass"],
+  ["mist",              "Neutral Mist Glass"],
+  ["midnight",          "Midnight Indigo Glass"],
+  ["jade",              "Translucent Jade Glass"],
+  ["slatestudio",       "Slate Pro Studio Glass"],
+  ["macos-ventura-dark", "macOS Ventura Dark"],
+  ["macos-sequoia-dark", "macOS Sequoia Dark"],
+  ["macos-sonoma-dark",  "macOS Sonoma Dark"],
+  ["crystal-dark",       "Crystal Diamond Dark"],
+  ["mist-dark",          "Neutral Mist Dark"],
+  ["midnight-dark",      "Midnight Indigo Dark"],
+  ["jade-dark",          "Translucent Jade Dark"],
+  ["slatestudio-dark",   "Slate Pro Studio Dark"],
+  // Fresh picks
+  ["onyx",         "Onyx"],
+  ["frutiger-sunset", "Frutiger Sunset"],
+  ["prism",        "Prism"],
+  ["opal",         "Opal"],
+  ["fajr",         "Fajr"],
   // Dark counterparts
   ["metro-dark",       "Metro Flat Dark"],
   ["material-dark",    "Material Dark"],
@@ -89,13 +132,20 @@ const THEMES = [
   ["liquidglass-dark", "Liquid Glass Dark"],
   ["frutiger-dark",    "Frutiger Twilight"],
   ["editorial-dark",   "Editorial Night"],
-  ["softclay-dark",    "Dark Clay"],
-  ["webbrutal-dark",   "Web Brutalist Dark"],
   // Structural systems
   ["editorial", "Editorial Ink"],
-  ["blueprint", "Blueprint"],
-  ["softclay",  "Soft Clay"],
   ["control",   "Control Room"],
+  // New design systems
+  ["swiss",       "Swiss"],
+  ["scandi",      "Scandinavian"],
+  ["porcelain",   "Porcelain"],
+  ["terracotta",  "Terracotta"],
+  ["dusk",        "Dusk"],
+  ["swiss-dark",      "Swiss Dark"],
+  ["scandi-dark",     "Scandinavian Dark"],
+  ["porcelain-dark",  "Porcelain Dark"],
+  ["terracotta-dark", "Terracotta Dark"],
+  ["dusk-dark",       "Dusk Dark"],
   // Special
   ["glass",     "Aurora Glass"],
   ["noor",      "Noor"],
@@ -158,68 +208,81 @@ const THEME_BASES = {
   "aqua-dark": "aqua",
   "liquidglass-dark": "liquidglass",
   "frutiger-dark": "frutiger",
+  "frutiger-sunset": "frutiger",
   "editorial-dark": "editorial",
-  "softclay-dark": "softclay",
-  "webbrutal-dark": "webbrutal",
+  "monochrome-dark": "monochrome",
+  "nebula-dark": "nebula",
+  "aurora-dark": "aurora",
+  "sahara-glass-dark": "sahara-glass",
+  "macos-ventura-dark": "macos-ventura",
+  "macos-sequoia-dark": "macos-sequoia",
+  "macos-sonoma-dark": "macos-sonoma",
+  "crystal-dark": "crystal",
+  "mist-dark": "mist",
+  "midnight-dark": "midnight",
+  "jade-dark": "jade",
+  "slatestudio-dark": "slatestudio",
+  "swiss-dark": "swiss",
+  "scandi-dark": "scandi",
+  "porcelain-dark": "porcelain",
+  "terracotta-dark": "terracotta",
+  "dusk-dark": "dusk",
 };
 
-// Extensive palette — single accent color, mix of vivid and soft/light tones
+// Organized Palette Categories with Orange & Peach
 const PALETTES = {
   default:   { name: "Theme default" },
-  // Light / pastel
-  powderblue:{ name: "Powder Blue",  a: "#bfdbfe" },
-  babyblue:  { name: "Baby Blue",    a: "#cfe6ff" },
-  skylight:  { name: "Sky Light",    a: "#bae6fd" },
-  aqualight: { name: "Aqua Light",   a: "#99f6e4" },
-  seafoam:   { name: "Seafoam",      a: "#a7f3d0" },
-  mintice:   { name: "Mint Ice",     a: "#bbf7d0" },
-  pistachio: { name: "Pistachio",    a: "#d9f99d" },
-  butter:    { name: "Butter",       a: "#fde68a" },
-  cream:     { name: "Cream",        a: "#fef3c7" },
-  apricot:   { name: "Apricot",      a: "#fdba74" },
-  peach:     { name: "Peach",        a: "#fed7aa" },
-  blush:     { name: "Blush",        a: "#fbcfe8" },
-  lilac:     { name: "Lilac",        a: "#e9d5ff" },
-  lavender:  { name: "Lavender",     a: "#ddd6fe" },
-  pearl:     { name: "Pearl",        a: "#f5f5f4" },
-  cloud:     { name: "Cloud",        a: "#e2e8f0" },
-  // Blues
-  sky:       { name: "Sky",       a: "#7dd3fc" },
-  azure:     { name: "Azure",     a: "#60a5fa" },
-  blue:      { name: "Blue",      a: "#3b82f6" },
-  sapphire:  { name: "Sapphire",  a: "#2563eb" },
-  indigo:    { name: "Indigo",    a: "#818cf8" },
-  // Cyan / teal
-  cyan:      { name: "Cyan",      a: "#22d3ee" },
-  teal:      { name: "Teal",      a: "#2dd4bf" },
-  ocean:     { name: "Ocean",     a: "#0891b2" },
-  // Greens
-  mint:      { name: "Mint",      a: "#6ee7b7" },
-  emerald:   { name: "Emerald",   a: "#34d399" },
-  forest:    { name: "Forest",    a: "#22c55e" },
-  lime:      { name: "Lime",      a: "#a3e635" },
-  jade:      { name: "Jade",      a: "#10b981" },
-  // Purples
-  violet:    { name: "Violet",    a: "#a78bfa" },
-  purple:    { name: "Purple",    a: "#c084fc" },
-  plum:      { name: "Plum",      a: "#9333ea" },
-  // Pinks / reds
-  pink:      { name: "Pink",      a: "#f472b6" },
-  rose:      { name: "Rose",      a: "#fb7185" },
-  crimson:   { name: "Crimson",   a: "#ef4444" },
-  ruby:      { name: "Ruby",      a: "#e11d48" },
-  // Warm
-  amber:     { name: "Amber",     a: "#fbbf24" },
-  gold:      { name: "Gold",      a: "#eab308" },
-  copper:    { name: "Copper",    a: "#d97706" },
-  ember:     { name: "Ember",     a: "#f97316" },
-  sand:      { name: "Sand",      a: "#d4a574" },
-  // Neutrals
-  stone:     { name: "Stone",     a: "#a8a29e" },
-  slate:     { name: "Slate",     a: "#94a3b8" },
-  steel:     { name: "Steel",     a: "#64748b" },
-  silver:    { name: "Silver",    a: "#cbd5e1" },
+  // Essentials & Neutrals
+  purewhite: { name: "Pure White",  a: "#ffffff" },
+  pureblack: { name: "Pure Black",  a: "#0f172a" },
+  pearl:     { name: "Pearl",       a: "#f5f5f4" },
+  slate:     { name: "Slate",       a: "#94a3b8" },
+  silver:    { name: "Silver",      a: "#cbd5e1" },
+  // Orange, Coral & Peach
+  orange:    { name: "Pure Orange", a: "#f97316" },
+  peach:     { name: "Peach",       a: "#fed7aa" },
+  coral:     { name: "Coral",       a: "#fb7185" },
+  tangerine: { name: "Tangerine",   a: "#ff8c00" },
+  apricot:   { name: "Apricot",     a: "#fdba74" },
+  ember:     { name: "Ember",       a: "#ea580c" },
+  // Warm Gold & Amber
+  amber:     { name: "Amber",       a: "#fbbf24" },
+  gold:      { name: "Gold",        a: "#eab308" },
+  copper:    { name: "Copper",      a: "#d97706" },
+  sand:      { name: "Sand",        a: "#d4a574" },
+  butter:    { name: "Butter",      a: "#fde68a" },
+  // Greens & Emeralds
+  mint:      { name: "Mint",        a: "#6ee7b7" },
+  emerald:   { name: "Emerald",     a: "#34d399" },
+  forest:    { name: "Forest",      a: "#22c55e" },
+  jade:      { name: "Jade",        a: "#10b981" },
+  seafoam:   { name: "Seafoam",     a: "#a7f3d0" },
+  // Blues & Cyans
+  sky:       { name: "Sky Blue",    a: "#7dd3fc" },
+  azure:     { name: "Azure Blue",  a: "#60a5fa" },
+  blue:      { name: "Royal Blue",  a: "#3b82f6" },
+  sapphire:  { name: "Sapphire",    a: "#2563eb" },
+  indigo:    { name: "Indigo",      a: "#818cf8" },
+  cyan:      { name: "Cyan",        a: "#22d3ee" },
+  ocean:     { name: "Ocean",       a: "#0891b2" },
+  // Purples & Pinks
+  violet:    { name: "Violet",      a: "#a78bfa" },
+  purple:    { name: "Purple",      a: "#c084fc" },
+  plum:      { name: "Plum",        a: "#9333ea" },
+  pink:      { name: "Pink",        a: "#f472b6" },
+  rose:      { name: "Rose",        a: "#fb7185" },
+  ruby:      { name: "Ruby Red",    a: "#e11d48" },
+  lavender:  { name: "Lavender",    a: "#ddd6fe" },
 };
+
+const PALETTE_GROUPS = [
+  { title: "Essentials", keys: ["default", "purewhite", "pureblack", "pearl", "slate", "silver"] },
+  { title: "Orange & Peach", keys: ["orange", "peach", "coral", "tangerine", "apricot", "ember"] },
+  { title: "Warm Gold", keys: ["amber", "gold", "copper", "sand", "butter"] },
+  { title: "Greens", keys: ["mint", "emerald", "forest", "jade", "seafoam"] },
+  { title: "Blues", keys: ["sky", "azure", "blue", "sapphire", "indigo", "cyan", "ocean"] },
+  { title: "Purples & Pinks", keys: ["violet", "purple", "plum", "pink", "rose", "ruby", "lavender"] }
+];
 
 const PRAYER_ORDER = ["Fajr", "Dhuhr", "Asr", "Maghrib", "Isha"];
 
@@ -304,6 +367,9 @@ let hijri = null;
 let lastErr = null;
 let activePrayer = null; // UI-only, not persisted
 let activeAudio = null;
+let renderedView = null;
+let mobileNavTransition = null;
+let prayerLoadSequence = 0;
 
 // ---------- storage ----------
 const storage = {
@@ -339,7 +405,11 @@ const storage = {
 
 // ---------- helpers ----------
 const $ = (s, r = document) => r.querySelector(s);
-const todayKey = () => new Date().toISOString().slice(0, 10);
+const todayKey = () => {
+  const d = new Date();
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+};
 
 // azkar.json has nested arrays in some entries; flatten to a single list per category.
 function flattenCategory(arr) {
@@ -380,6 +450,7 @@ function applyAutoCategory() {
   if (!state.autoTime) return false;
   const want = autoTimeCategory();
   if (state.category === want) return false;
+  cancelPendingAzkarCount();
   state.category = want;
   state.azkarIndex = 0;
   state.azkarCount = 0;
@@ -390,6 +461,11 @@ function applyAutoCategory() {
 function currentDhikrList() {
   if (!AZKAR_DATA) return [];
   return flattenCategory(AZKAR_DATA[state.category] || []);
+}
+
+function azkarOverallProgress() {
+  const list = currentDhikrList();
+  return { completed: list.length ? state.azkarIndex + 1 : 0, total: list.length };
 }
 
 function fmt12(hhmm) {
@@ -469,11 +545,15 @@ async function loadPrayers(force = false) {
     hijri = cache.hijri;
     return;
   }
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 12_000);
+  const requestId = ++prayerLoadSequence;
   try {
     const url = `https://api.aladhan.com/v1/timings/${ddmmyyyy()}?latitude=${latR}&longitude=${lngR}&method=${state.method}`;
-    const r = await fetch(url);
+    const r = await fetch(url, { signal: controller.signal });
     const j = await r.json();
     if (!j?.data?.timings) throw new Error("Bad response");
+    if (requestId !== prayerLoadSequence) return;
     const t = j.data.timings;
     prayers = { Fajr: t.Fajr, Dhuhr: t.Dhuhr, Asr: t.Asr, Maghrib: t.Maghrib, Isha: t.Isha };
     const h = j.data.date.hijri;
@@ -485,7 +565,9 @@ async function loadPrayers(force = false) {
     syncReminders();
     applyAutoAzkarCategory();
   } catch (e) {
-    lastErr = "Failed to load prayer times — check your location.";
+    if (requestId === prayerLoadSequence) lastErr = "Failed to load prayer times — check your location.";
+  } finally {
+    clearTimeout(timeout);
   }
 }
 
@@ -513,6 +595,7 @@ function applyAutoAzkarCategory() {
   const isMorning = nowM >= fajrM && nowM < maghribM;
   const targetCat = isMorning ? "أذكار الصباح" : "أذكار المساء";
   if (state.category !== targetCat) {
+    cancelPendingAzkarCount();
     state.category = targetCat;
     state.azkarIndex = 0;
     state.azkarCount = 0;
@@ -526,6 +609,7 @@ function applyAutoAzkarCategory() {
 function maybeResetDaily() {
   const today = todayKey();
   if (state.azkarResetDate !== today) {
+    cancelPendingAzkarCount();
     state.azkarResetDate = today;
     state.azkarIndex = 0;
     state.azkarCount = 0;
@@ -536,9 +620,11 @@ function maybeResetDaily() {
 
 // ---------- icons ----------
 const icon = {
+  home: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V10Z"/><path d="M9 21v-6h6v6"/></svg>`,
   gear: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>`,
   cal: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>`,
   back: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 6l-6 6 6 6"/></svg>`,
+  chevronDown: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>`,
   prev: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 6l-6 6 6 6"/></svg>`,
   next: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>`,
   reset: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/></svg>`,
@@ -556,6 +642,9 @@ const IS_PINNED = (() => {
 
 // ---------- views ----------
 function headerHTML() {
+  if (globalThis.__ZAKKIR_MOBILE__) {
+    return "";
+  }
   const pinned = globalThis.electronAPI ? true : IS_PINNED;
   return `
     <div class="brand"><img class="logo" src="icon.png" alt="Zakkir"/><span><span class="name">Zakkir</span><span class="brand-sub">Daily remembrance</span></span></div>
@@ -568,33 +657,81 @@ function headerHTML() {
     </div>`;
 }
 
+function mobileBottomNavHTML(active) {
+  if (!globalThis.__ZAKKIR_MOBILE__) return "";
+  const order = ["home", "schedule", "settings"];
+  const destinationIndex = Math.max(0, order.indexOf(active));
+  const originIndex = mobileNavTransition?.to === destinationIndex
+    ? mobileNavTransition.from
+    : destinationIndex;
+  return `<nav class="mobile-bottom-nav" aria-label="Primary navigation">
+    <i class="mobile-nav-liquid" aria-hidden="true" style="--nav-index:${originIndex}"></i>
+    <button type="button" class="mobile-bottom-nav-btn ${active === "home" ? "active" : ""}" data-go="home" aria-label="Home" ${active === "home" ? `aria-current="page"` : ""}><span class="mobile-nav-icon">${icon.home}</span><span class="mobile-nav-label">Home</span></button>
+    <button type="button" class="mobile-bottom-nav-btn ${active === "schedule" ? "active" : ""}" data-go="schedule" aria-label="Schedule" ${active === "schedule" ? `aria-current="page"` : ""}><span class="mobile-nav-icon">${icon.cal}</span><span class="mobile-nav-label">Schedule</span></button>
+    <button type="button" class="mobile-bottom-nav-btn ${active === "settings" ? "active" : ""}" data-go="settings" aria-label="Settings" ${active === "settings" ? `aria-current="page"` : ""}><span class="mobile-nav-icon">${icon.gear}</span><span class="mobile-nav-label">Settings</span></button>
+  </nav>`;
+}
+
 function prayerCardHTML() {
   const np = nextPrayer();
+  const nextName = np ? np.name : (lastErr ? "Unavailable" : "Loading…");
+  const countdown = np ? `${np.h}h ${String(np.m).padStart(2, "0")}m` : "—";
   return `
-    <div class="prayer-hero">
-      <div class="next-line">
-        <span class="eyebrow">Next prayer</span>
-        <span class="hijri">${hijri || ""}</span>
+    <div class="prayer-collapsed-row">
+      <div class="prayer-collapsed-main"><span class="eyebrow">Next prayer</span><strong>${nextName}</strong></div>
+      <span class="prayer-collapsed-countdown">${countdown}</span>
+      <button type="button" class="prayer-collapse" aria-label="Show prayer times" aria-expanded="false" title="Show prayer times">${icon.chevronDown}</button>
+    </div>
+    <div class="prayer-expanded-content">
+      <div class="prayer-expanded-inner">
+      <div class="prayer-hero">
+        <div class="next-line">
+          <span class="eyebrow">Next prayer</span>
+          <div class="prayer-meta"><span class="hijri">${hijri || ""}</span><button type="button" class="prayer-collapse" aria-label="Minimize prayer times" aria-expanded="true" title="Minimize prayer times">${icon.chevronDown}</button></div>
+        </div>
+        <div class="next-prayer">
+          <div class="next-name">${nextName}</div>
+          ${np ? `<div class="next-countdown"><strong>${np.h}<small>h</small></strong><span>:</span><strong>${String(np.m).padStart(2, "0")}<small>m</small></strong></div>` : ""}
+        </div>
       </div>
-      <div class="next-prayer">
-        <div class="next-name">${np ? np.name : (lastErr ? "Unavailable" : "Loading…")}</div>
-        ${np ? `<div class="next-countdown"><strong>${np.h}<small>h</small></strong><span>:</span><strong>${String(np.m).padStart(2, "0")}<small>m</small></strong></div>` : ""}
+      ${np ? `<div class="prayer-progress" title="${np.prev} → ${np.name}"><div style="transform:scaleX(${np.pct / 100})"></div></div>` : ""}
+      <div class="prayer-grid">
+        ${PRAYER_ORDER.map((name) => {
+          const isCurrent = np && np.name === name;
+          const isTap = activePrayer === name;
+          const t = prayers ? fmt12(prayers[name]) : "—";
+          const cls = ["prayer"];
+          if (isCurrent) cls.push("current");
+          if (isTap) cls.push("tapped");
+          return `<button type="button" class="${cls.join(" ")}" data-prayer="${name}"><div class="n">${name}</div><div class="t">${t}</div></button>`;
+        }).join("")}
+      </div>
+      <div class="prayer-detail" id="prayerDetail">${activePrayer ? detailHTML(activePrayer) : ""}</div>
       </div>
     </div>
-    ${np ? `<div class="prayer-progress" title="${np.prev} → ${np.name}"><div style="width:${np.pct}%"></div></div>` : ""}
-    <div class="prayer-grid">
-      ${PRAYER_ORDER.map((name) => {
-        const isCurrent = np && np.name === name;
-        const isTap = activePrayer === name;
-        const t = prayers ? fmt12(prayers[name]) : "—";
-        const cls = ["prayer"];
-        if (isCurrent) cls.push("current");
-        if (isTap) cls.push("tapped");
-        return `<button type="button" class="${cls.join(" ")}" data-prayer="${name}"><div class="n">${name}</div><div class="t">${t}</div></button>`;
-      }).join("")}
-    </div>
-    <div class="prayer-detail" id="prayerDetail">${activePrayer ? detailHTML(activePrayer) : ""}</div>
     ${lastErr ? `<div class="err">${lastErr}</div>` : ""}`;
+}
+
+function wirePrayerCollapse() {
+  // Both the collapsed-row and the expanded-content buttons render at the
+  // same time (CSS shows one of them based on .is-collapsed), so bind both.
+  document.querySelectorAll(".prayer-collapse").forEach((button) => {
+    if (button.dataset.wired) return;
+    button.dataset.wired = "1";
+    button.addEventListener("click", (e) => {
+      e.stopPropagation();
+      state.prayerCollapsed = !state.prayerCollapsed;
+      storage.set({ prayerCollapsed: state.prayerCollapsed });
+      globalThis.__ZAKKIR_HAPTIC__?.("selection");
+      // Both rows are already in the DOM — a class-only toggle lets the
+      // height transition animate instead of snapping via a re-render.
+      document.querySelectorAll(".prayer-collapse").forEach((b) => {
+        b.setAttribute("aria-expanded", String(!state.prayerCollapsed));
+      });
+      const region = $("#prayerRegion");
+      if (region) region.classList.toggle("is-collapsed", Boolean(state.prayerCollapsed));
+    });
+  });
 }
 
 function detailHTML(name) {
@@ -647,13 +784,23 @@ function azkarCardHTML() {
   const z = list[state.azkarIndex] || { content: "—", count: "1", description: "" };
   const target = parseInt(z.count, 10) || 1;
   const pct = Math.min(100, (state.azkarCount / target) * 100);
+  const overallPct = list.length ? Math.min(100, ((state.azkarIndex + 1) / list.length) * 100) : 0;
   const reading = splitOpeningFormula(z.content);
+  const morning = state.category === MORNING_CAT;
   return `
-    <div class="progress"><div style="width:${pct}%"></div></div>
-    ${reading.preamble ? `<div class="dhikr-preamble dhikr-preamble-${reading.preambleKind}" lang="ar">${reading.preamble}</div>` : ""}
-    <div class="dhikr" lang="ar">${reading.body}</div>
-    ${z.description ? `<div class="desc">${z.description}</div>` : ""}
-    <div class="tap-hint">Tap anywhere to count</div>`;
+    <div class="azkar-context ${morning ? "is-morning" : "is-evening"}" aria-live="polite">
+      <span class="azkar-context-balance" aria-hidden="true"></span>
+      <div class="azkar-context-copy"><strong lang="ar">${morning ? "أذكار الصباح" : "أذكار المساء"}</strong></div>
+      <span class="counter azkar-current-count" aria-label="Current dhikr progress"><span class="azkar-count-cur">${state.azkarCount}</span><span class="azkar-count-sep" aria-hidden="true">/</span><span class="azkar-count-total">${target}</span></span>
+    </div>
+    <div class="progress azkar-current-progress" aria-hidden="true"><div style="transform:scaleX(${pct / 100})"></div></div>
+    <div class="azkar-body-wrapper">
+      ${reading.preamble ? `<div class="dhikr-preamble dhikr-preamble-${reading.preambleKind}" lang="ar">${reading.preamble}</div>` : ""}
+      <div class="dhikr" lang="ar">${reading.body}</div>
+      ${z.description ? `<div class="desc">${z.description}</div>` : ""}
+    </div>
+    <div class="azkar-overall-track" role="progressbar" aria-label="Overall azkar progress" aria-valuemin="0" aria-valuemax="${list.length}" aria-valuenow="${state.azkarIndex + 1}"><div style="transform:scaleX(${overallPct / 100})"></div></div>
+    `;
 }
 
 function navIndicatorText() {
@@ -661,19 +808,26 @@ function navIndicatorText() {
   return `${state.azkarIndex + 1} / ${list.length || 0}`;
 }
 
+const AZKAR_NAVIGATION_MODES = new Set(["buttons-and-swipe", "swipe-only", "buttons-only"]);
+function azkarNavigationMode() {
+  return AZKAR_NAVIGATION_MODES.has(state.azkarNavigation)
+    ? state.azkarNavigation
+    : DEFAULTS.azkarNavigation;
+}
+
 function renderHome() {
+  const navMode = azkarNavigationMode();
   return `
     <div class="app home-view">
       <div class="header" id="headerRegion">${headerHTML()}</div>
-      <section class="card prayer-card" id="prayerRegion" aria-label="Prayer times">${prayerCardHTML()}</section>
-      <div class="cat-row" id="catRegion">${catRowHTML()}</div>
+      <section class="card prayer-card ${state.prayerCollapsed ? "is-collapsed" : ""}" id="prayerRegion" aria-label="Prayer times">${prayerCardHTML()}</section>
       <button type="button" class="azkar-card" id="azkarTap" aria-label="Count this dhikr">${azkarCardHTML()}</button>
-      <div class="nav-row">
+      <div class="nav-row azkar-controls" data-nav-mode="${navMode}">
         <button class="nav-btn" data-nav="-1" title="Previous dhikr">${icon.prev}<span>Previous</span></button>
-        <button class="nav-btn reset-btn" id="resetBtn" title="Reset count">${icon.reset}<span>Reset</span></button>
+        <button class="nav-btn reset-btn" id="resetBtn" title="Reset count" aria-label="Reset count">${icon.reset}<span>Reset</span></button>
         <button class="nav-btn" data-nav="1" title="Next dhikr"><span>Next</span>${icon.next}</button>
       </div>
-      <div class="nav-indicator" id="navIndicator">${navIndicatorText()}</div>
+      ${mobileBottomNavHTML("home")}
     </div>
   `;
 }
@@ -903,7 +1057,7 @@ function scheduleFooterHTML() {
   return `
     <div class="sched-foot">
       <span>${where} · ${methodName}</span>
-      <button class="sched-csv" id="schedCsv" title="Download CSV">Export CSV</button>
+      ${globalThis.__ZAKKIR_MOBILE__ ? "" : `<button class="sched-csv" id="schedCsv" title="Download CSV">Export CSV</button>`}
     </div>`;
 }
 
@@ -918,6 +1072,7 @@ function renderSchedule() {
       <div id="schedHead">${scheduleHeaderHTML()}</div>
       <div id="schedBody">${scheduleBodyHTML()}</div>
       <div id="schedFoot">${scheduleFooterHTML()}</div>
+      ${mobileBottomNavHTML("schedule")}
     </div>
   `;
 }
@@ -1037,9 +1192,12 @@ function locationCardHTML() {
   const method = state.locationMethod || "manual";
   const srcLabel = { preset: "via city", detect: "via GPS", map: "via map", manual: "via manual" }[method] || "";
   const resolved = state.locationName || `${Number(state.lat).toFixed(3)}, ${Number(state.lng).toFixed(3)}`;
-  const tab = ["gps", "map", "city"].includes(state.locationTab)
+  const locationTabs = globalThis.__ZAKKIR_MOBILE__
+    ? [["gps", "GPS"], ["city", "City"]]
+    : [["gps", "GPS"], ["map", "Map"], ["city", "City"]];
+  const tab = locationTabs.some(([id]) => id === state.locationTab)
     ? state.locationTab
-    : (method === "detect" ? "gps" : method === "map" ? "map" : "city");
+    : (method === "detect" ? "gps" : method === "map" && !globalThis.__ZAKKIR_MOBILE__ ? "map" : "city");
 
   let activeCountry = "";
   let activeCity = "";
@@ -1088,7 +1246,7 @@ function locationCardHTML() {
         ${srcLabel ? `<span class="loc-chip">${srcLabel}</span>` : ""}
       </div>
       <div class="seg" role="tablist">
-        ${[["gps", "GPS"], ["map", "Map"], ["city", "City"]].map(([id, lbl]) => `<button type="button" class="seg-btn ${tab === id ? "active" : ""}" data-tab="${id}">${lbl}</button>`).join("")}
+        ${locationTabs.map(([id, lbl]) => `<button type="button" class="seg-btn ${tab === id ? "active" : ""}" data-tab="${id}">${lbl}</button>`).join("")}
       </div>
       ${panel}
     </div>
@@ -1188,15 +1346,13 @@ function themeCardsHTML(themes, featured = false) {
     </button>`).join("");
 }
 const CLASSIC_THEME_INDEX = THEMES.findIndex(([id]) => id === "light");
-const DESIGN_ERA_THEME_COUNT = 3;
-const GLASS_THEME_COUNT = 3;
-const BOLD_THEME_COUNT = 2;
-const GLASS_THEME_START = DESIGN_ERA_THEME_COUNT;
-const BOLD_THEME_START = GLASS_THEME_START + GLASS_THEME_COUNT;
-const FEATURED_THEME_COUNT = BOLD_THEME_START + BOLD_THEME_COUNT;
 
-const SETTINGS_SECTIONS = ["general", "notifications", "reading", "appearance", "window"];
-const SETTINGS_NAV = [["general", "General"], ["notifications", "Notifications"], ["reading", "Reading"], ["appearance", "Appearance"], ["window", "Window"]];
+const SETTINGS_SECTIONS = globalThis.__ZAKKIR_MOBILE__
+  ? ["general", "reading", "appearance"]
+  : ["general", "notifications", "reading", "appearance", "window"];
+const SETTINGS_NAV = globalThis.__ZAKKIR_MOBILE__
+  ? [["general", "General"], ["reading", "Reading"], ["appearance", "Appearance"]]
+  : [["general", "General"], ["notifications", "Notifications"], ["reading", "Reading"], ["appearance", "Appearance"], ["window", "Window"]];
 const SETTINGS_META = {
   general: ["General", "Set your prayer location and schedule preferences."],
   notifications: ["Notifications", "Choose when Zakkir should remind you."],
@@ -1282,7 +1438,7 @@ function settingsBodyHTML(id) {
     </details>
     <div class="settings-card"><div class="row"><label>Calculation method</label>${dropdownHTML("method", state.method, METHODS.map(([v, n]) => ({ v, l: n })))}</div>
       <div class="row"><label>Highlight Mon/Thu (Sunnah fasting)</label><label class="switch"><input type="checkbox" id="sunnahFastHighlight" ${state.sunnahFastHighlight ? "checked" : ""}/><span></span></label></div>
-      ${globalThis.electronAPI ? `<div class="row"><label>Show update alerts</label><label class="switch"><input type="checkbox" id="updateAlertsEnabled" ${state.updateAlertsEnabled ? "checked" : ""}/><span></span></label></div>` : ""}
+      ${globalThis.electronAPI && !globalThis.__ZAKKIR_MOBILE__ ? `<div class="row"><label>Show update alerts</label><label class="switch"><input type="checkbox" id="updateAlertsEnabled" ${state.updateAlertsEnabled ? "checked" : ""}/><span></span></label></div>` : ""}
     </div>`;
   if (id === "notifications") {
     const notificationsOff = !state.notificationsEnabled;
@@ -1301,8 +1457,69 @@ function settingsBodyHTML(id) {
     </div>
     <div class="notification-confirmation ${state.notificationsEnabled ? "" : "paused"}"><span class="confirmation-dot"></span><p>${notificationSummary()}</p></div>`;
   }
-  if (id === "reading") return `<div class="settings-card"><div class="font-grid">${Object.keys(FONT_MAP).map((f) => `<button class="pill ${state.font === f ? "active" : ""}" data-font="${f}" aria-label="${f}"><span class="font-sample">أبجد</span><span>${f}</span></button>`).join("")}</div><div class="row"><label>Arabic size</label><input type="range" min="0.7" max="2" step="0.05" value="${state.arSize}" id="arSize"/><span>${state.arSize.toFixed(2)}×</span></div><div class="preview">بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</div></div>`;
-  if (id === "appearance") return `<div class="settings-card"><div class="theme-intro">Choose a complete visual system. Themes can change geometry, depth, texture, motion, and color. The accent palette remains customizable.</div><div class="theme-collection-title"><span>Design eras</span><span>${DESIGN_ERA_THEME_COUNT}</span></div><div class="theme-grid theme-grid-featured">${themeCardsHTML(THEMES.slice(0, GLASS_THEME_START), true)}</div><div class="theme-collection-title classic-title"><span>Glass and depth</span><span>${GLASS_THEME_COUNT}</span></div><div class="theme-grid theme-grid-featured">${themeCardsHTML(THEMES.slice(GLASS_THEME_START, BOLD_THEME_START), true)}</div><div class="theme-collection-title classic-title"><span>Bold and experimental</span><span>${BOLD_THEME_COUNT}</span></div><div class="theme-grid theme-grid-featured">${themeCardsHTML(THEMES.slice(BOLD_THEME_START, FEATURED_THEME_COUNT), true)}</div>${state.theme === "neobrutal" ? `<div class="neobrutal-tone">${neobrutalToneHTML()}</div>` : ""}<div class="theme-collection-title classic-title"><span>Atmospheric themes</span><span>${THEMES.slice(FEATURED_THEME_COUNT, CLASSIC_THEME_INDEX).length}</span></div><div class="theme-grid">${themeCardsHTML(THEMES.slice(FEATURED_THEME_COUNT, CLASSIC_THEME_INDEX))}</div><details class="settings-advanced"><summary>Browse classic themes (${THEMES.slice(CLASSIC_THEME_INDEX).length})</summary><div class="theme-grid">${themeCardsHTML(THEMES.slice(CLASSIC_THEME_INDEX))}</div></details></div><div class="settings-card"><div class="settings-card-title">Accent color</div><div class="palette-grid">${Object.entries(PALETTES).map(([id, p]) => `<button class="palette-chip ${state.palette === id ? "active" : ""}" data-palette="${id}" title="${p.name}" style="background:${p.a || "transparent"};${!p.a ? "background:repeating-linear-gradient(45deg,var(--surface-2) 0 4px,var(--line) 4px 8px);" : ""}"></button>`).join("")}</div></div>`;
+  if (id === "reading") return `<div class="settings-card"><div class="font-grid">${Object.keys(FONT_MAP).map((f) => `<button class="pill ${state.font === f ? "active" : ""}" data-font="${f}" aria-label="${f}"><span class="font-sample">أبجد</span><span>${f}</span></button>`).join("")}</div><div class="row"><label>Arabic size</label><input type="range" min="0.7" max="2" step="0.05" value="${state.arSize}" id="arSize"/><span>${state.arSize.toFixed(2)}×</span></div>${globalThis.__ZAKKIR_MOBILE__ ? `<div class="row"><label>App scale</label><div class="zoom-row"><button class="zoom-btn" data-zoom="-0.1">−</button><span class="zoom-val">${Math.round(state.zoom * 100)}%</span><button class="zoom-btn" data-zoom="0.1">+</button></div></div><div class="row azkar-navigation-setting"><label>Azkar navigation</label><div class="seg" role="group" aria-label="Azkar navigation mode"><button class="seg-btn ${azkarNavigationMode() === "buttons-and-swipe" ? "active" : ""}" data-azkar-navigation="buttons-and-swipe">Buttons + swipe</button><button class="seg-btn ${azkarNavigationMode() === "swipe-only" ? "active" : ""}" data-azkar-navigation="swipe-only">Swipe only</button><button class="seg-btn ${azkarNavigationMode() === "buttons-only" ? "active" : ""}" data-azkar-navigation="buttons-only">Buttons only</button></div></div>` : ""}<div class="preview">بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</div></div>`;
+  if (id === "appearance") {
+    const designEras = THEMES.filter(([tid]) => ["metro", "material", "neumorphic"].includes(tid));
+    const glassThemes = THEMES.filter(([tid]) => [
+      "aqua", "liquidglass", "frutiger", "monochrome", "monochrome-dark",
+      "nebula", "aurora", "sahara-glass", "nebula-dark", "aurora-dark", "sahara-glass-dark",
+      "macos-ventura", "macos-sequoia", "macos-sonoma", "crystal", "mist", "midnight", "jade", "slatestudio",
+      "macos-ventura-dark", "macos-sequoia-dark", "macos-sonoma-dark", "crystal-dark", "mist-dark", "midnight-dark", "jade-dark", "slatestudio-dark"
+    ].includes(tid));
+    const boldThemes = THEMES.filter(([tid]) => ["neobrutal"].includes(tid));
+    const freshPicks = THEMES.filter(([tid]) => ["onyx", "frutiger-sunset", "prism", "opal", "fajr"].includes(tid));
+    const classicIndex = THEMES.findIndex(([tid]) => tid === "light");
+    const atmosphericThemes = THEMES.slice(0, classicIndex).filter(([tid]) => {
+      return ![
+        "metro", "material", "neumorphic", "aqua", "liquidglass", "frutiger", "monochrome", "monochrome-dark",
+        "nebula", "aurora", "sahara-glass", "nebula-dark", "aurora-dark", "sahara-glass-dark",
+        "macos-ventura", "macos-sequoia", "macos-sonoma", "crystal", "mist", "midnight", "jade", "slatestudio",
+        "macos-ventura-dark", "macos-sequoia-dark", "macos-sonoma-dark", "crystal-dark", "mist-dark", "midnight-dark", "jade-dark", "slatestudio-dark",
+        "neobrutal", "onyx", "frutiger-sunset", "prism", "opal", "fajr"
+      ].includes(tid);
+    });
+    const classicThemes = THEMES.slice(classicIndex);
+
+    return `<div class="settings-card">
+      <div class="theme-intro">Choose a complete visual system. Themes can change geometry, depth, texture, motion, and color. The accent palette remains customizable.</div>
+      <div class="theme-collection-title"><span>Design eras</span><span>${designEras.length}</span></div>
+      <div class="theme-grid theme-grid-featured">${themeCardsHTML(designEras, true)}</div>
+
+      <div class="theme-collection-title classic-title"><span>Glass and depth</span><span>${glassThemes.length}</span></div>
+      <div class="theme-grid theme-grid-featured">${themeCardsHTML(glassThemes, true)}</div>
+
+      <div class="theme-collection-title classic-title"><span>Bold and experimental</span><span>${boldThemes.length}</span></div>
+      <div class="theme-grid theme-grid-featured">${themeCardsHTML(boldThemes, true)}</div>
+
+      <div class="theme-collection-title classic-title"><span>Fresh picks</span><span>${freshPicks.length}</span></div>
+      <div class="theme-grid theme-grid-featured">${themeCardsHTML(freshPicks, true)}</div>
+
+      ${state.theme === "neobrutal" ? `<div class="neobrutal-tone">${neobrutalToneHTML()}</div>` : ""}
+
+      <div class="theme-collection-title classic-title"><span>Atmospheric themes</span><span>${atmosphericThemes.length}</span></div>
+      <div class="theme-grid">${themeCardsHTML(atmosphericThemes)}</div>
+
+      <details class="settings-advanced">
+        <summary>Browse classic themes (${classicThemes.length})</summary>
+        <div class="theme-grid">${themeCardsHTML(classicThemes)}</div>
+      </details>
+    </div>
+    <div class="settings-card">
+      <div class="settings-card-title">Accent color</div>
+      ${PALETTE_GROUPS.map(g => `
+        <div class="palette-group">
+          <div class="palette-group-title">${g.title}</div>
+          <div class="palette-grid">
+            ${g.keys.map(k => {
+              const p = PALETTES[k];
+              if (!p) return "";
+              return `<button class="palette-chip ${state.palette === k ? "active" : ""}" data-palette="${k}" title="${p.name}" style="background:${p.a || "transparent"};${!p.a ? "background:repeating-linear-gradient(45deg,var(--surface-2) 0 4px,var(--line) 4px 8px);" : ""}"></button>`;
+            }).join("")}
+          </div>
+        </div>
+      `).join("")}
+    </div>`;
+  }
   if (id === "window") return `<div class="settings-card"><div class="row"><label>UI zoom</label><div class="zoom-row"><button class="zoom-btn" data-zoom="-0.1">−</button><span class="zoom-val">${Math.round(state.zoom * 100)}%</span><button class="zoom-btn" data-zoom="0.1">+</button></div></div><div class="row"><label>Width</label><input type="range" min="360" max="900" step="10" value="${state.popupW}" id="popupW"/><span>${state.popupW}px</span></div><div class="row"><label>Height</label><input type="range" min="480" max="900" step="10" value="${state.popupH}" id="popupH"/><span>${state.popupH}px</span></div></div>`;
   return "";
 }
@@ -1312,7 +1529,7 @@ function buildSettingsSection(id) {
 }
 function renderSettings() {
   const active = SETTINGS_SECTIONS.includes(state.settingsSection) ? state.settingsSection : "general";
-  return `<div class="app settings-view"><div class="settings-head"><button class="icon-btn" data-go="home">${icon.back}</button><h1>Settings</h1><span style="width:30px"></span></div><nav class="settings-nav" aria-label="Settings sections">${SETTINGS_NAV.map(([id, label]) => `<button type="button" class="settings-nav-btn ${active === id ? "active" : ""}" data-settings-section="${id}">${label}</button>`).join("")}</nav>${buildSettingsSection(active)}</div>`;
+  return `<div class="app settings-view"><div class="settings-head"><button class="icon-btn" data-go="home">${icon.back}</button><h1>Settings</h1><span style="width:30px"></span></div><nav class="settings-nav" aria-label="Settings sections">${SETTINGS_NAV.map(([id, label]) => `<button type="button" class="settings-nav-btn ${active === id ? "active" : ""}" data-settings-section="${id}">${label}</button>`).join("")}</nav>${buildSettingsSection(active)}${mobileBottomNavHTML("settings")}</div>`;
 }
 function htmlToNode(html) {
   const doc = new DOMParser().parseFromString(html, "text/html");
@@ -1337,16 +1554,26 @@ function contrastInk(hex) {
   return lum > 0.6 ? "#0b0f1a" : "#ffffff";
 }
 
+let _appliedStateCache = {};
+
 function applyVars() {
   const validThemes = THEMES.map(([id]) => id);
-  for (const id of validThemes) {
-    document.documentElement.classList.remove("theme-" + id);
-    if (THEME_BASES[id]) document.documentElement.classList.remove("theme-" + THEME_BASES[id]);
-  }
   const theme = validThemes.includes(state.theme) ? state.theme : DEFAULTS.theme;
-  document.documentElement.classList.add("theme-" + theme);
-  if (THEME_BASES[theme]) document.documentElement.classList.add("theme-" + THEME_BASES[theme]);
-  document.documentElement.classList.toggle("neobrutal-high", state.neobrutalContrast === "high");
+  const palette = state.palette;
+  const contrast = state.neobrutalContrast;
+
+  if (_appliedStateCache.theme !== theme || _appliedStateCache.contrast !== contrast) {
+    for (const id of validThemes) {
+      document.documentElement.classList.remove("theme-" + id);
+      if (THEME_BASES[id]) document.documentElement.classList.remove("theme-" + THEME_BASES[id]);
+    }
+    document.documentElement.classList.add("theme-" + theme);
+    if (THEME_BASES[theme]) document.documentElement.classList.add("theme-" + THEME_BASES[theme]);
+    document.documentElement.classList.toggle("neobrutal-high", contrast === "high");
+    _appliedStateCache.theme = theme;
+    _appliedStateCache.contrast = contrast;
+  }
+
   const font = FONT_MAP[state.font] ? state.font : "Scheherazade";
   document.body.style.setProperty("--ar-font", FONT_MAP[font]);
   document.body.style.setProperty("--ar-size", state.arSize);
@@ -1357,13 +1584,34 @@ function applyVars() {
   const pinned = globalThis.electronAPI ? true : IS_PINNED;
   document.body.classList.toggle("pinned", pinned);
 
-  // Palette: single accent color, no gradient
-  document.body.style.removeProperty("--accent");
-  document.body.style.removeProperty("--accent-ink");
-  const p = PALETTES[state.palette];
-  if (p && p.a) {
-    document.body.style.setProperty("--accent", p.a);
-    document.body.style.setProperty("--accent-ink", contrastInk(p.a));
+  if (_appliedStateCache.palette !== palette) {
+    document.body.style.removeProperty("--accent");
+    document.body.style.removeProperty("--accent-ink");
+    const p = PALETTES[palette];
+    if (p && p.a) {
+      document.body.style.setProperty("--accent", p.a);
+      document.body.style.setProperty("--accent-ink", contrastInk(p.a));
+    }
+    _appliedStateCache.palette = palette;
+  }
+
+  if (globalThis.__ZAKKIR_MOBILE__ && (_appliedStateCache.postedTheme !== theme || _appliedStateCache.postedPalette !== palette)) {
+    _appliedStateCache.postedTheme = theme;
+    _appliedStateCache.postedPalette = palette;
+    setTimeout(() => {
+      try {
+        const cs = getComputedStyle(document.documentElement);
+        const bg = cs.getPropertyValue("--bg").trim() || "#f4f4f6";
+        const probe = document.createElement("span");
+        probe.style.color = bg;
+        document.body.appendChild(probe);
+        const rgb = getComputedStyle(probe).color.match(/\d+(?:\.\d+)?/g)?.slice(0, 3).map(Number) || [244, 244, 246];
+        probe.remove();
+        const luminance = (0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2]) / 255;
+        const isDark = luminance < 0.5;
+        window.ReactNativeWebView?.postMessage(JSON.stringify({ type: "theme-color", bg, isDark }));
+      } catch (_) {}
+    }, 20);
   }
 }
 
@@ -1376,29 +1624,102 @@ function setHTML(el, html) {
 function render() {
   applyVars();
   const app = $("#app");
-  if (state.view === "map") {
-    setHTML(app, renderMap());
-    wireMap();
-  } else {
-    const html = state.view === "settings" ? renderSettings()
-      : state.view === "schedule" ? renderSchedule()
-      : renderHome();
-    setHTML(app, html);
-    wire();
+  const previousView = renderedView;
+  const paint = () => {
+    if (state.view === "map") {
+      setHTML(app, renderMap());
+      wireMap();
+    } else {
+      const html = state.view === "settings" ? renderSettings()
+        : state.view === "schedule" ? renderSchedule()
+        : renderHome();
+      setHTML(app, html);
+      wire();
+      settleMobileNav(state.view);
+    }
+  };
+  const viewChanged = renderedView !== null && renderedView !== state.view;
+  renderedView = state.view;
+  paint();
+  if (globalThis.__ZAKKIR_MOBILE__) {
+    window.ReactNativeWebView?.postMessage(JSON.stringify({ type: "view-change", view: state.view }));
   }
 }
 
+globalThis.__ZAKKIR_HANDLE_BACK__ = () => {
+  if (state.view === "home") return false;
+  update({ view: state.view === "map" ? "settings" : "home" });
+  return true;
+};
+
+function settleMobileNav(nextView) {
+  if (!globalThis.__ZAKKIR_MOBILE__) return;
+  const nav = document.querySelector(".mobile-bottom-nav");
+  if (!nav) return;
+  const order = ["home", "schedule", "settings"];
+  const to = order.indexOf(nextView);
+  if (to < 0) return;
+  const liquid = nav.querySelector(".mobile-nav-liquid");
+  if (!liquid) return;
+  requestAnimationFrame(() => {
+    liquid.style.setProperty("--nav-index", String(to));
+    mobileNavTransition = null;
+  });
+}
+
 function patchCount(count, target) {
-  const counter = document.querySelector("#catRegion .counter");
-  if (counter) counter.textContent = `${count} / ${target}`;
-  const bar = document.querySelector("#azkarTap .progress > div");
-  if (bar) bar.style.width = `${Math.min(100, (count / target) * 100)}%`;
+  const categoryCounter = document.querySelector("#catRegion .counter");
+  if (categoryCounter) categoryCounter.textContent = `${count} / ${target}`;
+  const currentCounter = document.querySelector("#azkarTap .azkar-current-count");
+  if (currentCounter) {
+    const cur = currentCounter.querySelector(".azkar-count-cur");
+    if (cur) cur.textContent = count;
+    const total = currentCounter.querySelector(".azkar-count-total");
+    if (total) total.textContent = target;
+  }
+  const currentBar = document.querySelector("#azkarTap .azkar-current-progress > div");
+  if (currentBar) currentBar.style.transform = `scaleX(${Math.min(1, count / target)})`;
+  const overall = azkarOverallProgress();
+  const overallProgress = document.querySelector("#azkarTap .azkar-overall-track");
+  if (overallProgress) overallProgress.setAttribute("aria-valuenow", String(overall.completed));
+  const overallBar = document.querySelector("#azkarTap .azkar-overall-track > div");
+  if (overallBar) overallBar.style.transform = `scaleX(${overall.total ? Math.min(1, overall.completed / overall.total) : 0})`;
+  const hint = document.querySelector("#azkarTap .azkar-hint");
+  if (hint && state.azkarHintDismissed) hint.remove();
 }
 
 function patchAzkarCard() {
-  const el = $("#azkarTap"); if (el) setHTML(el, azkarCardHTML());
+  const el = $("#azkarTap");
+  if (el) {
+    const list = currentDhikrList();
+    const z = list[state.azkarIndex] || { content: "—", count: "1", description: "" };
+    const target = parseInt(z.count, 10) || 1;
+    const bodyWrapper = el.querySelector(".azkar-body-wrapper");
+
+    if (bodyWrapper) {
+      const reading = splitOpeningFormula(z.content);
+      const morning = state.category === MORNING_CAT;
+      const contextCopy = el.querySelector(".azkar-context-copy strong");
+      if (contextCopy) contextCopy.textContent = morning ? "أذكار الصباح" : "أذكار المساء";
+      const context = el.querySelector(".azkar-context");
+      if (context) {
+        context.classList.toggle("is-morning", morning);
+        context.classList.toggle("is-evening", !morning);
+      }
+
+      bodyWrapper.innerHTML = `
+        ${reading.preamble ? `<div class="dhikr-preamble dhikr-preamble-${reading.preambleKind}" lang="ar">${reading.preamble}</div>` : ""}
+        <div class="dhikr" lang="ar">${reading.body}</div>
+        ${z.description ? `<div class="desc">${z.description}</div>` : ""}`;
+
+      patchCount(state.azkarCount, target);
+    } else {
+      setHTML(el, azkarCardHTML());
+    }
+  }
+
   const cat = $("#catRegion");
-  if (cat) {
+  if (cat && !globalThis.__ZAKKIR_MOBILE__) {
     setHTML(cat, catRowHTML());
     wireDropdowns({
       catPick: (v) => {
@@ -1412,10 +1733,179 @@ function patchAzkarCard() {
   if (nav) nav.textContent = navIndicatorText();
 }
 
-function patchPrayerCard() {
-  const el = $("#prayerRegion"); if (el) setHTML(el, prayerCardHTML());
-  // re-wire prayer tap after patch
-  wirePrayerTap();
+function animateAzkarSwap(direction, paint, fromSwipe = false) {
+  const el = $("#azkarTap");
+  if (!el) {
+    paint();
+    return;
+  }
+  if (azkarNavigationBusy) return;
+  azkarNavigationBusy = true;
+  if (azkarTransitionTimer) clearTimeout(azkarTransitionTimer);
+
+  const startHeight = el.getBoundingClientRect().height;
+  el.style.height = `${startHeight}px`;
+
+  const innerContent = el.querySelector(".azkar-body-wrapper") || el.querySelector(".dhikr") || el;
+
+  if (!fromSwipe) {
+    innerContent.style.transition = "transform 0.12s cubic-bezier(0.4, 0, 1, 1), opacity 0.12s ease";
+    innerContent.style.transform = `translateX(${direction > 0 ? -50 : 50}px)`;
+    innerContent.style.opacity = "0.2";
+  }
+
+  window.setTimeout(() => {
+    paint();
+    const newEl = $("#azkarTap");
+    if (!newEl) {
+      azkarNavigationBusy = false;
+      return;
+    }
+    newEl.style.height = "auto";
+    const nextHeight = newEl.getBoundingClientRect().height;
+    newEl.style.height = `${startHeight}px`;
+
+    const newInner = newEl.querySelector(".azkar-body-wrapper") || newEl.querySelector(".dhikr") || newEl;
+    newInner.style.transition = "none";
+    newInner.style.transform = `translateX(${direction > 0 ? 40 : -40}px)`;
+    newInner.style.opacity = "0.2";
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        newInner.style.transition = "transform 0.22s cubic-bezier(0.175, 0.885, 0.32, 1.1), opacity 0.2s ease";
+        newInner.style.transform = "translateX(0)";
+        newInner.style.opacity = "1";
+        newEl.style.transition = "height 0.2s cubic-bezier(0.22, 1, 0.36, 1)";
+        newEl.style.height = `${nextHeight}px`;
+      });
+    });
+
+    azkarTransitionTimer = window.setTimeout(() => {
+      newEl.style.transition = "";
+      newEl.style.height = "";
+      if (newInner) {
+        newInner.style.transition = "";
+        newInner.style.transform = "";
+        newInner.style.opacity = "";
+      }
+      azkarNavigationBusy = false;
+      azkarTransitionTimer = null;
+    }, 230);
+  }, fromSwipe ? 10 : 110);
+}
+
+function navigateAzkar(direction, fromSwipe = false) {
+  const list = currentDhikrList();
+  if (!list.length || azkarNavigationBusy) return;
+  const index = (state.azkarIndex + direction + list.length) % list.length;
+  cancelPendingAzkarCount();
+  state.azkarIndex = index;
+  state.azkarCount = 0;
+  storage.set({ azkarIndex: index, azkarCount: 0 });
+  animateAzkarSwap(direction, patchAzkarCard, fromSwipe);
+}
+
+function wireAzkarSwipe(tap) {
+  if (!tap || azkarNavigationMode() === "buttons-only") return;
+  let startX = 0;
+  let startY = 0;
+  let currentDx = 0;
+  let tracking = false;
+  let isHorizontal = false;
+
+  tap.addEventListener("touchstart", (event) => {
+    if (event.touches.length !== 1 || azkarNavigationBusy) return;
+    startX = event.touches[0].clientX;
+    startY = event.touches[0].clientY;
+    currentDx = 0;
+    tracking = true;
+    isHorizontal = false;
+  }, { passive: true });
+
+  tap.addEventListener("touchmove", (event) => {
+    if (!tracking || !event.touches.length) return;
+    const touchX = event.touches[0].clientX;
+    const touchY = event.touches[0].clientY;
+    const dx = touchX - startX;
+    const dy = touchY - startY;
+
+    if (!isHorizontal) {
+      if (Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy) * 1.1) {
+        isHorizontal = true;
+      } else if (Math.abs(dy) > 12) {
+        tracking = false;
+        return;
+      }
+    }
+
+    if (isHorizontal) {
+      currentDx = dx;
+      const inner = tap.querySelector(".azkar-body-wrapper") || tap.querySelector(".dhikr") || tap;
+      inner.style.transition = "none";
+      const dampedDx = dx * 0.72;
+      inner.style.transform = `translateX(${dampedDx}px)`;
+      inner.style.opacity = `${Math.max(0.55, 1 - Math.abs(dx) / 360)}`;
+    }
+  }, { passive: true });
+
+  tap.addEventListener("touchend", (event) => {
+    if (!tracking) return;
+    tracking = false;
+    const inner = tap.querySelector(".azkar-body-wrapper") || tap.querySelector(".dhikr") || tap;
+
+    if (isHorizontal && Math.abs(currentDx) >= 38) {
+      suppressAzkarTap = true;
+      window.setTimeout(() => { suppressAzkarTap = false; }, 300);
+      globalThis.__ZAKKIR_HAPTIC__?.("selection");
+
+      const direction = currentDx < 0 ? 1 : -1;
+      inner.style.transition = "transform 0.12s cubic-bezier(0.4, 0, 1, 1), opacity 0.12s ease";
+      inner.style.transform = `translateX(${currentDx < 0 ? -90 : 90}px)`;
+      inner.style.opacity = "0.2";
+
+      window.setTimeout(() => {
+        navigateAzkar(direction, true);
+      }, 90);
+    } else {
+      inner.style.transition = "transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.2), opacity 0.2s ease";
+      inner.style.transform = "translateX(0)";
+      inner.style.opacity = "1";
+    }
+  }, { passive: true });
+}
+
+function patchPrayerCard(forceRebuild = false) {
+  const el = $("#prayerRegion");
+  if (!el) return;
+  el.classList.toggle("is-collapsed", Boolean(state.prayerCollapsed));
+
+  const np = nextPrayer();
+  const nextName = np ? np.name : (lastErr ? "Unavailable" : "Loading…");
+  const currentNameEl = el.querySelector(".next-name") || el.querySelector(".prayer-collapsed-main strong");
+
+  // If forceRebuild is true, or structure/prayer changed, re-render HTML cleanly
+  if (forceRebuild || !currentNameEl || currentNameEl.textContent.trim() !== nextName) {
+    setHTML(el, prayerCardHTML());
+    wirePrayerTap();
+    wirePrayerCollapse();
+    return;
+  }
+
+  // In-place patch: update countdown text and progress bar fill
+  if (np) {
+    const countdownCollapsed = el.querySelector(".prayer-collapsed-countdown");
+    if (countdownCollapsed) countdownCollapsed.textContent = `${np.h}h ${String(np.m).padStart(2, "0")}m`;
+
+    const countdownHeroHours = el.querySelector(".next-countdown strong:first-child");
+    const countdownHeroMins = el.querySelector(".next-countdown strong:last-child");
+    if (countdownHeroHours && countdownHeroMins) {
+      countdownHeroHours.innerHTML = `${np.h}<small>h</small>`;
+      countdownHeroMins.innerHTML = `${String(np.m).padStart(2, "0")}<small>m</small>`;
+    }
+
+    const progress = el.querySelector(".prayer-progress > div");
+    if (progress) progress.style.transform = `scaleX(${np.pct / 100})`;
+  }
 }
 
 function patchPrayerDetail() {
@@ -1453,16 +1943,32 @@ function update(patch, persist = true) {
     storage.set(save);
   }
   const keys = Object.keys(patch);
-  // CSS-vars-only changes never need a DOM rerender, in either view.
   if (keys.length && keys.every((k) => VAR_ONLY_KEYS.has(k))) { applyVars(); return; }
-  if (state.view === "settings") { render(); return; }
+  // View changes always re-render — the settings branch below must not
+  // swallow navigation (state.view already reflects the target view here).
+  if (keys.includes("view")) { render(); return; }
+  if (state.view === "settings") {
+    for (const [k, v] of Object.entries(patch)) {
+      if (k === "azkarNavigation") patchSettingsActive("data-azkar-navigation", v);
+    }
+    return;
+  }
   if (keys.length && keys.every((k) => AZKAR_ONLY_KEYS.has(k))) { patchAzkarCard(); return; }
   render();
 }
 
 function wire() {
   document.querySelectorAll("[data-go]").forEach((b) =>
-    b.addEventListener("click", () => update({ view: b.dataset.go }))
+    b.addEventListener("click", () => {
+      if (state.view !== b.dataset.go) {
+        const order = ["home", "schedule", "settings"];
+        const from = order.indexOf(state.view);
+        const to = order.indexOf(b.dataset.go);
+        mobileNavTransition = from >= 0 && to >= 0 && from !== to ? { from, to } : null;
+        globalThis.__ZAKKIR_HAPTIC__?.("selection");
+        update({ view: b.dataset.go });
+      }
+    })
   );
   document.querySelectorAll("[data-settings-section]").forEach((b) =>
     b.addEventListener("click", () => {
@@ -1481,21 +1987,29 @@ function wire() {
 
   // Home interactions
   wirePrayerTap();
+  wirePrayerCollapse();
   const tap = $("#azkarTap");
+  wireAzkarSwipe(tap);
   if (tap) tap.addEventListener("click", () => {
+    if (suppressAzkarTap || azkarNavigationBusy) return;
     const list = currentDhikrList();
     const z = list[state.azkarIndex]; if (!z) return;
     const target = parseInt(z.count, 10) || 1;
     const next = state.azkarCount + 1;
-    tap.classList.add("pulse");
-    setTimeout(() => tap.classList.remove("pulse"), 220);
+    if (globalThis.__ZAKKIR_MOBILE__ && !state.azkarHintDismissed) {
+      state.azkarHintDismissed = true;
+      storage.set({ azkarHintDismissed: true });
+    }
+    globalThis.__ZAKKIR_HAPTIC__?.(next >= target ? "success" : "light");
     if (next >= target) {
-      // finish: patch in place, then advance with a full render
+      // Finish in place, then advance through the same animated path as navigation.
+      state.azkarCount = target;
       patchCount(target, target);
-      setTimeout(() => {
-        const ni = (state.azkarIndex + 1) % list.length;
-        update({ azkarIndex: ni, azkarCount: 0 });
-      }, 280);
+      tap.classList.remove("azkar-complete");
+      void tap.offsetWidth;
+      tap.classList.add("azkar-complete");
+      setTimeout(() => tap.classList.remove("azkar-complete"), 500);
+      setTimeout(() => navigateAzkar(1), 420);
     } else {
       // in-place patch: no full re-render, no flicker
       state.azkarCount = next;
@@ -1505,10 +2019,8 @@ function wire() {
   });
   document.querySelectorAll("[data-nav]").forEach((b) =>
     b.addEventListener("click", () => {
-      const list = currentDhikrList(); if (!list.length) return;
       const dir = parseInt(b.dataset.nav, 10);
-      const i = (state.azkarIndex + dir + list.length) % list.length;
-      update({ azkarIndex: i, azkarCount: 0 });
+      navigateAzkar(dir);
     })
   );
   const reset = $("#resetBtn");
@@ -1516,18 +2028,22 @@ function wire() {
     const list = currentDhikrList();
     const z = list[state.azkarIndex];
     const target = z ? (parseInt(z.count, 10) || 1) : 1;
+    cancelPendingAzkarCount();
     state.azkarCount = 0;
     storage.set({ azkarCount: 0 });
+    globalThis.__ZAKKIR_HAPTIC__?.("selection");
     patchCount(0, target);
   });
   // Themed dropdowns (replaces native <select>)
-  wireDropdowns({
-    catPick: (v) => {
-      state.autoTime = false;
-      storage.set({ autoTime: false });
-      update({ category: v, azkarIndex: 0, azkarCount: 0 });
-    },
-  });
+  if (!globalThis.__ZAKKIR_MOBILE__) {
+    wireDropdowns({
+      catPick: (v) => {
+        state.autoTime = false;
+        storage.set({ autoTime: false });
+        update({ category: v, azkarIndex: 0, azkarCount: 0 });
+      },
+    });
+  }
   const pinBtn = $("#pinBtn");
   if (pinBtn) pinBtn.addEventListener("click", () => {
     if (IS_PINNED) { window.close(); return; }
@@ -1628,7 +2144,30 @@ function wireSettings() {
     liquidglass: { bg: "linear-gradient(135deg,#e7ebe6,#cbd2ce 48%,#dfdfd7)", a: "#657d77", style: "liquidglass" },
     frutiger:    { bg: "linear-gradient(180deg,#d3e1dc 0 48%,#aabd9b 49%)", a: "#5d8778", style: "frutiger" },
     neobrutal:   { bg: "#d8d0bd", a: "#657d70", style: "neobrutal" },
-    webbrutal:   { bg: "#f2f2ed", a: "#49665b", style: "webbrutal" },
+    monochrome:          { bg: "linear-gradient(180deg,#f8fafc,#edf2f7)", a: "#0f172a", style: "monochrome" },
+    "monochrome-dark":   { bg: "linear-gradient(180deg,#090a0d,#050507)", a: "#ffffff", style: "monochrome" },
+    nebula:              { bg: "linear-gradient(135deg,#fff1f2,#e0e7ff)", a: "#6366f1", style: "nebula" },
+    aurora:              { bg: "linear-gradient(180deg,#ebfbf5,#d1fae5)", a: "#0d9488", style: "aurora" },
+    "sahara-glass":      { bg: "linear-gradient(180deg,#fef7e0,#e0f2fe)", a: "#0ea5e9", style: "sahara-glass" },
+    "nebula-dark":       { bg: "linear-gradient(180deg,#0c0814,#040306)", a: "#db2777", style: "nebula" },
+    "aurora-dark":       { bg: "linear-gradient(180deg,#090e0c,#040605)", a: "#10b981", style: "aurora" },
+    "sahara-glass-dark": { bg: "linear-gradient(180deg,#100b08,#060403)", a: "#f97316", style: "sahara-glass" },
+    "macos-ventura":     { bg: "linear-gradient(180deg,#e8ecf2,#d8e0ec)", a: "#0066cc", style: "macos-ventura" },
+    "macos-sequoia":     { bg: "linear-gradient(180deg,#e5ece9,#d5e2dc)", a: "#059669", style: "macos-sequoia" },
+    "macos-sonoma":      { bg: "linear-gradient(180deg,#efe8f0,#dfd4e4)", a: "#7c3aed", style: "macos-sonoma" },
+    crystal:             { bg: "linear-gradient(135deg,#eef2f7,#e2e8f0)", a: "#2563eb", style: "crystal" },
+    mist:                { bg: "linear-gradient(180deg,#eceef1,#dedfe4)", a: "#4b5563", style: "mist" },
+    midnight:            { bg: "linear-gradient(180deg,#e2e6f0,#d4daf0)", a: "#1d4ed8", style: "midnight" },
+    jade:                { bg: "linear-gradient(180deg,#e8f0ec,#d6e6dc)", a: "#15803d", style: "jade" },
+    slatestudio:         { bg: "linear-gradient(180deg,#e5e7eb,#d8dce4)", a: "#0284c7", style: "slatestudio" },
+    "macos-ventura-dark": { bg: "linear-gradient(180deg,#181a20,#101216)", a: "#3388ff", style: "macos-ventura" },
+    "macos-sequoia-dark": { bg: "linear-gradient(180deg,#141c19,#0d1210)", a: "#10b981", style: "macos-sequoia" },
+    "macos-sonoma-dark":  { bg: "linear-gradient(180deg,#1a141c,#100b12)", a: "#a78bfa", style: "macos-sonoma" },
+    "crystal-dark":       { bg: "linear-gradient(135deg,#0f1523,#070912)", a: "#6366f1", style: "crystal" },
+    "mist-dark":          { bg: "linear-gradient(180deg,#16181c,#0f1013)", a: "#9ca3af", style: "mist" },
+    "midnight-dark":      { bg: "linear-gradient(180deg,#0d0f17,#05060b)", a: "#3b82f6", style: "midnight" },
+    "jade-dark":          { bg: "linear-gradient(180deg,#0e1a13,#060e09)", a: "#22c55e", style: "jade" },
+    "slatestudio-dark":   { bg: "linear-gradient(180deg,#131b2c,#0b0f19)", a: "#38bdf8", style: "slatestudio" },
     "metro-dark":       { bg: "#151719", a: "#69aa98", style: "metro" },
     "material-dark":    { bg: "#17181d", a: "#b5a3d4", style: "material" },
     "neumorphic-dark":  { bg: "#222a2e", a: "#78ad9e", style: "neumorphic" },
@@ -1636,12 +2175,23 @@ function wireSettings() {
     "liquidglass-dark": { bg: "linear-gradient(135deg,#18211f,#29322f 48%,#111817)", a: "#8bb6a8", style: "liquidglass" },
     "frutiger-dark":    { bg: "linear-gradient(180deg,#243b42 0 48%,#1d3028 49%)", a: "#91b69b", style: "frutiger" },
     "editorial-dark":   { bg: "#1d1b19", a: "#c9826c", style: "editorial" },
-    "softclay-dark":    { bg: "#292522", a: "#b58a70", style: "softclay" },
-    "webbrutal-dark":   { bg: "#111312", a: "#8bb9a7", style: "webbrutal" },
+    onyx:       { bg: "#0b0b0d", a: "#e8e2d4", style: "onyx" },
+    "frutiger-sunset": { bg: "linear-gradient(180deg,#ffd9c4 0 46%,#8fc4b6 47% 58%,#5fa392 59%)", a: "#d9776f", style: "sunset" },
+    prism:      { bg: "linear-gradient(145deg,#eef2f6,#e7eaf1 55%,#ece9f2)", a: "#7f8fd0", style: "prism" },
+    opal:       { bg: "linear-gradient(135deg,#f2f5f8,#dfe5ec 55%,#e8e6ee)", a: "#6f7f92", style: "opal" },
+    fajr:       { bg: "linear-gradient(180deg,#ffe8dc 0%,#f9dbe0 46%,#e6dcf0 78%,#dcd4ea)", a: "#c97f8f", style: "fajr" },
     editorial:  { bg: "#f3efe6", a: "#b53824", style: "editorial" },
-    blueprint:  { bg: "#102b42", a: "#68d4ff", style: "blueprint" },
-    softclay:   { bg: "#ddd5ca", a: "#806454", style: "softclay" },
     control:    { bg: "#15191c", a: "#d8f34a", style: "control" },
+    swiss:      { bg: "#f8f8f8", a: "#d92b2b", style: "swiss" },
+    scandi:     { bg: "#f5f1ec", a: "#5a7a62", style: "scandi" },
+    porcelain:  { bg: "#f7f9fc", a: "#2855a0", style: "porcelain" },
+    terracotta: { bg: "#ece4d9", a: "#b35c2a", style: "terracotta" },
+    dusk:       { bg: "linear-gradient(165deg,#f5ece2,#efe4dd 45%,#e8dde6)", a: "#b8862a", style: "dusk" },
+    "swiss-dark":      { bg: "#111113", a: "#e85454", style: "swiss" },
+    "scandi-dark":     { bg: "#1a1816", a: "#7da67f", style: "scandi" },
+    "porcelain-dark":  { bg: "#0e1117", a: "#5b8fd4", style: "porcelain" },
+    "terracotta-dark": { bg: "#1c1614", a: "#d4845a", style: "terracotta" },
+    "dusk-dark":       { bg: "linear-gradient(165deg,#181420,#1a1525 45%,#18121e)", a: "#e8b84d", style: "dusk" },
     glass:      { bg: "linear-gradient(135deg,#102c38,#38555d)", a: "#8be0c7", style: "glass" },
     noor:       { bg: "linear-gradient(145deg,#fffaf0,#ead7a8)", a: "#b88632", style: "light" },
     celestial:  { bg: "linear-gradient(145deg,#080d2a,#263169)", a: "#b6c8ff", style: "stars" },
@@ -1693,16 +2243,51 @@ function wireSettings() {
     matrix:     { bg: "#000a00", a: "#22ff66" },
     wine:       { bg: "#1a0e14", a: "#f9a8d4" },
   };
-  document.querySelectorAll("[data-theme-sw]").forEach((el) => {
-    const t = THEME_SW[el.dataset.themeSw];
-    if (t) {
-      el.style.cssText = `background:${t.bg};border:1px solid var(--line);position:relative;`;
-      el.textContent = "";
-      const dot = document.createElement("span");
-      dot.className = `sw-scene sw-${t.style || "plain"}`;
-      dot.style.setProperty("--sw-accent", t.a);
-      el.appendChild(dot);
+  // Auto-preview: derive bg/accent from each theme's own CSS variables when
+  // no curated swatch entry exists, so every theme card shows a preview.
+  function isLightSwatch(bg) {
+    const m = String(bg).match(/#([0-9a-f]{6})\b/i) || String(bg).match(/#([0-9a-f]{3})\b/i);
+    if (!m) return false;
+    const hex = m[1].length === 3 ? m[1].split("").map((c) => c + c).join("") : m[1];
+    const r = parseInt(hex.slice(0, 2), 16) / 255;
+    const g = parseInt(hex.slice(2, 4), 16) / 255;
+    const b = parseInt(hex.slice(4, 6), 16) / 255;
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.62;
+  }
+  const cssThemeSwatches = (() => {
+    const map = new Map();
+    const themeRe = /(?:body|html)\.theme-([a-z0-9-]+)(?:\b|,)/;
+    const collect = (rules) => {
+      for (const rule of rules) {
+        if (rule.selectorText) {
+          const m = themeRe.exec(rule.selectorText);
+          if (!m || map.has(m[1])) continue;
+          const decl = {};
+          for (const prop of rule.style) {
+            if (prop.startsWith("--")) decl[prop] = rule.style.getPropertyValue(prop).trim();
+          }
+          if (!decl["--bg"] && !decl["--accent"] && !rule.style.background) continue;
+          const bg = decl["--bg"] || rule.style.background || "#ffffff";
+          map.set(m[1], { bg, a: decl["--accent"] || "#888888", light: isLightSwatch(bg) });
+        } else if (rule.cssRules) {
+          collect(Array.from(rule.cssRules));
+        }
+      }
+    };
+    for (const sheet of document.styleSheets) {
+      try { collect(Array.from(sheet.cssRules)); } catch { /* cross-origin sheets are unreadable */ }
     }
+    return map;
+  })();
+  document.querySelectorAll("[data-theme-sw]").forEach((el) => {
+    const t = THEME_SW[el.dataset.themeSw] || cssThemeSwatches.get(el.dataset.themeSw);
+    if (!t) return;
+    el.style.cssText = `background:${t.bg};border:1px solid var(--line);position:relative;`;
+    el.textContent = "";
+    const dot = document.createElement("span");
+    dot.className = `sw-scene sw-${t.style || (t.light ? "light" : "plain")}`;
+    dot.style.setProperty("--sw-accent", t.a);
+    el.appendChild(dot);
   });
   const arSize = $("#arSize");
   if (arSize) arSize.addEventListener("input", (e) => {
@@ -1716,6 +2301,9 @@ function wireSettings() {
       update({ zoom: z });
       patchZoomLabel();
     })
+  );
+  document.querySelectorAll("[data-azkar-navigation]").forEach((b) =>
+    b.addEventListener("click", () => update({ azkarNavigation: b.dataset.azkarNavigation }))
   );
   const w = $("#popupW");
   if (w) w.addEventListener("input", (e) => {
@@ -1948,6 +2536,14 @@ function wireMap() {
   const data = await storage.get();
   state = { ...DEFAULTS, ...data };
 
+  // Mobile always starts in time-based mode. A manual category choice can
+  // still override the category for the current session, but should not
+  // permanently prevent the next launch from opening Morning or Evening.
+  if (globalThis.__ZAKKIR_MOBILE__) {
+    state.autoTime = true;
+    storage.set({ autoTime: true });
+  }
+
   // Removed themes fall back cleanly instead of leaving stale stored classes.
   if (!THEMES.some(([id]) => id === state.theme)) {
     state.theme = DEFAULTS.theme;
@@ -2037,7 +2633,8 @@ function wireMap() {
   else { patchPrayerCard(); if (switched) patchAzkarCard(); }
 
   // Smooth countdown + auto morning/evening swap, in-place only.
-  setInterval(() => {
+  setInterval(async () => {
+    if (!prayers) await loadPrayers(true);
     if (state.view !== "home") return;
     patchPrayerCard();
     if (applyAutoCategory()) patchAzkarCard();
