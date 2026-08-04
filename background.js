@@ -3,6 +3,7 @@
 // (event page via "scripts").
 
 const PRAYER_ORDER = ["Fajr", "Dhuhr", "Asr", "Maghrib", "Isha"];
+const notificationScheduler = globalThis.ZakkirNotifications;
 
 const DEFAULTS = {
   city: "Cairo",
@@ -12,12 +13,13 @@ const DEFAULTS = {
   lat: null,
   lng: null,
   prayerCache: null,
+  previousPrayerCache: null,
   notificationsEnabled: true,
-  reminderEnabled: false,
+  remindersEnabled: false,
   reminderMinutes: 10,
   reminderMinutesByPrayer: {},
-  athanEnabled: true,
-  reminderPrayers: { Fajr: true, Dhuhr: true, Asr: true, Maghrib: true, Isha: true },
+  prayerAlertEnabled: true,
+  reminderPrayers: ["Fajr", "Dhuhr", "Asr", "Maghrib", "Isha"],
   iqamaEnabled: false,
   iqamaMinutes: 10,
   iqamaMinutesByPrayer: {},
@@ -26,30 +28,36 @@ const DEFAULTS = {
   _lastTick: null,
 };
 
-function todayKey() { return new Date().toISOString().slice(0, 10); }
-function ddmmyyyy() {
-  const d = new Date(), p = (n) => String(n).padStart(2, "0");
+function todayKey(date = new Date()) { return notificationScheduler.localDateKey(date); }
+function ddmmyyyy(date = new Date()) {
+  const d = date, p = (n) => String(n).padStart(2, "0");
   return `${p(d.getDate())}-${p(d.getMonth() + 1)}-${d.getFullYear()}`;
 }
 function toMin(s) { const [h, m] = s.split(":").map(Number); return h * 60 + m; }
 
 function getState() {
-  return new Promise((res) => chrome.storage.local.get(DEFAULTS, res));
+  return new Promise((res) => chrome.storage.local.get(null, (raw) => {
+    const state = { ...DEFAULTS, ...notificationScheduler.migrateSettings(raw) };
+    chrome.storage.local.set(notificationScheduler.normalizeSettings(state));
+    chrome.storage.local.remove(["reminderEnabled", "athanEnabled"]);
+    res(state);
+  }));
 }
 
-async function ensurePrayers(state) {
-  const today = todayKey();
-  const c = state.prayerCache;
+async function ensurePrayers(state, date = new Date()) {
+  const dateKey = todayKey(date);
+  const currentDate = todayKey();
+  const c = state.prayerCache?.date === dateKey ? state.prayerCache : state.previousPrayerCache?.date === dateKey ? state.previousPrayerCache : null;
   const sameLoc = c && (state.useCoords && state.lat != null && state.lng != null
     ? (c.lat === state.lat && c.lng === state.lng)
     : (c.city === state.city && c.country === state.country));
-  if (c && c.date === today && sameLoc && c.method === state.method) return c.timings;
+  if (c && sameLoc && c.method === state.method) return c.timings;
 
   let url;
   if (state.useCoords && state.lat != null && state.lng != null) {
-    url = `https://api.aladhan.com/v1/timings/${ddmmyyyy()}?latitude=${state.lat}&longitude=${state.lng}&method=${state.method || 5}`;
+    url = `https://api.aladhan.com/v1/timings/${ddmmyyyy(date)}?latitude=${state.lat}&longitude=${state.lng}&method=${state.method || 5}`;
   } else {
-    url = `https://api.aladhan.com/v1/timingsByCity/${ddmmyyyy()}?city=${encodeURIComponent(state.city || "Cairo")}&country=${encodeURIComponent(state.country || "Egypt")}&method=${state.method || 5}`;
+    url = `https://api.aladhan.com/v1/timingsByCity/${ddmmyyyy(date)}?city=${encodeURIComponent(state.city || "Cairo")}&country=${encodeURIComponent(state.country || "Egypt")}&method=${state.method || 5}`;
   }
   try {
     const r = await fetch(url);
@@ -60,11 +68,16 @@ async function ensurePrayers(state) {
     const h = j.data.date.hijri;
     const hijri = `${h.day} ${h.month.en} ${h.year} AH`;
     const cache = {
-      date: today, city: state.city, country: state.country,
+      date: dateKey, city: state.city, country: state.country,
       lat: state.lat, lng: state.lng, method: state.method,
       timings: prayers, hijri,
     };
-    await chrome.storage.local.set({ prayerCache: cache });
+    const cacheKey = dateKey === currentDate ? "prayerCache" : "previousPrayerCache";
+    const patch = { [cacheKey]: cache };
+    if (cacheKey === "prayerCache" && state.prayerCache?.date && state.prayerCache.date !== dateKey) {
+      patch.previousPrayerCache = state.prayerCache;
+    }
+    await chrome.storage.local.set(patch);
     return prayers;
   } catch (e) {
     return c?.timings || null;
@@ -109,6 +122,7 @@ function notify(id, title, message, soundName) {
 
 function getNextReminder(state, prayers) {
   if (!prayers) return null;
+  const config = notificationScheduler.normalizeSettings(state);
   const nowM = new Date().getHours() * 60 + new Date().getMinutes();
   const enabled = state.reminderPrayers || {};
   const preMins = Math.max(0, state.reminderMinutes ?? 10);
@@ -117,13 +131,13 @@ function getNextReminder(state, prayers) {
   for (const name of PRAYER_ORDER) {
     const p = toMin(prayers[name]);
     if (Number.isNaN(p)) continue;
-    if (isPrayerEnabled(enabled, name)) {
-      if (preMins > 0) {
+    if (config.reminderPrayers.includes(name)) {
+      if (config.remindersEnabled) {
         const pre = Math.max(1, state.reminderMinutesByPrayer?.[name] ?? preMins);
         upcoming.push({ label: `${name} before`, at: p - pre });
       }
-      if (state.athanEnabled) upcoming.push({ label: `${name} at`, at: p });
-      if (iqMins > 0) {
+      if (config.prayerAlertEnabled) upcoming.push({ label: `${name} at`, at: p });
+      if (config.iqamaEnabled) {
         const iq = Math.max(1, state.iqamaMinutesByPrayer?.[name] ?? iqMins);
         upcoming.push({ label: `${name} iqama`, at: p + iq });
       }
@@ -142,6 +156,9 @@ function getNextReminder(state, prayers) {
 async function tick() {
   const state = await getState();
   const prayers = await ensurePrayers(state);
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const previousPrayers = await ensurePrayers(state, yesterday);
   try { await chrome.storage.local.set({ _lastTick: new Date().toISOString() }); } catch {}
 
   if (!prayers) {
@@ -172,7 +189,7 @@ async function tick() {
   // Reminders
   const enabled = state.reminderPrayers || {};
   const anyEnabled = PRAYER_ORDER.some((n) => isPrayerEnabled(enabled, n));
-  if (state.notificationsEnabled && (anyEnabled || state.athanEnabled)) {
+  if (state.notificationsEnabled && anyEnabled) {
     const preMins = Math.max(0, state.reminderMinutes ?? 10);
     const iqMins = Math.max(0, state.iqamaMinutes ?? 10);
     const sound = state.reminderSound || "adhan-1";
@@ -181,51 +198,51 @@ async function tick() {
 
 const PRAYER_MESSAGES = {
   Fajr: [
-    { title: "صلاة الفجر 🌅", body: "﴿أَقِمِ ٱلصَّلَوٰةَ لِدُلُوكِ ٱلشَّمْسِ إِلَىٰ غَسَقِ ٱلَّيْلِ وَقُرْءَانَ ٱلْفَجْرِ ۖ إِنَّ قُرْءَانَ ٱلْفَجْرِ كَانَ مَشْهُودًا﴾" },
+    { title: "صلاة الفجر 🌅", body: "«أَقِمِ الصَّلَاةَ لِدُلُوكِ الشَّمْسِ إِلَى غَسَقِ اللَّيْلِ وَقُرْآنَ الْفَجْرِ ۖ إِنَّ قُرْآنَ الْفَجْرِ كَانَ مَشْهُودًا»" },
     { title: "صلاة الفجر 🌅", body: "«مَنْ صَلَّى الصُّبْحَ فَهُوَ فِي ذِمَّةِ اللَّهِ» — صحيح مسلم" },
     { title: "صلاة الفجر 🌅", body: "«رَكْعَتَا الْفَجْرِ خَيْرٌ مِنَ الدُّنْيَا وَمَا فِيهَا» — صحيح مسلم" },
-    { title: "صلاة الفجر 🌅", body: "«بَشِّرِ الْمَشَّائِينَ فِي الظُّلَمِ إِلَى الْمَسَاجِدِ بِالنُّورِ التَّامِّ يَوْمَ الْقِيَامَةِ»" },
+    { title: "صلاة الفجر 🌅", body: "«بَشِّرِ الْمَشَّائِينَ فِي الظُّلَمِ إِلَى الْمَسَاجِدِ بِالنُّورِ التَّامِّ يَوْمَ الْقِيَامَةِ» — سنن أبي داود والترمذي" },
     { title: "صلاة الفجر 🌅", body: "«مَنْ صَلَّى الْبَرْدَيْنِ دَخَلَ الْجَنَّةَ» — متفق عليه" },
     { title: "صلاة الفجر 🌅", body: "«أَثْقَلُ الصَّلَاةِ عَلَى الْمُنَافِقِينَ صَلَاةُ الْعِشَاءِ وَصَلَاةُ الْفَجْرِ» — متفق عليه" },
     { title: "صلاة الفجر 🌅", body: "«لَنْ يَلِجَ النَّارَ أَحَدٌ صَلَّى قَبْلَ طُلُوعِ الشَّمْسِ وَقَبْلَ غُرُوبِهَا» — صحيح مسلم" },
     { title: "صلاة الفجر 🌅", body: "قال عمر رضي الله عنه: «لَأَنْ أَشْهَدَ صَلَاةَ الصُّبْحِ فِي الْجَمَاعَةِ أَحَبُّ إِلَيَّ مِنْ قِيَامِ لَيْلَةٍ»" },
-    { title: "صلاة الفجر 🌅", body: "«مَنْ بَاتَ طَاهِرًا بَاتَ فِي شِعَارِهِ مَلَكٌ... فَيَقُولُ الْمَلَكُ: اللَّهُمَّ اغْفِرْ لِعَبْدِكَ فُلَانٍ»" }
+    { title: "صلاة الفجر 🌅", body: "«مَنْ بَاتَ طَاهِرًا بَاتَ فِي شِعَارِهِ مَلَكٌ... فَيَقُولُ الْمَلَكُ: اللَّهُمَّ اغْفِرْ لِعَبْدِكَ فُلَانٍ» — صحيح ابن حبان" }
   ],
   Dhuhr: [
-    { title: "صلاة الظهر ☀️", body: "﴿وَمِنْ ءَانَآئِ ٱلَّيْلِ فَسَبِّحْ وَأَطْرَافَ ٱلنَّهَارِ لَعَلَّكَ تَرْضَىٰ﴾" },
-    { title: "صلاة الظهر ☀️", body: "«إِنَّ أَوَّلَ مَا يُحَاسَبُ بِهِ الْعَبْدُ يَوْمَ الْقِيَامَةِ مِنْ عَمَلِهِ صَلَاتُهُ» — الترمذي" },
-    { title: "صلاة الظهر ☀️", body: "«إِذَا زَالَتِ الشَّمْسُ فُتِحَتْ أَبْوَابُ السَّمَاءِ... فَأُحِبُّ أَنْ يَصْعَدَ لِي فِيهِنَّ عَمَلٌ صَالِحٌ»" },
-    { title: "صلاة الظهر ☀️", body: "«أَرْبَعٌ قَبْلَ الظُّهْرِ لَيْسَ فِيهِنَّ تَسْلِيمٌ تُفْتَحُ لَهُنَّ أَبْوَابُ السَّمَاءِ» — أبو داود" },
-    { title: "صلاة الظهر ☀️", body: "«مَنْ حَافَظَ عَلَى أَرْبَعِ رَكَعَاتٍ قَبْلَ الظُّهْرِ وَأَرْبَعٍ بَعْدَهَا حَرَّمَهُ اللَّهُ عَلَى النَّارِ»" }
+    { title: "صلاة الظهر ☀️", body: "«وَمِنْ آنَاءِ اللَّيْلِ فَسَبِّحْ وَأَطْرَافَ النَّهَارِ لَعَلَّكَ تَرْضَى»" },
+    { title: "صلاة الظهر ☀️", body: "«إِنَّ أَوَّلَ مَا يُحَاسَبُ بِهِ الْعَبْدُ يَوْمَ الْقِيَامَةِ مِنْ عَمَلِهِ صَلَاتُهُ» — سنن الترمذي" },
+    { title: "صلاة الظهر ☀️", body: "«إِذَا زَالَتِ الشَّمْسُ فُتِحَتْ أَبْوَابُ السَّمَاءِ... فَأُحِبُّ أَنْ يَصْعَدَ لِي فِيهِنَّ عَمَلٌ صَالِحٌ» — سنن الترمذي" },
+    { title: "صلاة الظهر ☀️", body: "«أَرْبَعٌ قَبْلَ الظُّهْرِ لَيْسَ فِيهِنَّ تَسْلِيمٌ تُفْتَحُ لَهُنَّ أَبْوَابُ السَّمَاءِ» — سنن أبي داود" },
+    { title: "صلاة الظهر ☀️", body: "«مَنْ حَافَظَ عَلَى أَرْبَعِ رَكَعَاتٍ قَبْلَ الظُّهْرِ وَأَرْبَعٍ بَعْدَهَا حَرَّمَهُ اللَّهُ عَلَى النَّارِ» — سنن الترمذي" }
   ],
   Asr: [
-    { title: "صلاة العصر (الصلاة الوسطى) 🌤️", body: "﴿حَٰفِظُواْ عَلَى ٱلصَّلَوَٰتِ وَٱلصَّلَوٰةِ ٱلْوُسْطَىٰ وَقُومُواْ لِلَّهِ قَٰنِتِينَ﴾" },
+    { title: "صلاة العصر (الصلاة الوسطى) 🌤️", body: "«حَافِظُوا عَلَى الصَّلَوَاتِ وَالصَّلَاةِ الْوُسْطَى وَقُومُوا لِلَّهِ قَانِتِينَ»" },
     { title: "صلاة العصر 🌤️", body: "«مَنْ تَرَكَ صَلَاةَ الْعَصْرِ فَقَدْ حَبِطَ عَمَلُهُ» — صحيح البخاري" },
     { title: "صلاة العصر 🌤️", body: "«الَّذِي تَفُوتُهُ صَلَاةُ الْعَصْرِ كَأَنَّمَا وُتِرَ أَهْلَهُ وَمَالَهُ» — متفق عليه" },
     { title: "صلاة العصر 🌤️", body: "«مَنْ صَلَّى الْبَرْدَيْنِ دَخَلَ الْجَنَّةَ» — متفق عليه" },
     { title: "صلاة العصر 🌤️", body: "قال بريدة رضي الله عنه: «بَكِّرُوا بِصَلَاةِ الْعَصْرِ، فَإِنَّ النَّبِيَّ ﷺ قَالَ: مَنْ تَرَكَ صَلَاةَ الْعَصْرِ فَقَدْ حَبِطَ عَمَلُهُ»" }
   ],
   Maghrib: [
-    { title: "صلاة المغرب 🌅", body: "﴿وَسَبِّحْ بِحَمْدِ رَبِّكَ قَبْلَ طُلُوعِ ٱلشَّمْسِ وَقَبْلَ ٱلْغُرُوبِ﴾" },
-    { title: "صلاة المغرب 🌅", body: "﴿فَسُبْحَانَ ٱللَّهِ حِينَ تُمْسُونَ وَحِينَ تُصْبِحُونَ﴾" },
-    { title: "صلاة المغرب 🌅", body: "«لَا تَزَالُ أُمَّتِي بِخَيْرٍ - أَوْ عَلَى الْفِطْرَةِ - مَا لَمْ يُؤَخِّرُوا الْمَغْرِبَ حَتَّى تَشْتَبِكَ النُّجُومُ»" },
-    { title: "صلاة المغرب 🌅", body: "«إِذَا أَقْبَلَ اللَّيْلُ مِنْ هَا هُنَا، وَأَدْبَرَ النَّهَارُ مِنْ هَا هُنَا، وَغَرَبَتِ الشَّمْسُ، فَقَدْ أَفْطَرَ الصَّائِمُ»" }
+    { title: "صلاة المغرب 🌅", body: "«وَسَبِّحْ بِحَمْدِ رَبِّكَ قَبْلَ طُلُوعِ الشَّمْسِ وَقَبْلَ الْغُرُوبِ»" },
+    { title: "صلاة المغرب 🌅", body: "«فَسُبْحَانَ اللَّهِ حِينَ تُمْسُونَ وَحِينَ تُصْبِحُونَ»" },
+    { title: "صلاة المغرب 🌅", body: "«لَا تَزَالُ أُمَّتِي بِخَيْرٍ - أَوْ عَلَى الْفِطْرَةِ - مَا لَمْ يُؤَخِّرُوا الْمَغْرِبَ حَتَّى تَشْتَبِكَ النُّجُومُ» — سنن أبي داود" },
+    { title: "صلاة المغرب 🌅", body: "«إِذَا أَقْبَلَ اللَّيْلُ مِنْ هَا هُنَا، وَأَدْبَرَ النَّهَارُ مِنْ هَا هُنَا، وَغَرَبَتِ الشَّمْسُ، فَقَدْ أَفْطَرَ الصَّائِمُ» — متفق عليه" }
   ],
   Isha: [
-    { title: "صلاة العشاء 🌙", body: "﴿وَمِنَ ٱلَّيْلِ فَتَهَجَّدْ بِهِۦ نَافِلَةً لَّكَ عَسَىٰٓ أَن يَبْعَثَكَ رَبُّكَ مَقَامًا مَّحْمُودًا﴾" },
+    { title: "صلاة العشاء 🌙", body: "«وَمِنَ اللَّيْلِ فَتَهَجَّدْ بِهِ نَافِلَةً لَكَ عَسَى أَنْ يَبْعَثَكَ رَبُّكَ مَقَامًا مَحْمُودًا»" },
     { title: "صلاة العشاء 🌙", body: "«مَنْ شَهِدَ الْعِشَاءَ فِي جَمَاعَةٍ كَانَ لَهُ قِيَامُ نِصْفِ لَيْلَةٍ» — صحيح مسلم" },
     { title: "صلاة العشاء 🌙", body: "«لَوْ يَعْلَمُونَ مَا فِي الْعَتَمَةِ وَالصُّبْحِ لَأَتَوْهُمَا وَلَوْ حَبْوًا» — متفق عليه" },
-    { title: "صلاة العشاء 🌙", body: "﴿كَانُواْ قَلِيلًا مِّنَ ٱلَّيْلِ مَا يَهْجَعُونَ * وَبِٱلْأَسْحَارِ هُمْ يَسْتَغْفِرُونَ﴾" }
+    { title: "صلاة العشاء 🌙", body: "«كَانُوا قَلِيلًا مِنَ اللَّيْلِ مَا يَهْجَعُونَ * وَبِالْأَسْحَارِ هُمْ يَسْتَغْفِرُونَ»" }
   ]
 };
 
 const PRE_PRAYER_MESSAGES = [
-  { title: "اقتراب موعد الصلاة ⏳", body: "«مَنْ تَطَهَّرَ فِي بَيْتِهِ، ثُمَّ مَشَى إِلَى بَيْتٍ مِنْ بُيُوتِ اللَّهِ... كَانَتْ خَطْوَتَاهُ إِحْدَاهُمَا تَحُطُّ خَطِيئَةً، وَالْأُخْرَى تَرْفَعُ دَرَجَةً»" },
-  { title: "اقتراب موعد الصلاة ⏳", body: "«إِسْبَاغُ الْوُضُوءِ عَلَى الْمَكَارِهِ، وَكَثْرَةُ الْخُطَا إِلَى الْمَسَاجِدِ، وَانْتِظَارُ الصَّلَاةِ بَعْدَ الصَّلَاةِ... يَمْحُو اللَّهُ بِهِ الْخَطَايَا»" },
-  { title: "اقتراب موعد الصلاة ⏳", body: "﴿إِنَّ ٱللَّهَ يُحِبُّ ٱلتَّوَّٰبِينَ وَيُحِبُّ ٱلْمُتَطَهِّرِينَ﴾" },
+  { title: "اقتراب موعد الصلاة ⏳", body: "«مَنْ تَطَهَّرَ فِي بَيْتِهِ، ثُمَّ مَشَى إِلَى بَيْتٍ مِنْ بُيُوتِ اللَّهِ... كَانَتْ خَطْوَتَاهُ إِحْدَاهُمَا تَحُطُّ خَطِيئَةً، وَالْأُخْرَى تَرْفَعُ دَرَجَةً» — صحيح مسلم" },
+  { title: "اقتراب موعد الصلاة ⏳", body: "«إِسْبَاغُ الْوُضُوءِ عَلَى الْمَكَارِهِ، وَكَثْرَةُ الْخُطَا إِلَى الْمَسَاجِدِ، وَانْتِظَارُ الصَّلَاةِ بَعْدَ الصَّلَاةِ... يَمْحُو اللَّهُ بِهِ الْخَطَايَا» — صحيح مسلم" },
+  { title: "اقتراب موعد الصلاة ⏳", body: "«إِنَّ اللَّهَ يُحِبُّ التَّوَّابِينَ وَيُحِبُّ الْمُتَطَهِّرِينَ»" },
   { title: "اقتراب موعد الصلاة ⏳", body: "قال معاذ رضي الله عنه: «إِذَا صَلَّيْتَ صَلَاةً، فَصَلِّ صَلَاةَ مُوَدِّعٍ، لَا تَظُنَّ أَنَّكَ تَعُودُ إِلَيْهَا أَبَدًا»" },
-  { title: "اقتراب موعد الصلاة ⏳", body: "قال وكيع بن الجراح: «مَنْ لَمْ يَأْخُذْ أُهْبَةَ الصَّلَاةِ قَبْلَ وَقْتِهَا لَمْ يَكُنْ وَقَّرَهَا»" },
-  { title: "اقتراب موعد الصلاة ⏳", body: "«الدُّعَاءُ لَا يُرَدُّ بَيْنَ الْأَذَانِ وَالْإِقَامَةِ» — صحيح الترمذي" },
+  { title: "اقتراب موعد الصلاة ⏳", body: "قال وكيع بن الجراح رحمه الله: «مَنْ لَمْ يَأْخُذْ أُهْبَةَ الصَّلَاةِ قَبْلَ وَقْتِهَا لَمْ يَكُنْ وَقَّرَهَا»" },
+  { title: "اقتراب موعد الصلاة ⏳", body: "«الدُّعَاءُ لَا يُرَدُّ بَيْنَ الْأَذَانِ وَالْإِقَامَةِ» — سنن الترمذي" },
   { title: "اقتراب موعد الصلاة ⏳", body: "كتب عمر رضي الله عنه لعماله: «إِنَّ أَهَمَّ أُمُورِكُمْ عِنْدِي الصَّلَاةُ، فَمَنْ حَفِظَهَا وَحَافَظَ عَلَيْهَا حَفِظَ دِينَهُ»" }
 ];
 
@@ -242,43 +259,21 @@ function getRandomNotificationMessage(prayerName, isPre = false) {
   return list[idx];
 }
 
-    for (const p of list) {
-      if (!isPrayerEnabled(enabled, p.name)) continue;
-
-      // Pre-athan reminder
-      if (preMins > 0) {
-        const prayerPreMins = Math.max(1, state.reminderMinutesByPrayer?.[p.name] ?? preMins);
-        const trigger = p.m - prayerPreMins;
-        const key = `${today}|${p.name}|pre|${prayerPreMins}`;
-        if (nowM >= trigger && nowM < p.m && !sent[key]) {
-          const msg = getRandomNotificationMessage(p.name, true);
-          const result = await notify(key, `${msg.title} (بعد ${prayerPreMins} دقيقة)`, msg.body, sound);
-          if (result.ok) sent[key] = true;
-        }
-      }
-      // At-time notification (athan)
-      if (state.athanEnabled) {
-        const keyAt = `${today}|${p.name}|at`;
-        if (nowM >= p.m && nowM < p.m + 15 && !sent[keyAt]) {
-          const msg = getRandomNotificationMessage(p.name, false);
-          const result = await notify(keyAt, msg.title, msg.body, sound);
-          if (result.ok) sent[keyAt] = true;
-        }
-      }
-      // Iqama reminder (after athan)
-      if (iqMins > 0) {
-        const prayerIqMins = Math.max(1, state.iqamaMinutesByPrayer?.[p.name] ?? iqMins);
-        const iq = p.m + prayerIqMins;
-        const keyIq = `${today}|${p.name}|iq|${prayerIqMins}`;
-        if (nowM >= iq && nowM < iq + 30 && !sent[keyIq]) {
-          const result = await notify(keyIq, `إقامة صلاة ${p.name}`, `حان وقت الإقامة — بعد ${prayerIqMins} دقيقة من الأذان.`, sound);
-          if (result.ok) sent[keyIq] = true;
-        }
-      }
+    const config = notificationScheduler.normalizeSettings(state);
+    const cleaned = { ...(state._sentReminders || {}) };
+    for (const event of notificationScheduler.dueEvents(prayers, config, new Date(), previousPrayers || prayers)) {
+      if (cleaned[event.key]) continue;
+      const msg = event.type === "pre" ? getRandomNotificationMessage(event.prayer, true) : getRandomNotificationMessage(event.prayer, false);
+      const title = event.type === "pre" ? `${msg.title} (بعد ${event.minutes} دقيقة)` : event.type === "iqama" ? `إقامة صلاة ${event.prayer}` : msg.title;
+      const body = event.type === "iqama" ? `حان وقت الإقامة — بعد ${event.minutes} دقيقة من الأذان.` : msg.body;
+      const result = await notify(event.key, title, body, config.reminderSound);
+      if (result.ok) cleaned[event.key] = true;
     }
-    // Keep only today's entries
-    const cleaned = {};
-    for (const k of Object.keys(sent)) if (k.startsWith(today + "|")) cleaned[k] = sent[k];
+    const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    for (const key of Object.keys(cleaned)) {
+      const date = new Date(`${key.split("|")[0]}T00:00:00`);
+      if (!Number.isNaN(date.getTime()) && date.getTime() < cutoff) delete cleaned[key];
+    }
     await chrome.storage.local.set({ _sentReminders: cleaned });
   }
 }
@@ -314,7 +309,9 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       sendResponse({
         lastTick: state._lastTick || null,
         notificationsEnabled: state.notificationsEnabled,
-        athanEnabled: state.athanEnabled,
+        prayerAlertEnabled: state.prayerAlertEnabled,
+        remindersEnabled: state.remindersEnabled,
+        iqamaEnabled: state.iqamaEnabled,
         reminderPrayers: state.reminderPrayers,
         reminderMinutes: state.reminderMinutes,
         reminderMinutesByPrayer: state.reminderMinutesByPrayer,

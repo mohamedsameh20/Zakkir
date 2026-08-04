@@ -30,6 +30,7 @@
   },
   "background": {
     "scripts": [
+      "notification-scheduler.js",
       "background.js"
     ]
   },
