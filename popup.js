@@ -1348,6 +1348,38 @@ function refreshNotificationStatus() {
   } catch (_) { setNotificationStatus("Could not reach the background script.", "err"); }
 }
 
+const SOUNDS = [
+  ["adhan-1", "Adhan 1"],
+  ["adhan-2", "Adhan 2"],
+  ["adhan-3", "Adhan 3"],
+  ["chime", "Chime"],
+  ["bell", "Bell"],
+  ["soft-ping", "Soft Ping"],
+  ["silent", "Silent"],
+];
+
+let activeAudio = null;
+function playSound(soundId, onEndCb) {
+  if (activeAudio) {
+    try { activeAudio.pause(); activeAudio.currentTime = 0; } catch (e) {}
+    activeAudio = null;
+  }
+  if (soundId === "silent") { if (onEndCb) onEndCb(); return; }
+  const base = globalThis.chrome?.runtime?.getURL ? chrome.runtime.getURL("") : "";
+  const src = base + `sounds/${soundId}.mp3`;
+  try {
+    activeAudio = new Audio(src);
+    if (onEndCb) {
+      activeAudio.addEventListener("ended", onEndCb);
+      activeAudio.addEventListener("pause", onEndCb);
+    }
+    const promise = activeAudio.play();
+    if (promise !== undefined) promise.catch(() => { if (onEndCb) onEndCb(); });
+  } catch (e) {
+    if (onEndCb) onEndCb();
+  }
+}
+
 const SETTINGS_SECTIONS = ["general", "notifications", "reading", "appearance", "window"];
 const SETTINGS_NAV = [["general", "General"], ["notifications", "Notifications"], ["reading", "Reading"], ["appearance", "Appearance"], ["window", "Window"]];
 const SETTINGS_META = {
@@ -1373,11 +1405,11 @@ function settingsBodyHTML(id) {
     return `
     <div class="notification-master settings-card"><div><strong>Prayer notifications</strong><span>Receive timely reminders around each prayer.</span></div><label class="switch" aria-label="Prayer notifications"><input type="checkbox" id="notificationsEnabled" ${state.notificationsEnabled ? "checked" : ""}/><span></span></label></div>
     <div class="notification-config ${notificationsOff ? "is-paused" : ""}" aria-disabled="${notificationsOff}">
-      <div class="notification-block settings-card"><div class="notification-block-head"><div><span class="notification-kicker">When to notify</span><strong>Prayer reminders</strong></div><div class="prayer-actions"><button type="button" data-prayer-action="all" ${notificationsOff ? "disabled" : ""}>All</button><button type="button" data-prayer-action="clear" ${notificationsOff ? "disabled" : ""}>None</button></div></div>
+      <div class="notification-block settings-card"><div class="notification-block-head"><div><span class="notification-kicker">When to notify</span><strong>Prayer reminders</strong></div></div>
         <div class="athan-line"><div class="athan-copy"><strong>At athan</strong><span>Notify when the exact prayer time begins.</span></div><label class="switch" aria-label="Notify at athan"><input type="checkbox" id="athanEnabled" ${state.athanEnabled ? "checked" : ""} ${notificationsOff ? "disabled" : ""}/><span></span></label></div>
         <div class="prayer-timing-list">${PRAYER_ORDER.map((p) => prayerTimingHTML(p, notificationsOff)).join("")}</div>
       </div>
-      <div class="settings-card"><div class="settings-card-title">Check notifications</div><div class="sound-actions"><button class="loc-btn" id="testNotificationBtn">Test Notification</button></div><p id="notificationStatus" class="notification-status">Checking…</p></div>
+      <div class="settings-card"><div class="settings-card-title">Reminder sound</div><div class="sound-grid">${SOUNDS.map(([id, label]) => `<label class="sound-option ${state.reminderSound === id ? "active" : ""}" data-sound="${id}"><input type="radio" name="reminderSound" value="${id}" ${state.reminderSound === id ? "checked" : ""} style="display:none">${label}</label>`).join("")}</div><div class="sound-actions"><button class="loc-btn" id="testSoundBtn">Test Sound</button></div></div>
     </div>
     <div class="notification-confirmation ${state.notificationsEnabled ? "" : "paused"}"><span class="confirmation-dot"></span><p>${notificationSummary()}</p></div>`;
   }
@@ -2005,28 +2037,31 @@ function wireSettings() {
     state.sunnahFastHighlight = e.target.checked;
     storage.set({ sunnahFastHighlight: state.sunnahFastHighlight });
   });
-  syncNotificationDependencies();
-  if (state.settingsSection === "notifications") {
-    refreshNotificationStatus();
-  }
-  const testNotificationBtn = $("#testNotificationBtn");
-  if (testNotificationBtn) testNotificationBtn.addEventListener("click", () => {
-    setNotificationStatus("Sending test notification…");
-    try {
-      globalThis.chrome?.runtime?.sendMessage({ type: "test-notification" }, (result) => {
-        const error = globalThis.chrome?.runtime?.lastError;
-        if (error || !result) {
-          setNotificationStatus("Firefox rejected the test: " + (error?.message || "no response from background"), "err");
-        } else if (!result.ok) {
-          setNotificationStatus("Firefox rejected the test: " + result.error, "err");
-        } else {
-          setNotificationStatus("Firefox accepted the test notification. If it is not visible, enable Firefox notifications in your system settings and turn off Do Not Disturb.", "ok");
-        }
-      });
-    } catch (e) {
-      setNotificationStatus("Could not send the test: " + (e?.message || String(e)), "err");
-    }
+  document.querySelectorAll("[data-sound]").forEach((lbl) => {
+    lbl.addEventListener("click", () => {
+      state.reminderSound = lbl.dataset.sound;
+      storage.set({ reminderSound: state.reminderSound });
+      document.querySelectorAll("[data-sound]").forEach((l) => l.classList.toggle("active", l.dataset.sound === state.reminderSound));
+      nudgeBackground();
+      if (activeAudio && !activeAudio.paused) {
+        playSound(state.reminderSound);
+      }
+    });
   });
+  const testSoundBtn = $("#testSoundBtn");
+  if (testSoundBtn) {
+    testSoundBtn.addEventListener("click", () => {
+      if (activeAudio && !activeAudio.paused) {
+        playSound("silent");
+        testSoundBtn.textContent = "Test Sound";
+      } else {
+        testSoundBtn.textContent = "Stop Preview";
+        playSound(state.reminderSound || "adhan-1", () => {
+          testSoundBtn.textContent = "Test Sound";
+        });
+      }
+    });
+  }
 }
 
 // ---------- init ----------
