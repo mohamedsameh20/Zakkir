@@ -591,7 +591,7 @@ function prayerCardHTML() {
   const countdown = np ? `${np.h}h ${String(np.m).padStart(2, "0")}m` : "—";
   return `
     <div class="prayer-collapsed-row">
-      <div class="prayer-collapsed-main"><span class="eyebrow">Next prayer</span><strong>${nextName}</strong></div>
+      <div class="prayer-collapsed-main"><strong><span>Next prayer:</span> ${nextName}</strong></div>
       <span class="prayer-collapsed-countdown">${countdown}</span>
       <button type="button" class="prayer-collapse" aria-label="Show prayer times" aria-expanded="false" title="Show prayer times">${icon.chevronDown}</button>
     </div>
