@@ -5,6 +5,7 @@ const root = path.resolve(__dirname, "../..");
 const mobile = path.resolve(__dirname, "..");
 const css = fs.readFileSync(path.join(root, "popup.css"), "utf8");
 const js = fs.readFileSync(path.join(root, "popup.js"), "utf8");
+const scheduler = fs.readFileSync(path.join(root, "notification-scheduler.js"), "utf8");
 const azkar = fs.readFileSync(path.join(root, "azkar.json"), "utf8");
 const fontNames = [
   ["noto-naskh-arabic", "Noto Naskh Arabic"],
@@ -24,7 +25,7 @@ const fonts = fontNames.map(([fileName, familyName]) => {
   return `@font-face{font-family:'${familyName}';src:url(data:font/ttf;base64,${data}) format('truetype');font-display:swap;}`;
 }).join("");
 
-const soundNames = ["adhan-1", "adhan-2", "adhan-3", "chime", "bell", "soft-ping"];
+const soundNames = ["adhan-1", "adhan-2", "chime", "bell", "soft-ping"];
 const soundsObj = {};
 soundNames.forEach((name) => {
   const soundPath = path.join(root, "sounds", `${name}.mp3`);
@@ -407,5 +408,5 @@ const mobileCss = `
   }
 `;
 
-const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=3,user-scalable=yes"/><style>${fonts}${css}${mobileCss}</style></head><body><div id="app"><div class="boot">Loading...</div></div><script>${bridge}</script><script>${patchedJs.replace(/<\/script/gi, "<\\/script")}</script></body></html>`;
+const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=3,user-scalable=yes"/><style>${fonts}${css}${mobileCss}</style></head><body><div id="app"><div class="boot">Loading...</div></div><script>${scheduler.replace(/<\/script/gi, "<\\/script")}</script><script>${bridge}</script><script>${patchedJs.replace(/<\/script/gi, "<\\/script")}</script></body></html>`;
 fs.writeFileSync(path.join(mobile, "renderer.generated.ts"), `export const rendererHtml = ${JSON.stringify(html)};\n`);

@@ -24,6 +24,7 @@
     },
     "files": [
       "main.js",
+      "notification-scheduler.js",
       "preload.js",
       "popup.html",
       "popup.css",

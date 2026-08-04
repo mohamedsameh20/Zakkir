@@ -48,6 +48,17 @@ const DEFAULTS = {
   azkarNavigation: "buttons-and-swipe",
 };
 
+function migrateNotificationSettings(data) {
+  if (globalThis.ZakkirNotifications?.migrateSettings) {
+    return globalThis.ZakkirNotifications.migrateSettings(data);
+  }
+  return {
+    ...data,
+    remindersEnabled: data.remindersEnabled ?? data.reminderEnabled ?? DEFAULTS.remindersEnabled,
+    prayerAlertEnabled: data.prayerAlertEnabled ?? data.athanEnabled ?? DEFAULTS.prayerAlertEnabled,
+  };
+}
+
 // Transient (not persisted)
 let focusedPrayer = null;
 let countSaveTimer = null;
@@ -372,12 +383,15 @@ let activeAudio = null;
 let renderedView = null;
 let mobileNavTransition = null;
 let prayerLoadSequence = 0;
+let loadedPrayerDate = null;
 
 // ---------- storage ----------
 const storage = {
   get: () =>
     new Promise((res) => {
-      if (globalThis.chrome?.storage) chrome.storage.local.get(DEFAULTS, res);
+      if (globalThis.chrome?.storage) {
+        chrome.storage.local.get(null, (raw) => res({ ...DEFAULTS, ...migrateNotificationSettings(raw || {}) }));
+      }
       else if (globalThis.electronAPI?.loadSettings) {
         globalThis.electronAPI.loadSettings().then(raw => {
           res(raw ? { ...DEFAULTS, ...raw } : { ...DEFAULTS });
@@ -545,6 +559,8 @@ async function loadPrayers(force = false) {
   ) {
     prayers = cache.timings;
     hijri = cache.hijri;
+    loadedPrayerDate = today;
+    syncReminders();
     return;
   }
   const controller = new AbortController();
@@ -558,6 +574,7 @@ async function loadPrayers(force = false) {
     if (requestId !== prayerLoadSequence) return;
     const t = j.data.timings;
     prayers = { Fajr: t.Fajr, Dhuhr: t.Dhuhr, Asr: t.Asr, Maghrib: t.Maghrib, Isha: t.Isha };
+    loadedPrayerDate = today;
     const h = j.data.date.hijri;
     hijri = `${h.day} ${h.month.en} ${h.year} AH`;
     state.prayerCache = { date: today, lat: latR, lng: lngR, method: state.method, timings: prayers, hijri };
@@ -586,6 +603,9 @@ function syncReminders() {
       iqamaEnabled: state.iqamaEnabled,
       iqamaMinutes: state.iqamaMinutes,
       iqamaMinutesByPrayer: state.iqamaMinutesByPrayer,
+      lat: state.lat,
+      lng: state.lng,
+      method: state.method,
     });
   }
 }
@@ -1394,8 +1414,12 @@ function notificationSummary() {
   const prayers = (state.reminderPrayers || []).filter((prayer) => PRAYER_ORDER.includes(prayer));
   if (!prayers.length) return "Choose at least one prayer to start receiving reminders.";
   const prayerText = prayers.length === PRAYER_ORDER.length ? "all five prayers" : prayers.join(", ");
-  const atAthan = state.prayerAlertEnabled ? " You will also be notified at the exact prayer time." : "";
-  return `You will be reminded before and after athan for ${prayerText}.${atAthan}`;
+  const events = [];
+  if (state.remindersEnabled) events.push("before athan");
+  if (state.prayerAlertEnabled) events.push("at athan");
+  if (state.iqamaEnabled) events.push("after athan");
+  if (!events.length) return "Choose when you want to be notified.";
+  return `You will be notified ${events.join(", ")} for ${prayerText}.`;
 }
 
 function syncNotificationUI() {
@@ -1406,6 +1430,10 @@ function syncNotificationUI() {
   if (master) master.checked = enabled;
   const athan = $("#prayerAlertEnabled");
   if (athan) { athan.checked = !!state.prayerAlertEnabled; athan.disabled = !enabled; }
+  const reminders = $("#remindersEnabled");
+  if (reminders) { reminders.checked = !!state.remindersEnabled; reminders.disabled = !enabled; }
+  const iqama = $("#iqamaEnabled");
+  if (iqama) { iqama.checked = !!state.iqamaEnabled; iqama.disabled = !enabled; }
   document.querySelectorAll("[data-rp]").forEach((input) => {
     const active = (state.reminderPrayers || []).includes(input.dataset.rp);
     input.checked = active;
@@ -1422,7 +1450,6 @@ function syncNotificationUI() {
 const SOUNDS = [
   ["adhan-1", "Adhan 1"],
   ["adhan-2", "Adhan 2"],
-  ["adhan-3", "Adhan 3"],
   ["chime", "Chime"],
   ["bell", "Bell"],
   ["soft-ping", "Soft Ping"],
@@ -1448,7 +1475,9 @@ function settingsBodyHTML(id) {
     <div class="notification-master settings-card"><div><strong>Prayer notifications</strong><span>Receive timely reminders around each prayer.</span></div><label class="switch" aria-label="Prayer notifications"><input type="checkbox" id="notificationsEnabled" ${state.notificationsEnabled ? "checked" : ""}/><span></span></label></div>
     <div class="notification-config ${notificationsOff ? "is-paused" : ""}" aria-disabled="${notificationsOff}">
       <div class="notification-block settings-card"><div class="notification-block-head"><div><span class="notification-kicker">When to notify</span><strong>Prayer reminders</strong></div></div>
+        <div class="athan-line"><div class="athan-copy"><strong>Before athan</strong><span>Prepare for the prayer ahead of time.</span></div><label class="switch" aria-label="Notify before athan"><input type="checkbox" id="remindersEnabled" ${state.remindersEnabled ? "checked" : ""} ${notificationsOff ? "disabled" : ""}/><span></span></label></div>
         <div class="athan-line"><div class="athan-copy"><strong>At athan</strong><span>Notify when the exact prayer time begins.</span></div><label class="switch" aria-label="Notify at athan"><input type="checkbox" id="prayerAlertEnabled" ${state.prayerAlertEnabled ? "checked" : ""} ${notificationsOff ? "disabled" : ""}/><span></span></label></div>
+        <div class="athan-line"><div class="athan-copy"><strong>After athan</strong><span>Remind me when it is time for iqama.</span></div><label class="switch" aria-label="Notify for iqama"><input type="checkbox" id="iqamaEnabled" ${state.iqamaEnabled ? "checked" : ""} ${notificationsOff ? "disabled" : ""}/><span></span></label></div>
         <div class="prayer-timing-list">${PRAYER_ORDER.map((p) => prayerTimingHTML(p, notificationsOff)).join("")}</div>
       </div>
       <div class="settings-card"><div class="settings-card-title">Reminder sound</div><div class="sound-grid">${SOUNDS.map(([id, label]) => `<label class="sound-option ${state.reminderSound === id ? "active" : ""}" data-sound="${id}"><input type="radio" name="reminderSound" value="${id}" ${state.reminderSound === id ? "checked" : ""} style="display:none">${label}</label>`).join("")}</div><div class="sound-actions"><button class="loc-btn" id="testSoundBtn">Test Sound</button></div></div>
@@ -2308,6 +2337,20 @@ function wireSettings() {
     syncReminders();
     syncNotificationUI();
   });
+  const re = $("#remindersEnabled");
+  if (re) re.addEventListener("change", (e) => {
+    state.remindersEnabled = e.target.checked;
+    storage.set({ remindersEnabled: state.remindersEnabled });
+    syncReminders();
+    syncNotificationUI();
+  });
+  const ie = $("#iqamaEnabled");
+  if (ie) ie.addEventListener("change", (e) => {
+    state.iqamaEnabled = e.target.checked;
+    storage.set({ iqamaEnabled: state.iqamaEnabled });
+    syncReminders();
+    syncNotificationUI();
+  });
   document.querySelectorAll("[data-prayer-action]").forEach((button) =>
     button.addEventListener("click", () => {
       const selected = button.dataset.prayerAction === "all";
@@ -2486,7 +2529,17 @@ function wireMap() {
 // ---------- init ----------
 (async function init() {
   const data = await storage.get();
-  state = { ...DEFAULTS, ...data };
+  const migratedData = migrateNotificationSettings(data);
+  state = { ...DEFAULTS, ...migratedData };
+  if (data.reminderEnabled !== undefined || data.athanEnabled !== undefined) {
+    storage.set({
+      remindersEnabled: state.remindersEnabled,
+      prayerAlertEnabled: state.prayerAlertEnabled,
+      reminderEnabled: null,
+      athanEnabled: null,
+    });
+    if (globalThis.chrome?.storage) chrome.storage.local.remove(["reminderEnabled", "athanEnabled"]);
+  }
 
   // Mobile always starts in time-based mode. A manual category choice can
   // still override the category for the current session, but should not
@@ -2586,7 +2639,7 @@ function wireMap() {
 
   // Smooth countdown + auto morning/evening swap, in-place only.
   setInterval(async () => {
-    if (!prayers) await loadPrayers(true);
+    if (!prayers || loadedPrayerDate !== todayKey()) await loadPrayers(true);
     if (state.view !== "home") return;
     patchPrayerCard();
     if (applyAutoCategory()) patchAzkarCard();

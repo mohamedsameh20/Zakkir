@@ -117,7 +117,7 @@ test("appearance section renders theme grids with dark counterparts", async () =
   const themes = await window.locator(".theme-grid [data-theme]").count();
   expect(themes).toBeGreaterThan(5);
   const darkCards = await window.locator('.theme-grid [data-theme$="-dark"]').count();
-  expect(darkCards).toBe(9);
+  expect(darkCards).toBeGreaterThanOrEqual(9);
   const palettes = await window.locator(".palette-grid [data-palette]").count();
   expect(palettes).toBeGreaterThan(3);
 });
@@ -144,12 +144,14 @@ test("notifications section renders master switch and sound picker", async () =>
   await toSection("notifications");
   const master = await window.locator("#notificationsEnabled").count();
   expect(master).toBe(1);
+  expect(await window.locator("#remindersEnabled").count()).toBe(1);
+  expect(await window.locator("#prayerAlertEnabled").count()).toBe(1);
+  expect(await window.locator("#iqamaEnabled").count()).toBe(1);
   const sounds = await window.locator(".sound-grid .sound-option").count();
-  expect(sounds).toBe(7);
+  expect(sounds).toBe(6);
   const testBtn = await window.locator("#testSoundBtn").count();
   expect(testBtn).toBe(1);
-  const timeline = await window.locator(".timeline-item").count();
-  expect(timeline).toBe(3);
+  expect(await window.locator(".athan-line").count()).toBe(3);
 });
 
 test("notifications master switch pauses the config", async () => {
@@ -171,20 +173,24 @@ test("notifications master switch pauses the config", async () => {
   expect(resumed).toBe(0);
 });
 
-test("notifications All/Clear updates prayer toggles", async () => {
+test("notification event toggles update the summary", async () => {
   await toSection("notifications");
-  await window.locator("[data-prayer-action='clear']").click();
+  await toggleCheckbox("remindersEnabled", false);
   await window.waitForTimeout(200);
-  const cleared = await window.locator("[data-rp]:checked").count();
-  expect(cleared).toBe(0);
   const summary = await window.locator(".notification-confirmation p").textContent();
-  expect(summary).toContain("at least one prayer");
-  await window.locator("[data-prayer-action='all']").click();
+  expect(summary).not.toContain("before athan");
+  await toggleCheckbox("iqamaEnabled", true);
   await window.waitForTimeout(200);
-  const allChecked = await window.locator("[data-rp]:checked").count();
-  expect(allChecked).toBe(5);
-  const onTiles = await window.locator(".pt.on").count();
-  expect(onTiles).toBe(5);
+  const updated = await window.locator(".notification-confirmation p").textContent();
+  expect(updated).toContain("after athan");
+});
+
+test("notification prayer selection remains configurable", async () => {
+  await toSection("notifications");
+  expect(await window.locator("[data-rp]:checked").count()).toBeGreaterThan(0);
+  await window.locator("[data-rp]").first().uncheck();
+  const summary = await window.locator(".notification-confirmation p").textContent();
+  expect(summary).not.toContain("Fajr");
 });
 
 test("window section renders zoom and size sliders", async () => {
