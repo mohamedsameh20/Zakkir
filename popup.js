@@ -46,6 +46,8 @@ const DEFAULTS = {
   updateAlertsEnabled: true,
   prayerCollapsed: false,
   azkarNavigation: "buttons-and-swipe",
+  gardenProgressDays: {},
+  gardenPalacesByWeek: {},
 };
 
 function migrateNotificationSettings(data) {
@@ -446,6 +448,76 @@ function flattenCategory(arr) {
 
 const MORNING_CAT = "أذكار الصباح";
 const EVENING_CAT = "أذكار المساء";
+let gardenWeekOffset = 0;
+
+function localDateKey(date) {
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+function gardenProgressKey(category) {
+  if (category === MORNING_CAT) return "morning";
+  if (category === EVENING_CAT) return "evening";
+  return null;
+}
+
+function recordGardenProgress(category, completed, total) {
+  const collection = gardenProgressKey(category);
+  if (!collection || !total) return;
+  const dayKey = todayKey();
+  const days = { ...(state.gardenProgressDays || {}) };
+  const day = { ...(days[dayKey] || {}) };
+  const progress = Math.min(1, Math.max(0, completed / total));
+  if (progress <= Number(day[collection] || 0)) return;
+  day[collection] = progress;
+  days[dayKey] = day;
+
+  const cutoff = new Date();
+  cutoff.setHours(0, 0, 0, 0);
+  cutoff.setDate(cutoff.getDate() - 371);
+  for (const key of Object.keys(days)) {
+    if (key < localDateKey(cutoff)) delete days[key];
+  }
+
+  state.gardenProgressDays = days;
+  storage.set({ gardenProgressDays: days });
+}
+
+function gardenWeekSummary(offset = gardenWeekOffset) {
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+  const mondayDistance = (start.getDay() + 6) % 7;
+  start.setDate(start.getDate() - mondayDistance - offset * 7);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+
+  let earned = 0;
+  let completedDays = 0;
+  for (let day = 0; day < 7; day += 1) {
+    const date = new Date(start);
+    date.setDate(start.getDate() + day);
+    const progress = state.gardenProgressDays?.[localDateKey(date)] || {};
+    earned += Number(progress.morning || 0) + Number(progress.evening || 0);
+    if (Number(progress.morning || 0) >= 1 && Number(progress.evening || 0) >= 1) completedDays += 1;
+  }
+
+  const percent = Math.round((earned / 14) * 100);
+  const weekKey = localDateKey(start);
+  const palaces = Math.min(7, Math.max(0, Math.floor(Number(state.gardenPalacesByWeek?.[weekKey] || 0))));
+  const sameMonth = start.getMonth() === end.getMonth();
+  const month = new Intl.DateTimeFormat("en", { month: "short" });
+  const label = sameMonth
+    ? `${month.format(start)} ${start.getDate()}–${end.getDate()}, ${end.getFullYear()}`
+    : `${month.format(start)} ${start.getDate()}–${month.format(end)} ${end.getDate()}, ${end.getFullYear()}`;
+  return {
+    percent,
+    weekKey,
+    palaces,
+    completedDays,
+    label,
+    context: offset === 0 ? "Current week" : offset === 1 ? "1 week ago" : `${offset} weeks ago`,
+  };
+}
 
 // Morning: from Fajr to Maghrib. Evening: from Maghrib to Fajr.
 function autoTimeCategory() {
@@ -645,6 +717,7 @@ function maybeResetDaily() {
 // ---------- icons ----------
 const icon = {
   home: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V10Z"/><path d="M9 21v-6h6v6"/></svg>`,
+  garden: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22V9"/><path d="M8 13c-3 0-5-2-5-5 3 0 5 2 5 5Z"/><path d="M16 9c3 0 5-2 5-5-3 0-5 2-5 5Z"/><path d="M5 22h14"/></svg>`,
   gear: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>`,
   cal: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>`,
   back: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 6l-6 6 6 6"/></svg>`,
@@ -677,13 +750,14 @@ function headerHTML() {
       ${globalThis.electronAPI ? `<button class="icon-btn" id="minimizeBtn" title="Minimize">${icon.minimize}</button>` : ""}
       ${globalThis.electronAPI ? `<button class="icon-btn" id="closeBtn" title="Close">${icon.close}</button>` : ""}
       <button class="icon-btn" data-go="schedule" title="Monthly schedule">${icon.cal}</button>
+      <button class="icon-btn" data-go="garden" title="Garden">${icon.garden}</button>
       <button class="icon-btn" data-go="settings" title="Settings">${icon.gear}</button>
     </div>`;
 }
 
 function mobileBottomNavHTML(active) {
   if (!globalThis.__ZAKKIR_MOBILE__) return "";
-  const order = ["home", "schedule", "settings"];
+  const order = ["home", "schedule", "garden", "settings"];
   const destinationIndex = Math.max(0, order.indexOf(active));
   const originIndex = mobileNavTransition?.to === destinationIndex
     ? mobileNavTransition.from
@@ -692,6 +766,7 @@ function mobileBottomNavHTML(active) {
     <i class="mobile-nav-liquid" aria-hidden="true" style="--nav-index:${originIndex}"></i>
     <button type="button" class="mobile-bottom-nav-btn ${active === "home" ? "active" : ""}" data-go="home" aria-label="Home" ${active === "home" ? `aria-current="page"` : ""}><span class="mobile-nav-icon">${icon.home}</span><span class="mobile-nav-label">Home</span></button>
     <button type="button" class="mobile-bottom-nav-btn ${active === "schedule" ? "active" : ""}" data-go="schedule" aria-label="Schedule" ${active === "schedule" ? `aria-current="page"` : ""}><span class="mobile-nav-icon">${icon.cal}</span><span class="mobile-nav-label">Schedule</span></button>
+    <button type="button" class="mobile-bottom-nav-btn ${active === "garden" ? "active" : ""}" data-go="garden" aria-label="Garden" ${active === "garden" ? `aria-current="page"` : ""}><span class="mobile-nav-icon">${icon.garden}</span><span class="mobile-nav-label">Garden</span></button>
     <button type="button" class="mobile-bottom-nav-btn ${active === "settings" ? "active" : ""}" data-go="settings" aria-label="Settings" ${active === "settings" ? `aria-current="page"` : ""}><span class="mobile-nav-icon">${icon.gear}</span><span class="mobile-nav-label">Settings</span></button>
   </nav>`;
 }
@@ -1105,6 +1180,89 @@ function renderSchedule() {
       ${mobileBottomNavHTML("schedule")}
     </div>
   `;
+}
+
+function renderGarden() {
+  const week = gardenWeekSummary();
+  return `
+    <div class="app garden-view">
+      <div class="settings-head">
+        <button class="icon-btn" data-go="home" aria-label="Back to home">${icon.back}</button>
+        <h1>Garden</h1>
+        <span style="width:30px"></span>
+      </div>
+      <section class="garden-week-panel" id="gardenWeekPanel" aria-label="Weekly Garden progress">
+        ${gardenWeekPanelHTML(week)}
+      </section>
+      <main id="gardenScene" class="garden-stage" aria-label="Garden"></main>
+      ${mobileBottomNavHTML("garden")}
+    </div>
+  `;
+}
+
+function gardenWeekPanelHTML(week = gardenWeekSummary()) {
+  const canRedeem = week.palaces < week.completedDays && week.palaces < 7;
+  const redemptionLabel = week.palaces >= 7
+    ? "All 7 redeemed"
+    : canRedeem
+      ? "Redeem palace"
+      : "Complete a full day";
+  return `
+    <div class="garden-week-nav">
+      <button type="button" class="garden-week-button" id="gardenOlderWeek" aria-label="View older week's home" title="Older week" ${gardenWeekOffset >= 52 ? "disabled" : ""}>${icon.prev}</button>
+      <div class="garden-week-copy">
+        <span>${week.context}</span>
+        <strong>${week.label}</strong>
+      </div>
+      <button type="button" class="garden-week-button" id="gardenNewerWeek" aria-label="View newer week's home" title="Newer week" ${gardenWeekOffset === 0 ? "disabled" : ""}>${icon.next}</button>
+    </div>
+    <div class="garden-week-progress-row">
+      <span>Morning + evening Azkar</span>
+      <strong>${week.percent}%</strong>
+    </div>
+    <div class="garden-week-track" role="progressbar" aria-label="Weekly Azkar progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${week.percent}">
+      <div style="transform:scaleX(${week.percent / 100})"></div>
+    </div>
+    <div class="garden-week-reward">
+      <span>Palaces redeemed <strong class="garden-palace-count">${week.palaces}</strong></span>
+      <button type="button" class="garden-redeem-button" id="gardenRedeemPalace" ${canRedeem ? "" : "disabled"}>${redemptionLabel}</button>
+    </div>
+  `;
+}
+
+function patchGardenWeekPanel() {
+  const panel = $("#gardenWeekPanel");
+  if (!panel) return;
+  setHTML(panel, gardenWeekPanelHTML());
+  wireGardenWeekControls();
+  globalThis.ZakkirGarden?.setPalaceCount(gardenWeekSummary().palaces);
+}
+
+function wireGardenWeekControls() {
+  const older = $("#gardenOlderWeek");
+  const newer = $("#gardenNewerWeek");
+  older?.addEventListener("click", () => {
+    gardenWeekOffset = Math.min(52, gardenWeekOffset + 1);
+    globalThis.__ZAKKIR_HAPTIC__?.("selection");
+    patchGardenWeekPanel();
+  });
+  newer?.addEventListener("click", () => {
+    gardenWeekOffset = Math.max(0, gardenWeekOffset - 1);
+    globalThis.__ZAKKIR_HAPTIC__?.("selection");
+    patchGardenWeekPanel();
+  });
+  $("#gardenRedeemPalace")?.addEventListener("click", redeemGardenPalace);
+}
+
+function redeemGardenPalace() {
+  const week = gardenWeekSummary();
+  if (week.palaces >= week.completedDays || week.palaces >= 7) return;
+  const palaces = { ...(state.gardenPalacesByWeek || {}) };
+  palaces[week.weekKey] = week.palaces + 1;
+  state.gardenPalacesByWeek = palaces;
+  storage.set({ gardenPalacesByWeek: palaces });
+  globalThis.__ZAKKIR_HAPTIC__?.("success");
+  patchGardenWeekPanel();
 }
 
 function patchSchedule() {
@@ -1652,6 +1810,7 @@ function render() {
   applyVars();
   const app = $("#app");
   const previousView = renderedView;
+  if (previousView === "garden") globalThis.ZakkirGarden?.unmountGarden();
   const paint = () => {
     if (state.view === "map") {
       setHTML(app, renderMap());
@@ -1659,10 +1818,18 @@ function render() {
     } else {
       const html = state.view === "settings" ? renderSettings()
         : state.view === "schedule" ? renderSchedule()
+        : state.view === "garden" ? renderGarden()
         : renderHome();
       setHTML(app, html);
       wire();
       settleMobileNav(state.view);
+      if (state.view === "garden") {
+        globalThis.ZakkirGarden?.mountGarden(
+          $("#gardenScene"),
+          globalThis.__ZAKKIR_PALACE_MODEL_URL__ || "gothic_palace_optimized.glb",
+          gardenWeekSummary().palaces,
+        );
+      }
     }
   };
   const viewChanged = renderedView !== null && renderedView !== state.view;
@@ -1683,7 +1850,7 @@ function settleMobileNav(nextView) {
   if (!globalThis.__ZAKKIR_MOBILE__) return;
   const nav = document.querySelector(".mobile-bottom-nav");
   if (!nav) return;
-  const order = ["home", "schedule", "settings"];
+  const order = ["home", "schedule", "garden", "settings"];
   const to = order.indexOf(nextView);
   if (to < 0) return;
   const liquid = nav.querySelector(".mobile-nav-liquid");
@@ -1980,7 +2147,7 @@ function wire() {
   document.querySelectorAll("[data-go]").forEach((b) =>
     b.addEventListener("click", () => {
       if (state.view !== b.dataset.go) {
-        const order = ["home", "schedule", "settings"];
+        const order = ["home", "schedule", "garden", "settings"];
         const from = order.indexOf(state.view);
         const to = order.indexOf(b.dataset.go);
         mobileNavTransition = from >= 0 && to >= 0 && from !== to ? { from, to } : null;
@@ -2003,6 +2170,7 @@ function wire() {
     }
     wireSchedule();
   }
+  if (state.view === "garden") wireGardenWeekControls();
 
   // Home interactions
   wirePrayerTap();
@@ -2027,6 +2195,7 @@ function wire() {
     if (next >= target) {
       // Finish in place, then advance through the same animated path as navigation.
       state.azkarCount = target;
+      recordGardenProgress(state.category, state.azkarIndex + 1, list.length);
       patchCount(target, target);
       tap.classList.remove("azkar-complete");
       void tap.offsetWidth;
@@ -2648,4 +2817,5 @@ function wireMap() {
 
 addEventListener("pagehide", () => {
   if (countSaveTimer) storage.set({ azkarCount: state.azkarCount });
+  globalThis.ZakkirGarden?.unmountGarden();
 });

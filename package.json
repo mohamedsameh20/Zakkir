@@ -29,6 +29,8 @@
       "popup.html",
       "popup.css",
       "popup.js",
+      "garden/**",
+      "gothic_palace_optimized.glb",
       "azkar.json",
       "fonts/**",
       "sounds/**",

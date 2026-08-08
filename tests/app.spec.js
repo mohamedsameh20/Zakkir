@@ -84,6 +84,57 @@ test("close button exists", async () => {
   expect(btn).toBe(1);
 });
 
+test("garden tab mounts the 3D garden scene", async () => {
+  await window.locator('[data-go="garden"]').click();
+  await expect(window.locator(".garden-view")).toBeVisible();
+  await expect(window.locator("#gardenScene canvas")).toBeVisible();
+  await expect(window.locator(".garden-loading")).toBeHidden({ timeout: 20000 });
+  await expect(window.locator('.garden-week-track[role="progressbar"]')).toBeVisible();
+  await expect(window.locator("#gardenNewerWeek")).toBeDisabled();
+
+  await window.evaluate(() => {
+    const monday = new Date();
+    monday.setHours(0, 0, 0, 0);
+    monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
+    const pad = (value) => String(value).padStart(2, "0");
+    const completedDays = {};
+    for (let index = 0; index < 7; index += 1) {
+      const day = new Date(monday);
+      day.setDate(monday.getDate() + index);
+      const key = `${day.getFullYear()}-${pad(day.getMonth() + 1)}-${pad(day.getDate())}`;
+      completedDays[key] = { morning: 1, evening: 1 };
+    }
+    window.update({ gardenProgressDays: completedDays, gardenPalacesByWeek: {} });
+  });
+  await expect(window.locator('.garden-week-track[role="progressbar"]')).toHaveAttribute("aria-valuenow", "100");
+  await expect(window.locator("#gardenRedeemPalace")).toBeEnabled();
+  await window.locator("#gardenRedeemPalace").click();
+  await expect(window.locator(".garden-palace-count")).toHaveText("1");
+  await expect(window.locator("#gardenRedeemPalace")).toBeEnabled();
+  await window.locator("#gardenRedeemPalace").click();
+  await expect(window.locator(".garden-palace-count")).toHaveText("2");
+  await expect(window.locator("#gardenScene canvas")).toHaveAttribute("aria-label", "Interactive 3D garden with 2 palaces");
+
+  for (let palace = 3; palace <= 7; palace += 1) {
+    await window.locator("#gardenRedeemPalace").click();
+    await expect(window.locator(".garden-palace-count")).toHaveText(String(palace));
+  }
+  await expect(window.locator("#gardenRedeemPalace")).toBeDisabled();
+  await expect(window.locator("#gardenRedeemPalace")).toHaveText("All 7 redeemed");
+  await expect(window.locator("#gardenScene canvas")).toHaveAttribute("aria-label", "Interactive 3D garden with 7 palaces");
+
+  const savedPalaces = await window.evaluate(async () => {
+    const settings = await window.electronAPI.loadSettings();
+    return settings.gardenPalacesByWeek;
+  });
+  expect(Object.values(savedPalaces)).toContain(7);
+
+  await window.locator("#gardenOlderWeek").click();
+  await expect(window.locator(".garden-week-copy span")).toHaveText("1 week ago");
+  await expect(window.locator("#gardenNewerWeek")).toBeEnabled();
+  await window.locator('[data-go="home"]').click();
+});
+
 // --- Navigation to Settings ---
 
 test("navigate to settings view", async () => {

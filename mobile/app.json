@@ -26,6 +26,9 @@
     },
     "ios": {
       "bundleIdentifier": "com.mohamedsameh20.zakkir"
-    }
+    },
+    "plugins": [
+      "expo-asset"
+    ]
   }
 }

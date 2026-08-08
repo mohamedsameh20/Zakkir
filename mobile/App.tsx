@@ -1,9 +1,10 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Asset } from "expo-asset";
 import { AndroidHaptics, performAndroidHapticsAsync } from "expo-haptics";
 import * as Notifications from "expo-notifications";
 import { StatusBar } from "expo-status-bar";
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { AppState, BackHandler, Platform, SafeAreaView, StatusBar as NativeStatusBar, StyleSheet, View } from "react-native";
+import { ActivityIndicator, AppState, BackHandler, Platform, SafeAreaView, StatusBar as NativeStatusBar, StyleSheet, Text, View } from "react-native";
 import { WebView, WebViewMessageEvent } from "react-native-webview";
 import { rendererHtml } from "./renderer.generated";
 
@@ -234,15 +235,29 @@ async function ensureChannel() {
 
 export default function App() {
   const webView = useRef<WebView>(null);
-  const source = useMemo(() => ({ html: rendererHtml }), []);
   const topInset = Platform.OS === "android" ? NativeStatusBar.currentHeight || 0 : 0;
   const [themeBg, setThemeBg] = useState<string>("#f4f4f6");
   const [isDarkTheme, setIsDarkTheme] = useState<boolean>(false);
   const [currentView, setCurrentView] = useState("home");
+  const [palaceModelUri, setPalaceModelUri] = useState<string | null>(null);
   const lastSchedule = useRef<{ times: Record<string, unknown>; settings: Record<string, unknown> } | null>(null);
+  const source = useMemo(() => {
+    if (!palaceModelUri) return null;
+    const slash = palaceModelUri.lastIndexOf("/");
+    const baseUrl = slash >= 0 ? palaceModelUri.slice(0, slash + 1) : undefined;
+    return {
+      html: rendererHtml.replace("__ZAKKIR_PALACE_MODEL_URI__", JSON.stringify(palaceModelUri)),
+      baseUrl,
+    };
+  }, [palaceModelUri]);
 
   useEffect(() => {
     ensureChannel();
+    Asset.loadAsync(require("../gothic_palace_optimized.glb"))
+      .then(([asset]) => {
+        setPalaceModelUri(asset.uri.startsWith("http") ? asset.uri : (asset.localUri || asset.uri));
+      })
+      .catch((error) => console.warn("Could not prepare Gothic palace asset", error));
     AsyncStorage.getItem(SCHEDULE_KEY).then((raw) => {
       if (!raw) return;
       try {
@@ -301,6 +316,8 @@ export default function App() {
         } catch (_) {}
       } else if (message.type === "view-change" && typeof message.view === "string") {
         setCurrentView(message.view);
+      } else if (message.type === "garden-error") {
+        console.warn("Three.js palace load failed", message.detail || "Unknown loader error", message.url || "");
       } else if (message.type === "schedule-notifications") {
         const times = message.times || {};
         const settings = message.settings || {};
@@ -316,17 +333,28 @@ export default function App() {
       <StatusBar style={isDarkTheme ? "light" : "dark"} animated />
       <View style={{ height: topInset, backgroundColor: themeBg }} />
       <SafeAreaView style={[styles.safe, { backgroundColor: themeBg }]}>
-        <WebView
-          ref={webView}
-          source={source}
-          originWhitelist={["*"]}
-          javaScriptEnabled
-          domStorageEnabled
-          onMessage={onMessage}
-          onShouldStartLoadWithRequest={(request) => request.url === "about:blank" || request.url.startsWith("data:text/html")}
-          setSupportMultipleWindows={false}
-          style={[styles.webview, { backgroundColor: themeBg }]}
-        />
+        {source ? (
+          <WebView
+            ref={webView}
+            source={source}
+            originWhitelist={["*"]}
+            javaScriptEnabled
+            domStorageEnabled
+            allowFileAccess
+            allowFileAccessFromFileURLs
+            allowUniversalAccessFromFileURLs
+            androidLayerType="hardware"
+            onMessage={onMessage}
+            onShouldStartLoadWithRequest={(request) => request.url === "about:blank" || request.url.startsWith("data:text/html") || request.url.startsWith("file:") || request.url.startsWith("http://") || request.url.startsWith("https://")}
+            setSupportMultipleWindows={false}
+            style={[styles.webview, { backgroundColor: themeBg }]}
+          />
+        ) : (
+          <View style={styles.assetLoading}>
+            <ActivityIndicator size="large" color="#2f6f61" />
+            <Text style={styles.assetLoadingText}>Preparing palace…</Text>
+          </View>
+        )}
       </SafeAreaView>
     </View>
   );
@@ -336,4 +364,6 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   safe: { flex: 1 },
   webview: { flex: 1 },
+  assetLoading: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12 },
+  assetLoadingText: { color: "#52665f", fontSize: 14, fontWeight: "600" },
 });

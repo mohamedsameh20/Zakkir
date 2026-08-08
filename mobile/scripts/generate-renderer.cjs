@@ -1,12 +1,27 @@
 const fs = require("fs");
 const path = require("path");
+const esbuild = require("esbuild");
 
 const root = path.resolve(__dirname, "../..");
 const mobile = path.resolve(__dirname, "..");
+const gardenBundlePath = path.join(root, "garden", "garden.bundle.js");
+esbuild.buildSync({
+  entryPoints: [path.join(root, "garden", "garden-entry.js")],
+  bundle: true,
+  format: "iife",
+  globalName: "ZakkirGarden",
+  outfile: gardenBundlePath,
+  platform: "browser",
+  target: ["chrome100"],
+  minify: true,
+  nodePaths: [path.join(mobile, "node_modules")],
+  logLevel: "silent",
+});
 const css = fs.readFileSync(path.join(root, "popup.css"), "utf8");
 const js = fs.readFileSync(path.join(root, "popup.js"), "utf8");
 const scheduler = fs.readFileSync(path.join(root, "notification-scheduler.js"), "utf8");
 const azkar = fs.readFileSync(path.join(root, "azkar.json"), "utf8");
+const gardenBundle = fs.readFileSync(gardenBundlePath, "utf8");
 const fontNames = [
   ["noto-naskh-arabic", "Noto Naskh Arabic"],
   ["amiri", "Amiri"],
@@ -44,8 +59,16 @@ const bridge = `
   document.documentElement.classList.add('zakkir-mobile');
   window.__ZAKKIR_AZKAR__ = ${azkar};
   window.__ZAKKIR_SOUNDS__ = ${JSON.stringify(soundsObj)};
+  window.__ZAKKIR_PALACE_MODEL_URL__ = __ZAKKIR_PALACE_MODEL_URI__;
   window.addEventListener('message', function(event) {
-    try { var message = JSON.parse(event.data); if (message.type === 'settings' && window.__resolveSettings) window.__resolveSettings(message.value); } catch (_) {}
+    try {
+      var message = JSON.parse(event.data);
+      if (message.type === 'settings' && window.__resolveSettings) window.__resolveSettings(message.value);
+      if (message.type === 'palace-model' && message.value) {
+        window.__ZAKKIR_PALACE_MODEL_URL__ = message.value;
+        window.ZakkirGarden?.setModelUrl(message.value);
+      }
+    } catch (_) {}
   });
   window.electronAPI = {
     loadSettings: function() { return new Promise(function(resolve) { var done = false; var finish = function(value) { if (done) return; done = true; clearTimeout(timer); window.__resolveSettings = null; resolve(value || {}); }; var timer = setTimeout(function() { finish({}); }, 3000); window.__resolveSettings = finish; window.ReactNativeWebView.postMessage(JSON.stringify({type:'load-settings'})); }); },
@@ -310,7 +333,7 @@ const mobileCss = `
     right: 14px;
     bottom: max(8px, env(safe-area-inset-bottom));
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     gap: 8px;
     padding: 7px;
     isolation: isolate;
@@ -350,7 +373,7 @@ const mobileCss = `
     top: 7px;
     bottom: 7px;
     left: 7px;
-    width: calc((100% - 30px) / 3);
+    width: calc((100% - 38px) / 4);
     display: block;
     border-radius: 14px;
     background: linear-gradient(135deg, color-mix(in oklab, var(--accent) 76%, white), color-mix(in oklab, var(--accent) 94%, transparent));
@@ -408,5 +431,5 @@ const mobileCss = `
   }
 `;
 
-const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=3,user-scalable=yes"/><style>${fonts}${css}${mobileCss}</style></head><body><div id="app"><div class="boot">Loading...</div></div><script>${scheduler.replace(/<\/script/gi, "<\\/script")}</script><script>${bridge}</script><script>${patchedJs.replace(/<\/script/gi, "<\\/script")}</script></body></html>`;
+const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=3,user-scalable=yes"/><style>${fonts}${css}${mobileCss}</style></head><body><div id="app"><div class="boot">Loading...</div></div><script>${scheduler.replace(/<\/script/gi, "<\\/script")}</script><script>${bridge}</script><script>${gardenBundle.replace(/<\/script/gi, "<\\/script")}</script><script>${patchedJs.replace(/<\/script/gi, "<\\/script")}</script></body></html>`;
 fs.writeFileSync(path.join(mobile, "renderer.generated.ts"), `export const rendererHtml = ${JSON.stringify(html)};\n`);
