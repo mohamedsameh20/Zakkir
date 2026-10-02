@@ -1,71 +1,56 @@
-# Zakkir Desktop
+# Zakkir for Android
 
-A lightweight, always-on-top desktop app for **prayer times** and **Azkar** (Hisn al-Muslim), built with Electron.
+Prayer times, reminders and Azkar (Hisn al-Muslim) on Android.
 
-Prayer times come live from [Aladhan](https://aladhan.com); Azkar are bundled locally so the app works offline.
+This branch (`zakkir-android`) holds only the Android app. The other Zakkir
+versions live on their own branches: the Firefox extension on
+`zakkir-firefox`, and the retired desktop (Electron) app on `main`.
 
-## Download
+## How it is built
 
-| Platform         | Download                                                                                                                           | Install                                                     |
-| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
-| Windows          | [Zakkir-Setup-1.4.0.exe](https://github.com/mohamedsameh20/Zakkir/releases/download/v1.4.0/Zakkir-Setup-1.4.0.exe)                 | Run the installer                                           |
-| Debian / Ubuntu  | [zakkir-desktop_1.4.0_amd64.deb](https://github.com/mohamedsameh20/Zakkir/releases/download/v1.4.0/zakkir-desktop_1.4.0_amd64.deb) | `sudo dpkg -i zakkir-desktop_1.4.0_amd64.deb`               |
-| Linux (AppImage) | [Zakkir-1.4.0.AppImage](https://github.com/mohamedsameh20/Zakkir/releases/download/v1.4.0/Zakkir-1.4.0.AppImage)                   | `chmod +x Zakkir-1.4.0.AppImage && ./Zakkir-1.4.0.AppImage` |
+The app is an Expo / React Native shell around a WebView.
 
-## Features
-
-- **Prayer times** with a live next-prayer countdown and progress toward the next prayer.
-- **Azkar library** with 8 categories, auto-switching between Morning and Evening collections.
-- **Arabic-first reading** — 10 locally bundled fonts (Scheherazade, Amiri, Lateef, Cairo, and more), adjustable size, and separate rendering for opening basmala/istiadhah formulas.
-- **70+ visual themes** including Frutiger Aero, Liquid Glass, Neobrutalist, and full dark counterparts for each family.
-- **Accent palettes** — a large palette set that recolors any theme in place.
-- **Tabbed settings** (General / Notifications / Reading / Appearance / Window) that switch in place without re-rendering or stuttering.
-- **Prayer timeline notifications** — master switch plus independent *before*, *at*, and *after* athan reminders, per-prayer selection, reminder sounds, and a plain-language summary.
-- **Flexible location** — GPS detection, embedded Leaflet map picker, city presets, or manual coordinates.
-- **Always-on-top** frameless window with native controls; resizable from the Window section.
-- **Offline-first** — fonts, azkar, sounds, and the map are all bundled locally.
-
-## Screenshots
-
-### Home
-
-|                  Default (Frutiger Aero)                  |                  Frutiger Twilight (Dark)                  |
-| :-------------------------------------------------------: | :--------------------------------------------------------: |
-| ![Home Frutiger](Screenshots/Home_Frutiger.png) | ![Home Frutiger Dark](Screenshots/Home_Frutiger_Dark.png) |
-
-### Settings
-
-|                     General                      |                   Notifications                    |
-| :----------------------------------------------: | :------------------------------------------------: |
-| ![Settings General](Screenshots/Settings_General.png) | ![Settings Notifications](Screenshots/Settings_Notifications.png) |
-
-|                       Reading                       |                      Appearance                       |
-| :-------------------------------------------------: | :---------------------------------------------------: |
-| ![Settings Reading](Screenshots/Settings_Reading.png) | ![Settings Appearance](Screenshots/Settings_Appearance.png) |
-
-|                      Window                      |
-| :----------------------------------------------: |
-| ![Settings Window](Screenshots/Settings_Window.png) |
+- `App.tsx` is the native shell. It handles notifications (one channel per
+  sound), settings storage, haptics and the back button.
+- `web/` is the UI that runs inside the WebView: `popup.js`, `popup.css`, the
+  Azkar data, fonts, sounds and the notification scheduler.
+- `scripts/generate-renderer.cjs` inlines `web/` into `renderer.generated.ts`,
+  a single HTML document. `scripts/sounds.cjs` copies the notification sounds
+  to `assets/sounds/` for Android's `res/raw`. Both outputs are generated on
+  every build and are not committed.
 
 ## Development
 
 ```bash
-npm install        # install dependencies
-npm start          # run the app
-npm test           # run the Playwright + Electron end-to-end suite
-npm run pack       # build an unpacked app
-npm run dist       # build distributable packages (AppImage, deb, NSIS)
+npm install
+npm run typecheck   # regenerate the renderer and type-check
+npm test            # unit tests (node:test)
 ```
 
-The end-to-end suite launches the app with a temporary settings profile so every test starts from a clean, first-run state (including the default Frutiger Aero theme).
+### Local build on the emulator (quick checks)
 
-## Tech Stack
+On NixOS, `shell.nix` provides JDK 17 and the Android SDK paths. If `nix-shell`
+is unavailable, export them yourself:
 
-- **Electron** — desktop shell, frameless window, native notifications, IPC storage.
-- **Playwright** — Electron end-to-end testing.
-- **Leaflet** — embedded map picker (OpenStreetMap tiles).
-- **Aladhan API** — live prayer times.
+```bash
+export JAVA_HOME=$(nix-build '<nixpkgs>' -A jdk17 --no-out-link)
+export ANDROID_HOME=$HOME/Android/Sdk ANDROID_SDK_ROOT=$HOME/Android/Sdk
+export PATH="$JAVA_HOME/bin:$ANDROID_HOME/platform-tools:$PATH"
 
-## License
+npx expo prebuild --platform android --no-install   # first time, or after app.json changes
+npm run build:apk
+adb install -r android/app/build/outputs/apk/release/app-release.apk
+```
 
-MIT
+The release variant is used because debug builds expect a Metro dev server.
+
+### Release builds (CI)
+
+`.github/workflows/android.yml` runs on every push to `zakkir-android`. It
+regenerates everything from source, type-checks, runs the unit tests, prebuilds,
+assembles the release APK and uploads it as the `zakkir-android-apk` artifact.
+
+## Credits
+
+- Prayer times: [AlAdhan API](https://aladhan.com)
+- Azkar: Hisn al-Muslim

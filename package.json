@@ -1,56 +1,33 @@
 {
-  "name": "zakkir-desktop",
-  "version": "1.4.0",
-  "description": "Prayer times + Azkar",
-  "main": "main.js",
+  "name": "zakkir-android",
+  "version": "1.0.0",
+  "private": true,
+  "main": "expo/AppEntry.js",
   "scripts": {
-    "start": "electron .",
-    "test": "npx playwright test",
-    "pack": "electron-builder --dir",
-    "dist": "electron-builder"
+    "generate-renderer": "node scripts/generate-renderer.cjs",
+    "start": "npm run generate-renderer && expo start",
+    "android": "npm run generate-renderer && expo start --android",
+    "prebuild": "npm run generate-renderer && expo prebuild --platform android",
+    "build:apk": "npm run generate-renderer && cd android && ./gradlew assembleRelease",
+    "build:apk:debug": "npm run generate-renderer && cd android && ./gradlew assembleDebug",
+    "clean:android": "cd android && ./gradlew clean",
+    "typecheck": "npm run generate-renderer && tsc --noEmit",
+    "test": "node --test tests/*.cjs",
+    "ios": "expo run:ios"
   },
-  "author": "Mohamed Sameh <mohamedsameh20@github.com>",
-  "license": "MIT",
+  "dependencies": {
+    "@babel/runtime": "^7.29.7",
+    "@react-native-async-storage/async-storage": "2.1.2",
+    "expo": "^53.0.0",
+    "expo-haptics": "~14.1.4",
+    "expo-notifications": "~0.31.5",
+    "expo-status-bar": "^2.2.3",
+    "react": "19.0.0",
+    "react-native": "0.79.6",
+    "react-native-webview": "13.13.5"
+  },
   "devDependencies": {
-    "@playwright/test": "^1.52.0",
-    "electron": "^30.0.0",
-    "electron-builder": "^24.13.3"
-  },
-  "build": {
-    "appId": "com.mohamedsameh20.zakkir",
-    "productName": "Zakkir",
-    "directories": {
-      "output": "dist"
-    },
-    "files": [
-      "main.js",
-      "notification-scheduler.js",
-      "preload.js",
-      "popup.html",
-      "popup.css",
-      "popup.js",
-      "azkar.json",
-      "fonts/**",
-      "sounds/**",
-      "leaflet/**",
-      "icon*.png"
-    ],
-    "linux": {
-      "target": [
-        "AppImage",
-        "deb"
-      ],
-      "icon": "icon.png",
-      "category": "Utility"
-    },
-    "win": {
-      "target": "nsis",
-      "icon": "icon.png"
-    },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true
-    }
+    "@types/react": "~19.0.10",
+    "typescript": "~5.8.3"
   }
 }

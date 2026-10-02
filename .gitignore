@@ -1,6 +1,16 @@
 node_modules/
+.expo/
 dist/
 .env
-Zakkir_Firefox/
-zakkir_firefox/
-test-results/
+android/
+ios/
+*.jks
+*.keystore
+google-services.json
+
+# Generated from web/ by scripts/ on every build.
+assets/sounds/
+renderer.generated.ts
+
+# Local screenshots, videos and old APKs (kept on disk, out of git).
+media/

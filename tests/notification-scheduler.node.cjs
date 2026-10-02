@@ -5,7 +5,7 @@ const {
   dueEvents,
   migrateSettings,
   normalizeSettings,
-} = require("../notification-scheduler");
+} = require("../web/notification-scheduler");
 
 const times = { Fajr: "05:00", Dhuhr: "12:00", Asr: "15:30", Maghrib: "18:00", Isha: "23:55" };
 
