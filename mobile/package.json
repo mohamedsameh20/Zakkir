@@ -7,7 +7,11 @@
     "generate-renderer": "node scripts/generate-renderer.cjs",
     "start": "npm run generate-renderer && expo start",
     "android": "npm run generate-renderer && expo start --android",
-    "typecheck": "tsc --noEmit",
+    "prebuild": "npm run generate-renderer && expo prebuild --platform android",
+    "build:apk": "npm run generate-renderer && cd android && ./gradlew assembleRelease",
+    "build:apk:debug": "npm run generate-renderer && cd android && ./gradlew assembleDebug",
+    "clean:android": "cd android && ./gradlew clean",
+    "typecheck": "npm run generate-renderer && tsc --noEmit",
     "ios": "expo run:ios"
   },
   "dependencies": {

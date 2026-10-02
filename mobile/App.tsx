@@ -3,9 +3,14 @@ import { AndroidHaptics, performAndroidHapticsAsync } from "expo-haptics";
 import * as Notifications from "expo-notifications";
 import { StatusBar } from "expo-status-bar";
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { AppState, BackHandler, Platform, SafeAreaView, StatusBar as NativeStatusBar, StyleSheet, View } from "react-native";
+import { AppState, BackHandler, I18nManager, LogBox, Platform, SafeAreaView, StatusBar as NativeStatusBar, StyleSheet, View } from "react-native";
 import { WebView, WebViewMessageEvent } from "react-native-webview";
 import { rendererHtml } from "./renderer.generated";
+
+// Hide the known Expo Go-only warning ("push notifications removed in SDK 53")
+// so LogBox banners don't cover the UI in screenshots. Real dev/prod builds
+// are unaffected (the warning never fires there).
+LogBox.ignoreLogs(["expo-notifications"]);
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -16,9 +21,78 @@ Notifications.setNotificationHandler({
   }),
 });
 
-const CHANNEL_ID = "prayer-reminders";
+const CHANNEL_ID_LEGACY = "prayer-reminders";
 const SETTINGS_KEY = "zakkir.mobile.settings";
 const SCHEDULE_KEY = "zakkir.mobile.notification-schedule";
+
+// Origin assigned to the injected renderer document. Nothing is ever fetched
+// from it; it exists so the page has a non-opaque origin, because Chromium
+// denies geolocation to documents loaded with an empty baseUrl.
+const RENDERER_BASE_URL = "https://zakkir.local/";
+
+// Android decides the notification sound from the channel, not from the
+// individual notification, and a channel's sound is immutable once created.
+// So we register one channel per selectable sound and pick the channel at
+// schedule time. Resource names must match the files the expo-notifications
+// config plugin copies into res/raw (see scripts/sounds.cjs).
+const SOUND_IDS = ["chime", "bell", "soft-ping"] as const;
+const SILENT_SOUND_ID = "silent";
+const DEFAULT_SOUND_ID = "chime";
+// Sounds that earlier builds registered channels for but no longer ship.
+const REMOVED_SOUND_IDS = ["adhan-1", "adhan-2"];
+
+const SOUND_LABELS: Record<string, string> = {
+  chime: "Chime",
+  bell: "Bell",
+  "soft-ping": "Soft Ping",
+  [SILENT_SOUND_ID]: "Silent",
+};
+
+/** res/raw resource name for a sound id, as written by scripts/sounds.cjs. */
+function soundResource(soundId: string): string {
+  return `${soundId.replace(/-/g, "_")}.mp3`;
+}
+
+/** Channel id for a sound id. Stable across launches so channels are reused. */
+function channelIdFor(soundId: string): string {
+  return `prayer-reminders-${soundId.replace(/-/g, "_")}`;
+}
+
+/** Normalise whatever the WebView persisted into a known sound id. */
+function resolveSoundId(value: unknown): string {
+  const id = typeof value === "string" ? value : "";
+  if (id === SILENT_SOUND_ID) return SILENT_SOUND_ID;
+  return (SOUND_IDS as readonly string[]).includes(id) ? id : DEFAULT_SOUND_ID;
+}
+
+
+const PRAYER_NAMES_AR: Record<string, string> = {
+  Fajr: "الفجر",
+  Dhuhr: "الظهر",
+  Asr: "العصر",
+  Maghrib: "المغرب",
+  Isha: "العشاء",
+};
+
+function arabicPlural(n: number, one: string, dual: string, few: string): string {
+  if (n === 1) return one;
+  if (n === 2) return dual;
+  if (n >= 3 && n <= 10) return few;
+  return one;
+}
+
+function getDeviceLanguage(): string {
+  try {
+    const c = I18nManager.getConstants() as Record<string, unknown>;
+    const locale = String(c.localeIdentifier || c.locale || "").replace(/_/g, "-");
+    if (locale) return locale;
+  } catch {}
+  try {
+    const locale = Intl.DateTimeFormat().resolvedOptions().locale;
+    if (locale) return locale;
+  } catch {}
+  return "en";
+}
 
 function clampMinutes(value: unknown, fallback: number): number {
   const n = Math.floor(Number(value));
@@ -98,7 +172,8 @@ function getRandomNotificationMessage(prayerName: string, isPre = false) {
   }
   const list = PRAYER_MESSAGES[prayerName] || [];
   if (!list.length) {
-    return { title: `صلاة ${prayerName}`, body: `حان الآن موعد صلاة ${prayerName}` };
+    const localized = PRAYER_NAMES_AR[prayerName] || prayerName;
+    return { title: `صلاة ${localized}`, body: `حان الآن موعد صلاة ${localized}` };
   }
   const idx = Math.floor(Math.random() * list.length);
   return list[idx];
@@ -138,6 +213,10 @@ async function scheduleNotifications(times: Record<string, unknown>, settings: R
     const remindersEnabled = settings?.remindersEnabled === true || settings?.reminderEnabled === true;
     const atAthan = settings?.prayerAlertEnabled === true || settings?.athanEnabled === true;
     const iqamaEnabled = settings?.iqamaEnabled === true;
+    const soundId = resolveSoundId(settings?.reminderSound);
+    const channelId = channelIdFor(soundId);
+    // iOS reads the sound off the notification; Android reads it off the channel.
+    const contentSound: string | false = soundId === SILENT_SOUND_ID ? false : soundResource(soundId);
 
     await Notifications.cancelAllScheduledNotificationsAsync();
 
@@ -149,9 +228,30 @@ async function scheduleNotifications(times: Record<string, unknown>, settings: R
     today.setHours(0, 0, 0, 0);
     const days: Array<{ date: Date; times: Record<string, unknown> }> = [];
 
-    // Prayer times move every day. Keep a three-day rolling set of one-shot
-    // notifications (45 maximum) instead of repeating today's times forever.
-    if (Number.isFinite(lat) && Number.isFinite(lng)) {
+    // Prayer times move every day, so a repeating daily notification would
+    // drift. Schedule a rolling window of one-shot notifications instead.
+    //
+    // The renderer hands us `upcomingTimings` from its offline cache, keyed by
+    // YYYY-MM-DD. Using it means scheduling works with no connectivity at all;
+    // the network is only a fallback for upgraders whose cache is not yet
+    // populated. Android allows 500 pending alarms per app and we post at most
+    // 3 per prayer per day, so a 28-day window tops out at 420 alarms.
+    const upcoming = (settings?.upcomingTimings || {}) as Record<string, Record<string, unknown>>;
+    const MAX_DAYS = 28;
+
+    for (let offset = 0; offset < MAX_DAYS; offset += 1) {
+      const date = new Date(today);
+      date.setDate(today.getDate() + offset);
+      const yyyy = date.getFullYear();
+      const mm = String(date.getMonth() + 1).padStart(2, "0");
+      const dd = String(date.getDate()).padStart(2, "0");
+      const cached = upcoming[`${yyyy}-${mm}-${dd}`];
+      if (cached) days.push({ date, times: cached });
+    }
+
+    // No usable cache (first run after an upgrade, or cache cleared): fall back
+    // to the network for a shorter window.
+    if (!days.length && Number.isFinite(lat) && Number.isFinite(lng)) {
       for (let offset = 0; offset < 3; offset += 1) {
         const date = new Date(today);
         date.setDate(today.getDate() + offset);
@@ -174,6 +274,8 @@ async function scheduleNotifications(times: Record<string, unknown>, settings: R
         } catch (_) {}
       }
     }
+
+    // Last resort: today's times as rendered, so something is always scheduled.
     if (!days.some(({ date }) => date.getTime() === today.getTime())) {
       days.unshift({ date: today, times });
     }
@@ -185,11 +287,11 @@ async function scheduleNotifications(times: Record<string, unknown>, settings: R
       if (triggerDate.getTime() <= Date.now()) return;
       jobs.push(
         Notifications.scheduleNotificationAsync({
-          content: { title, body, sound: "default", data: { prayer, type } },
+          content: { title, body, sound: contentSound, data: { prayer, type } },
           trigger: {
             type: Notifications.SchedulableTriggerInputTypes.DATE,
             date: triggerDate,
-            channelId: CHANNEL_ID,
+            channelId,
           },
         }).then(() => undefined),
       );
@@ -208,11 +310,13 @@ async function scheduleNotifications(times: Record<string, unknown>, settings: R
         if (remindersEnabled) {
           const before = clampMinutes(beforeMap?.[prayer], beforeFallback);
           const msgPre = getRandomNotificationMessage(prayer, true);
-          scheduleDate(`${msgPre.title} (بعد ${before} دقيقة)`, msgPre.body, day.date, athanMinutes - before, prayer, "pre");
+          const suffix = settings?.language === "ar" ? ` (متبقي ${before} ${arabicPlural(before, "دقيقة", "دقيقتين", "دقائق")})` : ` (in ${before} min)`;
+          scheduleDate(`${msgPre.title}${suffix}`, msgPre.body, day.date, athanMinutes - before, prayer, "pre");
         }
         if (iqamaEnabled) {
           const after = clampMinutes(afterMap?.[prayer], afterFallback);
-          scheduleDate(`إقامة صلاة ${prayer}`, `حان وقت الإقامة — بعد ${after} دقيقة من الأذان.`, day.date, athanMinutes + after, prayer, "iqama");
+          const localized = PRAYER_NAMES_AR[prayer] || prayer;
+          scheduleDate(`إقامة صلاة ${localized}`, `حان وقت الإقامة — بعد ${after} ${arabicPlural(after, "دقيقة", "دقيقتين", "دقائق")} من الأذان.`, day.date, athanMinutes + after, prayer, "iqama");
         }
       }
     }
@@ -221,20 +325,51 @@ async function scheduleNotifications(times: Record<string, unknown>, settings: R
   } catch (_) {}
 }
 
-async function ensureChannel() {
+async function ensureChannels() {
+  if (Platform.OS !== "android") return;
   try {
-    await Notifications.setNotificationChannelAsync(CHANNEL_ID, {
-      name: "Prayer reminders",
+    // One channel per sound. Android ignores sound changes on an existing
+    // channel, so each sound needs its own channel created up front.
+    await Promise.all(
+      SOUND_IDS.map((soundId) =>
+        Notifications.setNotificationChannelAsync(channelIdFor(soundId), {
+          name: `Prayer reminders (${SOUND_LABELS[soundId] || soundId})`,
+          importance: Notifications.AndroidImportance.HIGH,
+          sound: soundResource(soundId),
+          vibrationPattern: [0, 250, 250, 250],
+        }),
+      ),
+    );
+
+    // Silent still shows a heads-up notification, just without audio.
+    await Notifications.setNotificationChannelAsync(channelIdFor(SILENT_SOUND_ID), {
+      name: `Prayer reminders (${SOUND_LABELS[SILENT_SOUND_ID]})`,
       importance: Notifications.AndroidImportance.HIGH,
-      sound: "default",
+      sound: null,
       vibrationPattern: [0, 250, 250, 250],
     });
+
+    // Older builds shipped a single "prayer-reminders" channel hardcoded to the
+    // system default sound. Remove it so upgraders do not keep a stale entry in
+    // Android's notification settings.
+    await Notifications.deleteNotificationChannelAsync(CHANNEL_ID_LEGACY).catch(() => undefined);
+    await Promise.all(
+      REMOVED_SOUND_IDS.map((soundId) =>
+        Notifications.deleteNotificationChannelAsync(channelIdFor(soundId)).catch(() => undefined),
+      ),
+    );
   } catch (_) {}
 }
 
 export default function App() {
   const webView = useRef<WebView>(null);
-  const source = useMemo(() => ({ html: rendererHtml }), []);
+  const rendererVersion = useMemo(() => Date.now(), [rendererHtml]);
+  // The HTML is injected rather than served, but it still needs a real origin:
+  // Chromium treats a document loaded with an empty baseUrl as opaque and
+  // silently denies geolocation to it, which breaks the "Detect" button. Any
+  // stable https origin is enough, and nothing is ever fetched from it because
+  // onShouldStartLoadWithRequest blocks navigation.
+  const source = useMemo(() => ({ html: rendererHtml, baseUrl: RENDERER_BASE_URL }), [rendererHtml]);
   const topInset = Platform.OS === "android" ? NativeStatusBar.currentHeight || 0 : 0;
   const [themeBg, setThemeBg] = useState<string>("#f4f4f6");
   const [isDarkTheme, setIsDarkTheme] = useState<boolean>(false);
@@ -242,21 +377,25 @@ export default function App() {
   const lastSchedule = useRef<{ times: Record<string, unknown>; settings: Record<string, unknown> } | null>(null);
 
   useEffect(() => {
-    ensureChannel();
-    AsyncStorage.getItem(SCHEDULE_KEY).then((raw) => {
+    // Channels must exist before anything is scheduled against them, otherwise
+    // Android drops the notification's channel and falls back to the default.
+    const restored = ensureChannels().then(async () => {
+      const raw = await AsyncStorage.getItem(SCHEDULE_KEY);
       if (!raw) return;
       try {
         const saved = JSON.parse(raw);
         lastSchedule.current = saved;
-        scheduleNotifications(saved.times || {}, saved.settings || {});
+        await scheduleNotifications(saved.times || {}, saved.settings || {});
       } catch {
-        AsyncStorage.removeItem(SCHEDULE_KEY);
+        await AsyncStorage.removeItem(SCHEDULE_KEY);
       }
     });
     const subscription = AppState.addEventListener("change", (nextState) => {
       if (nextState !== "active") return;
-      const saved = lastSchedule.current;
-      if (saved) scheduleNotifications(saved.times, saved.settings);
+      restored.then(() => {
+        const saved = lastSchedule.current;
+        if (saved) scheduleNotifications(saved.times, saved.settings);
+      });
     });
     return () => subscription.remove();
   }, []);
@@ -281,7 +420,8 @@ export default function App() {
           try { value = JSON.parse(raw); }
           catch { await AsyncStorage.removeItem(SETTINGS_KEY); }
         }
-        webView.current?.injectJavaScript(`window.dispatchEvent(new MessageEvent('message',{data:${JSON.stringify(JSON.stringify({ type: "settings", value }))}}));true;`);
+        const locale = getDeviceLanguage();
+        webView.current?.injectJavaScript(`window.__ZAKKIR_LOCALE__=${JSON.stringify(locale)};window.dispatchEvent(new MessageEvent('message',{data:${JSON.stringify(JSON.stringify({ type: "settings", value }))}}));true;`);
       } else if (message.type === "save-settings") {
         let current = {};
         try { current = JSON.parse((await AsyncStorage.getItem(SETTINGS_KEY)) || "{}"); }
@@ -317,13 +457,23 @@ export default function App() {
       <View style={{ height: topInset, backgroundColor: themeBg }} />
       <SafeAreaView style={[styles.safe, { backgroundColor: themeBg }]}>
         <WebView
+          key={rendererVersion}
           ref={webView}
           source={source}
           originWhitelist={["*"]}
           javaScriptEnabled
           domStorageEnabled
+          // Lets popup.js call navigator.geolocation for the "Detect" button.
+          // react-native-webview requests ACCESS_FINE_LOCATION from Android on
+          // demand, so no separate location module is needed.
+          geolocationEnabled
+          cacheEnabled={false}
           onMessage={onMessage}
-          onShouldStartLoadWithRequest={(request) => request.url === "about:blank" || request.url.startsWith("data:text/html")}
+          onShouldStartLoadWithRequest={(request) =>
+            request.url === "about:blank" ||
+            request.url.startsWith("data:text/html") ||
+            request.url.startsWith(RENDERER_BASE_URL)
+          }
           setSupportMultipleWindows={false}
           style={[styles.webview, { backgroundColor: themeBg }]}
         />

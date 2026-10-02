@@ -26,6 +26,18 @@
     },
     "ios": {
       "bundleIdentifier": "com.mohamedsameh20.zakkir"
-    }
+    },
+    "plugins": [
+      [
+        "expo-notifications",
+        {
+          "sounds": [
+            "./assets/sounds/chime.mp3",
+            "./assets/sounds/bell.mp3",
+            "./assets/sounds/soft_ping.mp3"
+          ]
+        }
+      ]
+    ]
   }
 }

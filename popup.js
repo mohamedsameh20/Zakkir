@@ -11,6 +11,10 @@ const DEFAULTS = {
   popupH: 800,
   theme: "frutiger",
   palette: "default",
+  customAccent: "",
+  customBg: "",
+  customSurface: "",
+  customInk: "",
   neobrutalContrast: "quiet",
   settingsSection: "general",
   lat: 30.0444,
@@ -27,6 +31,7 @@ const DEFAULTS = {
   azkarHintDismissed: false,
   azkarResetDate: null,
   prayerCache: null,
+  offlinePrayerCache: null,
   isElectronPinned: false,
   notificationsEnabled: true,
   remindersEnabled: false,
@@ -46,6 +51,7 @@ const DEFAULTS = {
   updateAlertsEnabled: true,
   prayerCollapsed: false,
   azkarNavigation: "buttons-and-swipe",
+  language: "",
 };
 
 function migrateNotificationSettings(data) {
@@ -57,6 +63,347 @@ function migrateNotificationSettings(data) {
     remindersEnabled: data.remindersEnabled ?? data.reminderEnabled ?? DEFAULTS.remindersEnabled,
     prayerAlertEnabled: data.prayerAlertEnabled ?? data.athanEnabled ?? DEFAULTS.prayerAlertEnabled,
   };
+}
+
+// ---------- i18n ----------
+// `language` is "" (auto-detect) until first boot; then "en" or "ar".
+const STRINGS = {
+  en: {
+    "brand.subtitle": "Daily remembrance",
+    "header.pin": "Pin (keep open)",
+    "header.unpin": "Close pinned window",
+    "header.minimize": "Minimize",
+    "header.close": "Close",
+    "header.schedule": "Monthly schedule",
+    "header.settings": "Settings",
+    "nav.primary": "Primary navigation",
+    "nav.home": "Home",
+    "nav.schedule": "Schedule",
+    "nav.settings": "Settings",
+    "prayer.next": "Next prayer",
+    "prayer.unavailable": "Unavailable",
+    "prayer.loading": "Loading…",
+    "prayer.show": "Show prayer times",
+    "prayer.minimize": "Minimize prayer times",
+    "prayer.times": "Prayer times",
+    "time.h": "h",
+    "time.m": "m",
+    "time.ago": "{time} ago",
+    "time.in": "in {time}",
+    "detail.next": "→ {name} at {time}",
+    "azkar.today": "Today's azkar",
+    "azkar.count": "Count this dhikr",
+    "azkar.prev": "Previous",
+    "azkar.next": "Next",
+    "azkar.reset": "Reset",
+    "azkar.prev.title": "Previous dhikr",
+    "azkar.next.title": "Next dhikr",
+    "azkar.reset.title": "Reset count",
+    "azkar.tapHint": "Tap the card to count",
+    "azkar.overall": "Overall progress",
+    "azkar.overall.aria": "Overall Azkar progress",
+    "azkar.current.aria": "Current dhikr progress",
+    "map.search": "Search city…",
+    "map.use": "✓ Use This Location",
+    "map.back": "Back",
+    "map.fetching": "Fetching…",
+    "sched.title": "Schedule",
+    "sched.prevMonth": "Previous month",
+    "sched.nextMonth": "Next month",
+    "sched.gregorian": "Gregorian",
+    "sched.hijri": "Hijri",
+    "sched.dateHeader": "Date",
+    "sched.ah": "AH",
+    "sched.loading": "Loading schedule…",
+    "sched.updating": "Updating…",
+    "sched.error": "Failed to load schedule — check your connection.",
+    "sched.errorShort": "Failed to load schedule.",
+    "sched.retry": "Retry",
+    "sched.csv": "Export CSV",
+    "sched.csvTitle": "Download CSV",
+    "sched.fast.monday": "Sunnah fast — Monday",
+    "sched.fast.thursday": "Sunnah fast — Thursday",
+    "sched.methodFallback": "Method {method}",
+    "loc.viaPreset": "via city",
+    "loc.viaGps": "via GPS",
+    "loc.viaMap": "via map",
+    "loc.gps": "GPS",
+    "loc.map": "Map",
+    "loc.city": "City",
+    "loc.country": "Country",
+    "loc.detect": "Detect my location",
+    "loc.detect.sub": "Uses your device's location. You'll be asked once for permission.",
+    "loc.pickMap": "Open map picker",
+    "loc.pickMap.sub": "Click anywhere on the map or search to drop a pin.",
+    "loc.selectCountry": "-- Select Country --",
+    "loc.selectCity": "-- Select City --",
+    "loc.detecting": "Detecting…",
+    "loc.failed": "Failed — try manual",
+    "loc.advanced": "Advanced (manual coordinates)",
+    "loc.latitude": "Latitude",
+    "loc.longitude": "Longitude",
+    "loc.latPh": "e.g. 30.0444",
+    "loc.lngPh": "e.g. 31.2357",
+    "loc.useCoords": "Use These Coordinates",
+    "loc.method": "Calculation method",
+    "loc.sunnahFast": "Highlight Mon/Thu (Sunnah fasting)",
+    "loc.updateAlerts": "Show update alerts",
+    "settings.title": "Settings",
+    "settings.nav.aria": "Settings sections",
+    "settings.general": "General",
+    "settings.notifications": "Notifications",
+    "settings.reading": "Reading",
+    "settings.appearance": "Appearance",
+    "settings.window": "Window",
+    "settings.general.desc": "Set your prayer location and schedule preferences.",
+    "settings.notifications.desc": "Choose when Zakkir should remind you.",
+    "settings.reading.desc": "Tune Arabic text for comfortable daily reading.",
+    "settings.appearance.desc": "Choose the visual atmosphere and accent color.",
+    "settings.window.desc": "Adjust the popup to fit the way you use it.",
+    "lang.label": "Language",
+    "lang.en": "English",
+    "lang.ar": "العربية",
+    "notify.master": "Prayer notifications",
+    "notify.master.sub": "Receive timely reminders around each prayer.",
+    "notify.when": "When to notify",
+    "notify.reminders": "Prayer reminders",
+    "notify.before": "Before athan",
+    "notify.before.sub": "Prepare for the prayer ahead of time.",
+    "notify.at": "At athan",
+    "notify.at.sub": "Notify when the exact prayer time begins.",
+    "notify.after": "After athan",
+    "notify.after.sub": "Remind me when it is time for iqama.",
+    "notify.aria.before": "Notify before athan",
+    "notify.aria.at": "Notify at athan",
+    "notify.aria.after": "Notify for iqama",
+    "notify.beforeMin": "Minutes before {prayer}",
+    "notify.afterMin": "Minutes after {prayer}",
+    "notify.beforeLbl": "Before",
+    "notify.afterLbl": "After",
+    "notify.min": "min",
+    "notify.sound": "Reminder sound",
+    "notify.testSound": "Test Sound",
+    "notify.stopPreview": "Stop Preview",
+    "notify.paused": "Prayer notifications are paused. Your choices are saved.",
+    "notify.chooseOne": "Choose at least one prayer to start receiving reminders.",
+    "notify.chooseWhen": "Choose when you want to be notified.",
+    "notify.allFive": "all five prayers",
+    "notify.willBe": "You will be notified {events} for {prayers}.",
+    "notify.evt.before": "before athan",
+    "notify.evt.at": "at athan",
+    "notify.evt.after": "after athan",
+    "reading.arSize": "Arabic size",
+    "reading.appScale": "App scale",
+    "reading.navMode": "Azkar navigation",
+    "reading.navMode.aria": "Azkar navigation mode",
+    "reading.both": "Buttons + swipe",
+    "reading.swipe": "Swipe only",
+    "reading.buttons": "Buttons only",
+    "appearance.intro": "Choose a complete visual system. Themes can change geometry, depth, texture, motion, and color. The accent palette remains customizable.",
+    "appearance.designEras": "Design eras",
+    "appearance.glass": "Glass and depth",
+    "appearance.bold": "Bold and experimental",
+    "appearance.fresh": "Fresh picks",
+    "appearance.atmospheric": "Atmospheric themes",
+    "appearance.classic": "Browse classic themes ({count})",
+    "appearance.accent": "Accent color",
+    "neobrutal.label": "Neobrutalist contrast",
+    "neobrutal.quiet": "Quiet",
+    "neobrutal.high": "High contrast",
+    "window.zoom": "UI zoom",
+    "window.width": "Width",
+    "window.height": "Height",
+    "update.available": "🚀 Zakkir Update Available: v{version}",
+    "update.download": "Download",
+    "update.remind": "Remind Later (3d)",
+    "update.never": "Never Show Again",
+    "err.prayers": "Failed to load prayer times — check your location.",
+    "prayers.offline": "Offline — saved prayer times",
+    "prayers.stale": "Offline — showing last saved prayer times.",
+    "err.azkar": "Failed to load azkar data.",
+    "fmt.am": "AM",
+    "fmt.pm": "PM",
+  },
+  ar: {
+    "brand.subtitle": "أذكار ومواقيت الصلاة",
+    "header.pin": "تثبيت النافذة",
+    "header.unpin": "إلغاء تثبيت النافذة",
+    "header.minimize": "تصغير",
+    "header.close": "إغلاق",
+    "header.schedule": "مواقيت الشهر",
+    "header.settings": "الإعدادات",
+    "nav.primary": "القائمة الرئيسية",
+    "nav.home": "الرئيسية",
+    "nav.schedule": "المواقيت",
+    "nav.settings": "الإعدادات",
+    "prayer.next": "الصلاة القادمة",
+    "prayer.unavailable": "غير متاحة",
+    "prayer.loading": "جارٍ التحميل…",
+    "prayer.show": "عرض مواقيت الصلاة",
+    "prayer.minimize": "طي مواقيت الصلاة",
+    "prayer.times": "مواقيت الصلاة",
+    "time.h": "س",
+    "time.m": "د",
+    "time.ago": "مضت منذ {time}",
+    "time.in": "بعد {time}",
+    "detail.next": "← {name} بعد {time}",
+    "azkar.today": "أذكار اليوم",
+    "azkar.count": "عدد التكرار",
+    "azkar.prev": "السابق",
+    "azkar.next": "التالي",
+    "azkar.reset": "إعادة ضبط",
+    "azkar.prev.title": "الذكر السابق",
+    "azkar.next.title": "الذكر التالي",
+    "azkar.reset.title": "إعادة ضبط العداد",
+    "azkar.tapHint": "اضغط على البطاقة للتسبيح",
+    "azkar.overall": "إجمالي الأذكار",
+    "azkar.overall.aria": "إجمالي التقدم في الأذكار",
+    "azkar.current.aria": "تقدم الذكر الحالي",
+    "map.search": "البحث عن مدينة…",
+    "map.use": "✓ اعتماد هذا الموقع",
+    "map.back": "رجوع",
+    "map.fetching": "جارٍ جلب الموقع…",
+    "sched.title": "جدول المواقيت",
+    "sched.prevMonth": "الشهر السابق",
+    "sched.nextMonth": "الشهر التالي",
+    "sched.gregorian": "ميلادي",
+    "sched.hijri": "هجري",
+    "sched.dateHeader": "التاريخ",
+    "sched.ah": "هـ",
+    "sched.loading": "جارٍ تحميل الجدول…",
+    "sched.updating": "جارٍ التحديث…",
+    "sched.error": "تعذّر تحميل الجدول — يُرجى التحقق من الاتصال.",
+    "sched.errorShort": "تعذّر تحميل الجدول.",
+    "sched.retry": "إعادة المحاولة",
+    "sched.csv": "تصدير (CSV)",
+    "sched.csvTitle": "تنزيل CSV",
+    "sched.fast.monday": "صيام الاثنين (سُنّة)",
+    "sched.fast.thursday": "صيام الخميس (سُنّة)",
+    "sched.methodFallback": "طريقة الحساب {method}",
+    "loc.viaPreset": "حسب المدينة",
+    "loc.viaGps": "حسب الموقع الجغرافي (GPS)",
+    "loc.viaMap": "التحديد من الخريطة",
+    "loc.gps": "GPS",
+    "loc.map": "الخريطة",
+    "loc.city": "المدينة",
+    "loc.country": "الدولة",
+    "loc.detect": "تحديد الموقع تلقائيًا",
+    "loc.detect.sub": "تحديد الموقع الحالي تلقائيًا لحساب أوقات الصلاة بدقة.",
+    "loc.pickMap": "اختيار الموقع من الخريطة",
+    "loc.pickMap.sub": "حدد موقعك بالنقر على الخريطة أو البحث عن عنوان.",
+    "loc.selectCountry": "-- اختر الدولة --",
+    "loc.selectCity": "-- اختر المدينة --",
+    "loc.detecting": "جارٍ تحديد الموقع…",
+    "loc.failed": "تعذّر التحديد — يُرجى الاختيار يدويًا",
+    "loc.advanced": "إعدادات متقدمة (الإحداثيات)",
+    "loc.latitude": "خط العرض",
+    "loc.longitude": "خط الطول",
+    "loc.latPh": "مثال: 30.0444",
+    "loc.lngPh": "مثال: 31.2357",
+    "loc.useCoords": "حفظ الإحداثيات",
+    "loc.method": "طريقة حساب المواقيت",
+    "loc.sunnahFast": "التذكير بصيام الاثنين والخميس",
+    "loc.updateAlerts": "التنبيه عند توفر تحديثات",
+    "settings.title": "الإعدادات",
+    "settings.nav.aria": "أقسام الإعدادات",
+    "settings.general": "عام",
+    "settings.notifications": "الإشعارات",
+    "settings.reading": "القراءة",
+    "settings.appearance": "المظهر",
+    "settings.window": "النافذة",
+    "settings.general.desc": "ضبط موقع أوقات الصلاة وإعدادات التوقيت.",
+    "settings.notifications.desc": "تخصيص التنبيهات وإشعارات الأذان والإقامة.",
+    "settings.reading.desc": "تخصيص الخطوط وحجم الخطوط لتسهيل القراءة.",
+    "settings.appearance.desc": "تخصيص السمات والمظهر وألوان الواجهة.",
+    "settings.window.desc": "التحكم في أبعاد النافذة وتكبير الواجهة.",
+    "lang.label": "اللغة",
+    "lang.en": "English",
+    "lang.ar": "العربية",
+    "notify.master": "تفعيل الإشعارات",
+    "notify.master.sub": "التنبيه عند حلول أوقات الصلاة والإقامة.",
+    "notify.when": "مواعيد الإشعارات",
+    "notify.reminders": "أنواع التنبيهات",
+    "notify.before": "التنبيه قبل الأذان",
+    "notify.before.sub": "التذكير بالاستعداد للصلاة قبل موعدها.",
+    "notify.at": "تنبيه الأذان",
+    "notify.at.sub": "التنبيه عند دخول وقت الصلاة.",
+    "notify.after": "تنبيه الإقامة",
+    "notify.after.sub": "التذكير بموعد إقامة الصلاة.",
+    "notify.aria.before": "تفعيل التنبيه قبل الأذان",
+    "notify.aria.at": "تفعيل تنبيه الأذان",
+    "notify.aria.after": "تفعيل تنبيه الإقامة",
+    "notify.beforeMin": "التنبيه قبل {prayer} بـ",
+    "notify.afterMin": "التنبيه بعد {prayer} بـ",
+    "notify.beforeLbl": "التنبيه قبل",
+    "notify.afterLbl": "الإقامة بعد",
+    "notify.min": "د",
+    "notify.sound": "نغمة التنبيه",
+    "notify.testSound": "تجربة النغمة",
+    "notify.stopPreview": "إيقاف الصوت",
+    "notify.paused": "الإشعارات معطلة حاليًا. تم حفظ تفضيلاتك.",
+    "notify.chooseOne": "يُرجى تحديد صلاة واحدة على الأقل لتفعيل التنبيهات.",
+    "notify.chooseWhen": "يُرجى تحديد وقت التنبيه (قبل الأذان، عند الأذان، أو عند الإقامة).",
+    "notify.allFive": "جميع الصلوات الخمس",
+    "notify.willBe": "سيتم تنبيهك {events} لصلوات: {prayers}.",
+    "notify.evt.before": "قبل الأذان",
+    "notify.evt.at": "عند الأذان",
+    "notify.evt.after": "عند الإقامة",
+    "reading.arSize": "حجم الخط العربي",
+    "reading.appScale": "حجم واجهة التطبيق",
+    "reading.navMode": "طريقة التنقل بين الأذكار",
+    "reading.navMode.aria": "نمط التنقل بين الأذكار",
+    "reading.both": "الأزرار والسحب",
+    "reading.swipe": "السحب باللمس فقط",
+    "reading.buttons": "الأزرار فقط",
+    "appearance.intro": "تخصيص المظهر وتجربة الاستخدام البصرية والتنقل بين السمات المختلفة.",
+    "appearance.designEras": "الأنماط الحديثة",
+    "appearance.glass": "النمط الزجاجي",
+    "appearance.bold": "النمط البارز",
+    "appearance.fresh": "المجموعات المختارة",
+    "appearance.atmospheric": "السمات الهادئة",
+    "appearance.classic": "عرض الأنماط التقليدية ({count})",
+    "appearance.accent": "اللون الرئيسي للواجهة",
+    "neobrutal.label": "درجة التباين",
+    "neobrutal.quiet": "عادي",
+    "neobrutal.high": "تباين مرتفع",
+    "window.zoom": "نسبة التكبير",
+    "window.width": "عرض النافذة",
+    "window.height": "ارتفاع النافذة",
+    "update.available": "🚀 يتوفر تحديث جديد لـ زكّير: الاصدار v{version}",
+    "update.download": "تنزيل الآن",
+    "update.remind": "تذكيري لاحقًا (بعد 3 أيام)",
+    "update.never": "عدم العرض مرة أخرى",
+    "err.prayers": "تعذّر تحميل أوقات الصلاة — يُرجى التحقق من الموقع.",
+    "prayers.offline": "بدون إنترنت — أوقات الصلاة المحفوظة",
+    "prayers.stale": "بدون إنترنت — عرض آخر أوقات الصلاة المحفوظة.",
+    "err.azkar": "تعذّر تحميل بيانات الأذكار.",
+    "fmt.am": "ص",
+    "fmt.pm": "م",
+  },
+};
+
+const PRAYER_NAMES = { Fajr: "الفجر", Dhuhr: "الظهر", Asr: "العصر", Maghrib: "المغرب", Isha: "العشاء" };
+
+function t(key, vars) {
+  const dict = state?.language === "ar" ? STRINGS.ar : STRINGS.en;
+  let s = dict[key] ?? STRINGS.en[key] ?? key;
+  if (vars) {
+    for (const [k, v] of Object.entries(vars)) {
+      s = s.split(`{${k}}`).join(String(v));
+    }
+  }
+  return s;
+}
+
+function isArabic() { return state?.language === "ar"; }
+
+function prayerName(name) { return isArabic() ? (PRAYER_NAMES[name] || name) : name; }
+
+function humanList(items) {
+  if (!items.length) return "";
+  if (items.length === 1) return items[0];
+  if (isArabic()) return items.slice(0, -1).join("، ") + " و" + items[items.length - 1];
+  return items.slice(0, -1).join(", ") + " and " + items[items.length - 1];
 }
 
 // Transient (not persisted)
@@ -94,125 +441,49 @@ const FONT_MAP = {
 
 // Minimal themes — no gradients, clean surfaces
 const THEMES = [
-  // Design eras
-  ["metro",      "Metro Flat"],
-  ["material",   "Material Elevation"],
-  ["neumorphic", "Neumorphic Contrast"],
-  // Glass and depth
-  ["aqua",       "Aqua"],
-  ["liquidglass","Liquid Glass"],
-  ["frutiger",   "Frutiger Aero"],
-  // Bold and anti-design
-  ["neobrutal",  "Neobrutalist"],
-  // Monochrome System
-  ["monochrome",        "Monochrome Glass"],
-  ["monochrome-dark",   "Monochrome Dark Glass"],
-  // Cosmic, Aurora & Oasis Ethereal Glass
-  ["nebula",             "Nebula Glass Glow"],
-  ["aurora",             "Northern Aurora Glass"],
-  ["sahara-glass",       "Oasis Sahara Glass"],
-  ["nebula-dark",        "Nebula Cosmic Dark"],
-  ["aurora-dark",        "Aurora Midnight Dark"],
-  ["sahara-glass-dark",  "Sahara Nocturnal Glass"],
-  // macOS Professional Glassmorphic Systems
-  ["macos-ventura",     "macOS Ventura Glass"],
-  ["macos-sequoia",     "macOS Sequoia Mist"],
-  ["macos-sonoma",      "macOS Sonoma Sunset"],
-  ["crystal",           "Crystal Diamond Glass"],
-  ["mist",              "Neutral Mist Glass"],
-  ["midnight",          "Midnight Indigo Glass"],
-  ["jade",              "Translucent Jade Glass"],
-  ["slatestudio",       "Slate Pro Studio Glass"],
-  ["macos-ventura-dark", "macOS Ventura Dark"],
-  ["macos-sequoia-dark", "macOS Sequoia Dark"],
-  ["macos-sonoma-dark",  "macOS Sonoma Dark"],
-  ["crystal-dark",       "Crystal Diamond Dark"],
-  ["mist-dark",          "Neutral Mist Dark"],
-  ["midnight-dark",      "Midnight Indigo Dark"],
-  ["jade-dark",          "Translucent Jade Dark"],
-  ["slatestudio-dark",   "Slate Pro Studio Dark"],
-  // Fresh picks
-  ["onyx",         "Onyx"],
-  ["frutiger-sunset", "Frutiger Sunset"],
-  ["prism",        "Prism"],
-  ["opal",         "Opal"],
-  ["fajr",         "Fajr"],
-  // Dark counterparts
-  ["metro-dark",       "Metro Flat Dark"],
-  ["material-dark",    "Material Dark"],
-  ["neumorphic-dark",  "Neumorphic Dark"],
-  ["aqua-dark",        "Aqua Night"],
-  ["liquidglass-dark", "Liquid Glass Dark"],
-  ["frutiger-dark",    "Frutiger Twilight"],
-  ["editorial-dark",   "Editorial Night"],
-  // Structural systems
-  ["editorial", "Editorial Ink"],
-  ["control",   "Control Room"],
-  // New design systems
-  ["swiss",       "Swiss"],
-  ["scandi",      "Scandinavian"],
-  ["porcelain",   "Porcelain"],
-  ["terracotta",  "Terracotta"],
-  ["dusk",        "Dusk"],
-  ["swiss-dark",      "Swiss Dark"],
-  ["scandi-dark",     "Scandinavian Dark"],
-  ["porcelain-dark",  "Porcelain Dark"],
-  ["terracotta-dark", "Terracotta Dark"],
-  ["dusk-dark",       "Dusk Dark"],
-  // Special
-  ["glass",     "Aurora Glass"],
-  ["noor",      "Noor"],
-  ["celestial", "Celestial"],
-  ["sahara",    "Sahara"],
-  ["andalus",   "Andalus Garden"],
-  ["motherpearl","Mother of Pearl"],
-  ["minaret",   "Minaret Blue"],
-  ["olive",     "Olive Grove"],
-  ["ramadan",   "Ramadan Lantern"],
-  ["zen",       "Quiet Stone"],
-  ["nightdune", "Night Dunes"],
-  ["wadi",      "Wadi Water"],
-  ["patina",    "Copper Patina"],
-  ["calligraphy","Calligraphy Studio"],
-  // Light
-  ["light",     "Light"],
-  ["paper",     "Paper"],
-  ["linen",     "Linen"],
-  ["fog",       "Fog"],
-  ["sky-l",     "Sky Light"],
-  ["mint-l",    "Mint Cream"],
-  ["sage-l",    "Sage"],
-  ["sepia",     "Sepia"],
-  ["solar-l",   "Solarized Light"],
-  ["gruv-l",    "Gruvbox Light"],
-  ["rosepine-d","Rosé Pine Dawn"],
-  ["latte",     "Catppuccin Latte"],
-  ["rose-l",    "Rose Quartz"],
-  ["lavender-l","Lavender"],
-  ["peach-l",   "Peach"],
-  ["lemon-l",   "Lemon"],
-  // Dark
-  ["dark",      "Dark"],
-  ["midnight",  "Midnight"],
-  ["slate",     "Slate"],
-  ["coffee",    "Coffee"],
-  ["nord",      "Nord"],
-  ["dracula",   "Dracula"],
-  ["gruv-d",    "Gruvbox Dark"],
-  ["solar-d",   "Solarized Dark"],
-  ["rosepine",  "Rosé Pine"],
-  ["mocha",     "Catppuccin Mocha"],
-  ["tokyo",     "Tokyo Night"],
-  ["forest",    "Forest"],
-  ["ocean",     "Ocean"],
-  ["mono",      "Mono"],
-  ["terminal",  "Terminal"],
-  ["obsidian",  "Obsidian"],
-  ["carbon",    "Carbon"],
-  ["cyberpunk", "Cyberpunk"],
-  ["matrix",    "Matrix"],
-  ["wine",      "Wine"],
+  ["light",         "Minimal Light"],
+  ["dark",          "Minimal Dark"],
+  ["frutiger",      "Frutiger Aero"],
+  ["frutiger-dark", "Frutiger Space"],
+  ["liquidglass",   "Glassmorphic System"],
+  ["onyx",          "Onyx OLED"],
+  ["neobrutal",     "Neobrutalist & Bold"],
+  ["material",      "Soft Material & Clay"],
+  ["layl",          "Layl"],
+  ["bento",         "Bento"],
+  ["zellige",       "Zellige"],
+  ["circuit",       "Circuit"],
+  ["sakura",        "Sakura"],
+  ["sakina",        "Sakina"],
+  ["mushaf",        "Mushaf"],
+  ["riso",          "Risograph"]
 ];
+// Arabic theme labels — transliterated brands + translated descriptors.
+const THEME_NAMES_AR = {
+  light: "بسيط فاتح (Minimal Light)",
+  dark: "بسيط داكن (Minimal Dark)",
+  frutiger: "فروتيجر أيرو (Frutiger Aero)",
+  "frutiger-dark": "فروتيجر الفضاء (Frutiger Space)",
+  liquidglass: "النظام الزجاجي (Glassmorphism)",
+  onyx: "أونيكس (Onyx OLED)",
+  neobrutal: "نيوبروتاليست (Neobrutalist)",
+  material: "متريال ناعم (Material)",
+  layl: "ليل هادئ (Layl)",
+  bento: "بينتو (Bento)",
+  zellige: "زليج (Zellige)",
+  circuit: "لوحة دوائر (Circuit)",
+  sakura: "ساكورا (Sakura)",
+  sakina: "سكينة (Sakina)",
+  mushaf: "مصحف (Mushaf)",
+  riso: "ريزوغراف (Risograph)",
+};
+
+function themeName(id) {
+  if (isArabic()) {
+    return THEME_NAMES_AR[id] || (THEMES.find(([tid]) => tid === id) || ["", id])[1] || id;
+  }
+  return (THEMES.find(([tid]) => tid === id) || ["", id])[1] || id;
+}
 
 const THEME_BASES = {
   "metro-dark": "metro",
@@ -242,60 +513,126 @@ const THEME_BASES = {
   "dusk-dark": "dusk",
 };
 
-// Organized Palette Categories with Orange & Peach
+// Organized Palette Categories (Lightest -> Darkest)
 const PALETTES = {
   default:   { name: "Theme default" },
-  // Essentials & Neutrals
+  // Neutrals (White -> Slate -> Black)
   purewhite: { name: "Pure White",  a: "#ffffff" },
-  pureblack: { name: "Pure Black",  a: "#0f172a" },
   pearl:     { name: "Pearl",       a: "#f5f5f4" },
-  slate:     { name: "Slate",       a: "#94a3b8" },
   silver:    { name: "Silver",      a: "#cbd5e1" },
-  // Orange, Coral & Peach
-  orange:    { name: "Pure Orange", a: "#f97316" },
-  peach:     { name: "Peach",       a: "#fed7aa" },
-  coral:     { name: "Coral",       a: "#fb7185" },
-  tangerine: { name: "Tangerine",   a: "#ff8c00" },
-  apricot:   { name: "Apricot",     a: "#fdba74" },
-  ember:     { name: "Ember",       a: "#ea580c" },
-  // Warm Gold & Amber
-  amber:     { name: "Amber",       a: "#fbbf24" },
-  gold:      { name: "Gold",        a: "#eab308" },
-  copper:    { name: "Copper",      a: "#d97706" },
-  sand:      { name: "Sand",        a: "#d4a574" },
-  butter:    { name: "Butter",      a: "#fde68a" },
-  // Greens & Emeralds
+  slate:     { name: "Slate",       a: "#94a3b8" },
+  charcoal:  { name: "Charcoal",    a: "#475569" },
+  pureblack: { name: "Pure Black",  a: "#0f172a" },
+  // Greens (Light Mint -> Quiet Emerald -> Deep Forest)
+  mintlight: { name: "Light Mint",  a: "#bbf7d0" },
+  quietgreen:{ name: "Quiet Green", a: "#86efac" },
   mint:      { name: "Mint",        a: "#6ee7b7" },
-  emerald:   { name: "Emerald",     a: "#34d399" },
-  forest:    { name: "Forest",      a: "#22c55e" },
-  jade:      { name: "Jade",        a: "#10b981" },
-  seafoam:   { name: "Seafoam",     a: "#a7f3d0" },
-  // Blues & Cyans
+  seafoam:   { name: "Seafoam",     a: "#34d399" },
+  emerald:   { name: "Emerald",     a: "#10b981" },
+  forest:    { name: "Forest",      a: "#059669" },
+  deepgreen: { name: "Deep Pine",   a: "#047857" },
+  // Blues & Cyans (Light Sky -> Azure -> Deep Ocean)
+  iceblue:   { name: "Ice Blue",    a: "#e0f2fe" },
   sky:       { name: "Sky Blue",    a: "#7dd3fc" },
+  cyan:      { name: "Cyan",        a: "#38bdf8" },
   azure:     { name: "Azure Blue",  a: "#60a5fa" },
   blue:      { name: "Royal Blue",  a: "#3b82f6" },
   sapphire:  { name: "Sapphire",    a: "#2563eb" },
-  indigo:    { name: "Indigo",      a: "#818cf8" },
-  cyan:      { name: "Cyan",        a: "#22d3ee" },
-  ocean:     { name: "Ocean",       a: "#0891b2" },
-  // Purples & Pinks
+  ocean:     { name: "Deep Ocean",  a: "#0369a1" },
+  // Orange & Peach (Soft Peach -> Coral -> Deep Ember)
+  peachlight:{ name: "Light Peach", a: "#ffedd5" },
+  peach:     { name: "Peach",       a: "#fed7aa" },
+  apricot:   { name: "Apricot",     a: "#fdba74" },
+  coral:     { name: "Coral",       a: "#fb7185" },
+  orange:    { name: "Pure Orange", a: "#f97316" },
+  tangerine: { name: "Tangerine",   a: "#ea580c" },
+  ember:     { name: "Ember",       a: "#c2410c" },
+  // Warm Gold & Amber (Butter -> Gold -> Copper)
+  butter:    { name: "Butter",      a: "#fde68a" },
+  amber:     { name: "Amber",       a: "#fbbf24" },
+  gold:      { name: "Gold",        a: "#eab308" },
+  sand:      { name: "Sand",        a: "#d4a574" },
+  copper:    { name: "Copper",      a: "#d97706" },
+  bronze:    { name: "Bronze",      a: "#b45309" },
+  // Purples & Pinks (Soft Lavender -> Orchid -> Deep Violet)
+  lavender:  { name: "Lavender",    a: "#e9d5ff" },
+  pink:      { name: "Light Pink",  a: "#f472b6" },
+  orchid:    { name: "Orchid",      a: "#c084fc" },
   violet:    { name: "Violet",      a: "#a78bfa" },
-  purple:    { name: "Purple",      a: "#c084fc" },
-  plum:      { name: "Plum",        a: "#9333ea" },
-  pink:      { name: "Pink",        a: "#f472b6" },
-  rose:      { name: "Rose",        a: "#fb7185" },
-  ruby:      { name: "Ruby Red",    a: "#e11d48" },
-  lavender:  { name: "Lavender",    a: "#ddd6fe" },
+  rose:      { name: "Rose",        a: "#e11d48" },
+  purple:    { name: "Purple",      a: "#9333ea" },
+  plum:      { name: "Deep Plum",   a: "#6b21a8" },
 };
 
 const PALETTE_GROUPS = [
-  { title: "Essentials", keys: ["default", "purewhite", "pureblack", "pearl", "slate", "silver"] },
-  { title: "Orange & Peach", keys: ["orange", "peach", "coral", "tangerine", "apricot", "ember"] },
-  { title: "Warm Gold", keys: ["amber", "gold", "copper", "sand", "butter"] },
-  { title: "Greens", keys: ["mint", "emerald", "forest", "jade", "seafoam"] },
-  { title: "Blues", keys: ["sky", "azure", "blue", "sapphire", "indigo", "cyan", "ocean"] },
-  { title: "Purples & Pinks", keys: ["violet", "purple", "plum", "pink", "rose", "ruby", "lavender"] }
+  { title: "Essentials", keys: ["default", "purewhite", "pearl", "silver", "slate", "charcoal", "pureblack"] },
+  { title: "Greens", keys: ["mintlight", "quietgreen", "mint", "seafoam", "emerald", "forest", "deepgreen"] },
+  { title: "Blues", keys: ["iceblue", "sky", "cyan", "azure", "blue", "sapphire", "ocean"] },
+  { title: "Orange & Peach", keys: ["peachlight", "peach", "apricot", "coral", "orange", "tangerine", "ember"] },
+  { title: "Warm Gold", keys: ["butter", "amber", "gold", "sand", "copper", "bronze"] },
+  { title: "Purples & Pinks", keys: ["lavender", "pink", "orchid", "violet", "rose", "purple", "plum"] }
 ];
+
+const PALETTE_NAMES_AR = {
+  default: "افتراضي",
+  purewhite: "أبيض نقي",
+  pearl: "لؤلؤي",
+  silver: "فضي",
+  slate: "إردواز",
+  charcoal: "فحمي",
+  pureblack: "أسود نقي",
+  mintlight: "نعناع فاتح",
+  quietgreen: "أخضر هادئ",
+  mint: "نعناعي",
+  seafoam: "رغوة البحر",
+  emerald: "زمردي",
+  forest: "غابي",
+  deepgreen: "صنوبري داكن",
+  iceblue: "أزرق ثلجي",
+  sky: "أزرق سماوي",
+  cyan: "سماوي",
+  azure: "لازوردي",
+  blue: "أزرق ملكي",
+  sapphire: "ياقوتي أزرق",
+  ocean: "محيطي داكن",
+  peachlight: "خوخي فاتح",
+  peach: "خوخي",
+  apricot: "مشمشي",
+  coral: "مرجاني",
+  orange: "برتقالي",
+  tangerine: "يوسفي",
+  ember: "جمرة داكنة",
+  butter: "زبدة",
+  amber: "كهرماني",
+  gold: "ذهبي",
+  sand: "رملي",
+  copper: "نحاسي",
+  bronze: "برونزي",
+  lavender: "لافندر",
+  pink: "وردي فاتح",
+  orchid: "سحلبي",
+  violet: "بنفسجي",
+  rose: "وردي أحمر",
+  purple: "أرجواني",
+  plum: "برقوقي داكن",
+};
+
+const PALETTE_GROUP_TITLES_AR = {
+  Essentials: "أساسيات",
+  "Orange & Peach": "برتقالي وخوخي",
+  "Warm Gold": "ذهبي دافئ",
+  Greens: "خضر",
+  Blues: "أزرق",
+  "Purples & Pinks": "بنفسجي ووردي",
+};
+
+function paletteName(id) {
+  if (!isArabic()) return PALETTES[id]?.name || id;
+  return PALETTE_NAMES_AR[id] || PALETTES[id]?.name || id;
+}
+function paletteGroupTitle(title) {
+  return isArabic() ? (PALETTE_GROUP_TITLES_AR[title] || title) : title;
+}
 
 const PRAYER_ORDER = ["Fajr", "Dhuhr", "Asr", "Maghrib", "Isha"];
 
@@ -307,6 +644,21 @@ const METHODS = [
   [8, "Gulf Region"],
   [13, "Diyanet (Turkey)"],
 ];
+
+const METHOD_NAMES_AR = {
+  2: "الجمعية الإسلامية لأمريكا الشمالية (ISNA)",
+  3: "رابطة العالم الإسلامي",
+  4: "أم القرى (مكة المكرمة)",
+  5: "الهيئة المصرية العامة للمساحة",
+  8: "منطقة الخليج",
+  13: "دائرة الشؤون الدينية التركية",
+};
+
+function methodName(id) {
+  const en = (METHODS.find(([v]) => v === id) || [, t("sched.methodFallback", { method: id })])[1];
+  if (!isArabic()) return en;
+  return METHOD_NAMES_AR[id] || en;
+}
 const PRESETS = {
   "Egypt (مصر)": {
     "Cairo (القاهرة)": [30.0444, 31.2357],
@@ -372,12 +724,40 @@ const PRESETS = {
   }
 };
 
+// Arabic labels for preset countries/cities (used in Arabic UI mode).
+const PRESETS_AR = {
+  "Egypt (مصر)": { ar: "مصر", cities: { "Cairo (القاهرة)": "القاهرة", "Alexandria (الإسكندرية)": "الإسكندرية", "Giza (الجيزة)": "الجيزة", "Mansoura (المنصورة)": "المنصورة", "Tanta (طنطا)": "طنطا", "Asyut (أسيوط)": "أسيوط" } },
+  "Saudi Arabia (المملكة العربية السعودية)": { ar: "السعودية", cities: { "Makkah (مكة المكرمة)": "مكة المكرمة", "Madinah (المدينة المنورة)": "المدينة المنورة", "Riyadh (الرياض)": "الرياض", "Jeddah (جدة)": "جدة", "Dammam (الدمام)": "الدمام" } },
+  "Palestine (فلسطين)": { ar: "فلسطين", cities: { "Al-Quds (القدس)": "القدس", "Gaza (غزة)": "غزة", "Hebron (الخليل)": "الخليل", "Nablus (نابلس)": "نابلس", "Ramallah (رام الله)": "رام الله" } },
+  "UAE (الإمارات العربية المتحدة)": { ar: "الإمارات", cities: { "Dubai (دبي)": "دبي", "Abu Dhabi (أبوظبي)": "أبوظبي", "Sharjah (الشارقة)": "الشارقة" } },
+  "Jordan (الأردن)": { ar: "الأردن", cities: { "Amman (عمان)": "عمّان", "Zarqa (الزرقاء)": "الزرقاء", "Irbid (إربد)": "إربد" } },
+  "Turkey (تركيا)": { ar: "تركيا", cities: { "Istanbul (إسطنبول)": "إسطنبول", "Ankara (أنقرة)": "أنقرة", "Izmir (إزمير)": "إزمير" } },
+  "Morocco (المغرب)": { ar: "المغرب", cities: { "Casablanca (الدار البيضاء)": "الدار البيضاء", "Rabat (الرباط)": "الرباط", "Marrakech (مراكش)": "مراكش" } },
+  "Malaysia (ماليزيا)": { ar: "ماليزيا", cities: { "Kuala Lumpur (كوالالمبور)": "كوالالمبور", "Penang (بينانق)": "بينانق" } },
+  "United Kingdom (المملكة المتحدة)": { ar: "بريطانيا", cities: { "London": "لندن", "Birmingham": "برمنغهام", "Manchester": "مانشستر" } },
+  "USA (الولايات المتحدة)": { ar: "أمريكا", cities: { "New York": "نيويورك", "Los Angeles": "لوس أنجلوس", "Chicago": "شيكاغو" } },
+  "Qatar (قطر)": { ar: "قطر", cities: { "Doha (الدوحة)": "الدوحة" } },
+  "Kuwait (الكويت)": { ar: "الكويت", cities: { "Kuwait City (مدينة الكويت)": "مدينة الكويت" } },
+};
+
+function presetCountryLabel(key) {
+  if (isArabic()) return PRESETS_AR[key]?.ar || String(key).split(" (")[0] || key;
+  return key;
+}
+function presetCityLabel(countryKey, cityKey) {
+  if (isArabic()) return PRESETS_AR[countryKey]?.cities?.[cityKey] || String(cityKey).split(" (")[0] || cityKey;
+  return cityKey;
+}
+
 let state = { ...DEFAULTS };
 let AZKAR_DATA = null; // raw json
 let CATS = [];
 let prayers = null;
+let tomorrowPrayers = null;
 let hijri = null;
 let lastErr = null;
+let usingCachedPrayers = false;
+let offlinePrayerNotice = false;
 let activePrayer = null; // UI-only, not persisted
 let activeAudio = null;
 let renderedView = null;
@@ -485,9 +865,12 @@ function azkarOverallProgress() {
 }
 
 function fmt12(hhmm) {
+  if (!hhmm || typeof hhmm !== "string") return "";
   const [h, m] = hhmm.split(":").map(Number);
   const am = h < 12;
-  return `${h % 12 || 12}:${String(m).padStart(2, "0")} ${am ? "AM" : "PM"}`;
+  const val = `${h % 12 || 12}:${String(m).padStart(2, "0")}`;
+  const period = am ? t("fmt.am") : t("fmt.pm");
+  return `<span class="time-cell"><span class="time-val">${val}</span><span class="time-period">${period}</span></span>`;
 }
 function toMinutes(hhmm) { const [h, m] = hhmm.split(":").map(Number); return h * 60 + m; }
 function nextPrayer() {
@@ -497,8 +880,11 @@ function nextPrayer() {
   const list = PRAYER_ORDER.map((n) => ({ name: n, m: toMinutes(prayers[n]) }));
   let nextIdx = list.findIndex((p) => p.m > nowM);
   let next, prev;
+  let isTomorrow = false;
   if (nextIdx === -1) {
-    next = { ...list[0], m: list[0].m + 1440 };
+    isTomorrow = true;
+    const tomFajr = (tomorrowPrayers && tomorrowPrayers.Fajr) ? tomorrowPrayers.Fajr : prayers.Fajr;
+    next = { name: "Fajr", m: toMinutes(tomFajr) + 1440 };
     prev = list[list.length - 1];
   } else {
     next = list[nextIdx];
@@ -510,13 +896,38 @@ function nextPrayer() {
   const total = Math.max(1, next.m - prev.m);
   const elapsed = Math.max(0, nowM - prev.m);
   const pct = Math.min(100, Math.max(0, (elapsed / total) * 100));
-  return { name: next.name, h: Math.floor(d / 60), m: d % 60, pct, prev: prev.name };
+  return { name: next.name, h: Math.floor(d / 60), m: d % 60, pct, prev: prev.name, isTomorrow };
 }
 
 // ---------- geocoding ----------
+function geocodeLanguage() { return state?.language === "ar" ? "ar" : "en"; }
+
+// Resolves the device position, retrying with high accuracy.
+//
+// The default (low-power) mode is answered by the platform's network/fused
+// location provider. That provider can stay silent indefinitely — on Android
+// WebView it simply times out — so a timeout here is not a real failure. Retry
+// with enableHighAccuracy, which reads the GPS provider directly.
+function getCurrentPositionWithFallback() {
+  const request = (options) => new Promise((resolve, reject) => {
+    if (!navigator.geolocation) {
+      reject(new Error("Geolocation unavailable"));
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(resolve, reject, options);
+  });
+
+  return request({ timeout: 10000 }).catch((err) => {
+    // POSITION_UNAVAILABLE (2) and TIMEOUT (3) are both worth a GPS retry;
+    // PERMISSION_DENIED (1) is final, so surface it immediately.
+    if (err && err.code === 1) throw err;
+    return request({ timeout: 25000, enableHighAccuracy: true });
+  });
+}
+
 async function reverseGeocode(lat, lng) {
   try {
-    const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`, { headers: { 'Accept-Language': 'en' } });
+    const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`, { headers: { 'Accept-Language': geocodeLanguage() } });
     const j = await r.json();
     const a = j.address || {};
     return [a.city || a.town || a.village || a.county || "", a.country || ""].filter(Boolean).join(", ") || j.display_name || `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
@@ -525,7 +936,7 @@ async function reverseGeocode(lat, lng) {
 
 async function forwardGeocode(query) {
   try {
-    const r = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=5`, { headers: { 'Accept-Language': 'en' } });
+    const r = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=5`, { headers: { 'Accept-Language': geocodeLanguage() } });
     return await r.json();
   } catch { return []; }
 }
@@ -540,10 +951,168 @@ async function loadAzkar() {
   if (!CATS.includes(state.category)) state.category = CATS[0];
 }
 
-function ddmmyyyy() {
+function ddmmyyyy(dayOffset = 0) {
   const d = new Date();
+  if (dayOffset !== 0) d.setDate(d.getDate() + dayOffset);
   const pad = (n) => String(n).padStart(2, "0");
   return `${pad(d.getDate())}-${pad(d.getMonth() + 1)}-${d.getFullYear()}`;
+}
+
+// ---------- offline prayer cache ----------
+//
+// The single-day `prayerCache` only rescues the day it was written on: the
+// moment the date rolls over, `cache.date === today` fails and an offline
+// device has nothing to fall back to. `offlinePrayerCache` instead holds a
+// rolling window of whole days keyed by date, fetched a month at a time from
+// the Aladhan calendar endpoint (~2.8 KB per month), so prayer times and
+// notifications keep working offline across day and month boundaries.
+const OFFLINE_CACHE_VERSION = 2;
+const OFFLINE_CACHE_DAYS_AHEAD = 60;
+const OFFLINE_CACHE_DAYS_BEHIND = 2;
+
+function offlineCacheLocationKey() {
+  return `${OFFLINE_CACHE_VERSION}|${(+state.lat).toFixed(4)}|${(+state.lng).toFixed(4)}|${state.method}`;
+}
+
+function dateKeyFor(date) {
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+function dateKeyOffset(days) {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() + days);
+  return dateKeyFor(d);
+}
+
+/** The cached day set, but only if it belongs to the current location/method. */
+function offlineCacheDays() {
+  const cache = state.offlinePrayerCache;
+  if (!cache || cache.key !== offlineCacheLocationKey()) return null;
+  return cache.days && typeof cache.days === "object" ? cache.days : null;
+}
+
+function offlineCacheEntry(dateKey) {
+  const days = offlineCacheDays();
+  const entry = days?.[dateKey];
+  return entry && entry.timings ? entry : null;
+}
+
+/** true when the cache still reaches the end of its rolling offline window. */
+function offlineCacheCoversWindow() {
+  return Boolean(offlineCacheEntry(todayKey()) && offlineCacheEntry(dateKeyOffset(OFFLINE_CACHE_DAYS_AHEAD)));
+}
+
+/**
+ * Fetch whole months from the Aladhan calendar endpoint and merge them into the
+ * offline cache. Covers today through OFFLINE_CACHE_DAYS_AHEAD, which spans a
+ * month boundary, so up to three calendar requests may run.
+ */
+async function refreshOfflinePrayerCache({ signal } = {}) {
+  const key = offlineCacheLocationKey();
+  const latR = +state.lat.toFixed(4);
+  const lngR = +state.lng.toFixed(4);
+
+  const months = new Set();
+  for (let offset = -OFFLINE_CACHE_DAYS_BEHIND; offset <= OFFLINE_CACHE_DAYS_AHEAD; offset += 1) {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    d.setDate(d.getDate() + offset);
+    months.add(`${d.getFullYear()}-${d.getMonth() + 1}`);
+  }
+
+  const existing = offlineCacheDays() || {};
+  const merged = { ...existing };
+  let added = 0;
+  let lastError = null;
+
+  for (const ym of months) {
+    const [year, month] = ym.split("-").map(Number);
+    const url = `https://api.aladhan.com/v1/calendar/${year}/${month}?latitude=${latR}&longitude=${lngR}&method=${state.method}`;
+    try {
+      const response = await fetch(url, signal ? { signal } : undefined);
+      const json = await response.json();
+      if (!Array.isArray(json?.data)) throw new Error("bad calendar response");
+      for (const day of json.data) {
+        const gregorian = day?.date?.gregorian?.date; // DD-MM-YYYY
+        if (!gregorian) continue;
+        const [dd, mm, yyyy] = gregorian.split("-");
+        const hj = day?.date?.hijri;
+        merged[`${yyyy}-${mm}-${dd}`] = {
+          timings: {
+            Fajr: cleanTime(day.timings?.Fajr),
+            Dhuhr: cleanTime(day.timings?.Dhuhr),
+            Asr: cleanTime(day.timings?.Asr),
+            Maghrib: cleanTime(day.timings?.Maghrib),
+            Isha: cleanTime(day.timings?.Isha),
+          },
+          hijri: hj
+            ? { en: `${hj.day} ${hj.month.en} ${hj.year} AH`, ar: `${hj.day} ${hj.month.ar} ${hj.year} هـ` }
+            : null,
+        };
+        added += 1;
+      }
+    } catch (e) {
+      // Keep what we have; a single month failing (offline, 429, etc.)
+      // must not discard the other months we already fetched.
+      if (e?.name === "AbortError") throw e;
+      lastError = e;
+    }
+  }
+
+  if (!added) throw lastError || new Error("calendar returned no days");
+
+  // Drop days that fell out of the window so storage cannot grow without bound.
+  const floor = dateKeyOffset(-OFFLINE_CACHE_DAYS_BEHIND);
+  const pruned = {};
+  for (const [dateKey, value] of Object.entries(merged)) {
+    if (dateKey >= floor) pruned[dateKey] = value;
+  }
+
+  state.offlinePrayerCache = { key, days: pruned, fetchedAt: Date.now() };
+  storage.set({ offlinePrayerCache: state.offlinePrayerCache });
+}
+
+/**
+ * Populate the module-level prayer state for `dateKey` from the offline cache.
+ * Returns false when the cache cannot serve that day.
+ */
+function applyOfflineCacheForToday() {
+  const today = todayKey();
+  const entry = offlineCacheEntry(today);
+  if (!entry) return false;
+  prayers = entry.timings;
+  const tomorrow = offlineCacheEntry(dateKeyOffset(1));
+  tomorrowPrayers = tomorrow ? tomorrow.timings : null;
+  if (entry.hijri) hijri = entry.hijri;
+  loadedPrayerDate = today;
+  return true;
+}
+
+/**
+ * Serve the cached day closest to today (yesterday first, then further back,
+ * then the earliest future day). This covers launching offline after a day
+ * (or more) has passed: slightly-old times beat a failure banner, and the
+ * periodic ticker keeps retrying so this self-heals once online.
+ */
+function applyNearestOfflineCache() {
+  const days = offlineCacheDays();
+  if (!days) return false;
+  const entries = Object.keys(days).filter((k) => days[k]?.timings).sort();
+  if (!entries.length) return false;
+  const today = todayKey();
+  let bestKey = null;
+  for (const k of entries) if (k <= today) bestKey = k;
+  if (!bestKey) bestKey = entries[0];
+  prayers = days[bestKey].timings;
+  const nextKey = entries.find((k) => k > bestKey);
+  tomorrowPrayers = nextKey ? days[nextKey].timings : null;
+  if (days[bestKey].hijri) hijri = days[bestKey].hijri;
+  // Deliberately NOT today: the stale date makes the 30s ticker re-attempt
+  // loadPrayers until the network answers, then real times take over.
+  loadedPrayerDate = bestKey;
+  return true;
 }
 
 async function loadPrayers(force = false) {
@@ -551,6 +1120,29 @@ async function loadPrayers(force = false) {
   const cache = state.prayerCache;
   const latR = +state.lat.toFixed(4);
   const lngR = +state.lng.toFixed(4);
+
+  // Offline-first: if the rolling cache already covers today, render from it
+  // straight away. Nothing below needs the network to show correct times.
+  const servedFromOfflineCache = applyOfflineCacheForToday();
+  if (servedFromOfflineCache) {
+    lastErr = null;
+    offlinePrayerNotice = false;
+    usingCachedPrayers = false;
+    syncReminders();
+    applyAutoAzkarCategory();
+    // Still top the window back up in the background, but only when it is
+    // actually running low — no request at all on a normal offline launch.
+    if (!offlineCacheCoversWindow() || force) {
+      refreshOfflinePrayerCache().then(() => {
+        if (applyOfflineCacheForToday()) syncReminders();
+      }).catch(() => {
+        offlinePrayerNotice = true;
+        patchPrayerCard();
+      });
+    }
+    return;
+  }
+
   if (
     !force && cache &&
     cache.date === today &&
@@ -558,6 +1150,7 @@ async function loadPrayers(force = false) {
     cache.method === state.method
   ) {
     prayers = cache.timings;
+    tomorrowPrayers = cache.tomorrowTimings || null;
     hijri = cache.hijri;
     loadedPrayerDate = today;
     syncReminders();
@@ -567,31 +1160,91 @@ async function loadPrayers(force = false) {
   const timeout = setTimeout(() => controller.abort(), 12_000);
   const requestId = ++prayerLoadSequence;
   try {
-    const url = `https://api.aladhan.com/v1/timings/${ddmmyyyy()}?latitude=${latR}&longitude=${lngR}&method=${state.method}`;
-    const r = await fetch(url, { signal: controller.signal });
-    const j = await r.json();
-    if (!j?.data?.timings) throw new Error("Bad response");
+    // One calendar request covers a whole month, so this both renders today and
+    // fills the offline window for the days ahead.
+    await refreshOfflinePrayerCache({ signal: controller.signal });
     if (requestId !== prayerLoadSequence) return;
-    const t = j.data.timings;
-    prayers = { Fajr: t.Fajr, Dhuhr: t.Dhuhr, Asr: t.Asr, Maghrib: t.Maghrib, Isha: t.Isha };
-    loadedPrayerDate = today;
-    const h = j.data.date.hijri;
-    hijri = `${h.day} ${h.month.en} ${h.year} AH`;
-    state.prayerCache = { date: today, lat: latR, lng: lngR, method: state.method, timings: prayers, hijri };
+    if (!applyOfflineCacheForToday()) throw new Error("calendar missing today");
+    state.prayerCache = { date: today, lat: latR, lng: lngR, method: state.method, timings: prayers, tomorrowTimings: tomorrowPrayers, hijri };
     storage.set({ prayerCache: state.prayerCache });
     lastErr = null;
+    offlinePrayerNotice = false;
+    usingCachedPrayers = false;
     // send to main process for reminder scheduling
     syncReminders();
     applyAutoAzkarCategory();
   } catch (e) {
-    if (requestId === prayerLoadSequence) lastErr = "Failed to load prayer times — check your location.";
+    if (requestId !== prayerLoadSequence) return;
+    // Offline or API failure. Prefer the rolling cache, then the legacy
+    // single-day cache, so the app still works with no internet.
+    if (applyOfflineCacheForToday()) {
+      usingCachedPrayers = false;
+      lastErr = null;
+      offlinePrayerNotice = true;
+      syncReminders();
+      applyAutoAzkarCategory();
+    } else if (applyNearestOfflineCache()) {
+      // A day (or more) passed while offline: serve the closest cached day
+      // with the subtle offline note instead of the red failure banner.
+      usingCachedPrayers = true;
+      lastErr = null;
+      offlinePrayerNotice = true;
+      syncReminders();
+      applyAutoAzkarCategory();
+    } else if (cache && cache.timings && cache.date === today) {
+      prayers = cache.timings;
+      tomorrowPrayers = cache.tomorrowTimings || null;
+      hijri = cache.hijri;
+      loadedPrayerDate = today;
+      usingCachedPrayers = true;
+      offlinePrayerNotice = false;
+      syncReminders();
+      applyAutoAzkarCategory();
+      lastErr = t("prayers.stale");
+    } else if (state.offlinePrayerCache?.days?.[today]?.timings) {
+      // Last resort: stale rolling cache from a previous location/method.
+      // Better to show slightly wrong times than "Unavailable" when the user
+      // just turned wifi off. The stale banner makes the fallback explicit.
+      const stale = state.offlinePrayerCache.days[today];
+      prayers = stale.timings;
+      tomorrowPrayers = state.offlinePrayerCache.days[dateKeyOffset(1)]?.timings || null;
+      hijri = stale.hijri;
+      loadedPrayerDate = today;
+      usingCachedPrayers = true;
+      offlinePrayerNotice = false;
+      syncReminders();
+      applyAutoAzkarCategory();
+      lastErr = t("prayers.stale");
+    } else {
+      usingCachedPrayers = false;
+      offlinePrayerNotice = false;
+      lastErr = t("err.prayers");
+    }
   } finally {
     clearTimeout(timeout);
   }
 }
 
+function hijriLabel() {
+  if (!hijri) return "";
+  if (typeof hijri === "string") return hijri;
+  return isArabic() ? hijri.ar : hijri.en;
+}
+
 function syncReminders() {
   if (globalThis.electronAPI?.setPrayerTimes && prayers) {
+    // Hand the native scheduler the pre-fetched upcoming days as well. Without
+    // them it has to call the network itself, which is exactly what fails
+    // offline and leaves stale notifications scheduled.
+    const upcoming = {};
+    const days = offlineCacheDays();
+    if (days) {
+      for (let offset = 0; offset <= OFFLINE_CACHE_DAYS_AHEAD; offset += 1) {
+        const dateKey = dateKeyOffset(offset);
+        const entry = days[dateKey];
+        if (entry?.timings) upcoming[dateKey] = entry.timings;
+      }
+    }
     globalThis.electronAPI.setPrayerTimes(prayers, {
       notificationsEnabled: state.notificationsEnabled,
       remindersEnabled: state.remindersEnabled,
@@ -606,6 +1259,8 @@ function syncReminders() {
       lat: state.lat,
       lng: state.lng,
       method: state.method,
+      language: state.language,
+      upcomingTimings: upcoming,
     });
   }
 }
@@ -671,13 +1326,13 @@ function headerHTML() {
   }
   const pinned = globalThis.electronAPI ? true : IS_PINNED;
   return `
-    <div class="brand"><img class="logo" src="icon.png" alt="Zakkir"/><span><span class="name">Zakkir</span><span class="brand-sub">Daily remembrance</span></span></div>
+    <div class="brand"><img class="logo" src="icon.png" alt="Zakkir"/><span><span class="name">Zakkir</span><span class="brand-sub">${t("brand.subtitle")}</span></span></div>
     <div class="icons">
-      ${globalThis.electronAPI ? "" : `<button class="icon-btn" id="pinBtn" title="${pinned ? "Close pinned window" : "Pin (keep open)"}">${pinned ? icon.unpin : icon.pin}</button>`}
-      ${globalThis.electronAPI ? `<button class="icon-btn" id="minimizeBtn" title="Minimize">${icon.minimize}</button>` : ""}
-      ${globalThis.electronAPI ? `<button class="icon-btn" id="closeBtn" title="Close">${icon.close}</button>` : ""}
-      <button class="icon-btn" data-go="schedule" title="Monthly schedule">${icon.cal}</button>
-      <button class="icon-btn" data-go="settings" title="Settings">${icon.gear}</button>
+      ${globalThis.electronAPI ? "" : `<button class="icon-btn" id="pinBtn" title="${pinned ? t("header.unpin") : t("header.pin")}">${pinned ? icon.unpin : icon.pin}</button>`}
+      ${globalThis.electronAPI ? `<button class="icon-btn" id="minimizeBtn" title="${t("header.minimize")}">${icon.minimize}</button>` : ""}
+      ${globalThis.electronAPI ? `<button class="icon-btn" id="closeBtn" title="${t("header.close")}">${icon.close}</button>` : ""}
+      <button class="icon-btn" data-go="schedule" title="${t("header.schedule")}">${icon.cal}</button>
+      <button class="icon-btn" data-go="settings" title="${t("header.settings")}">${icon.gear}</button>
     </div>`;
 }
 
@@ -688,57 +1343,75 @@ function mobileBottomNavHTML(active) {
   const originIndex = mobileNavTransition?.to === destinationIndex
     ? mobileNavTransition.from
     : destinationIndex;
-  return `<nav class="mobile-bottom-nav" aria-label="Primary navigation">
+  const navLabels = { home: t("nav.home"), schedule: t("nav.schedule"), settings: t("nav.settings") };
+  return `<nav class="mobile-bottom-nav" aria-label="${t("nav.primary")}">
     <i class="mobile-nav-liquid" aria-hidden="true" style="--nav-index:${originIndex}"></i>
-    <button type="button" class="mobile-bottom-nav-btn ${active === "home" ? "active" : ""}" data-go="home" aria-label="Home" ${active === "home" ? `aria-current="page"` : ""}><span class="mobile-nav-icon">${icon.home}</span><span class="mobile-nav-label">Home</span></button>
-    <button type="button" class="mobile-bottom-nav-btn ${active === "schedule" ? "active" : ""}" data-go="schedule" aria-label="Schedule" ${active === "schedule" ? `aria-current="page"` : ""}><span class="mobile-nav-icon">${icon.cal}</span><span class="mobile-nav-label">Schedule</span></button>
-    <button type="button" class="mobile-bottom-nav-btn ${active === "settings" ? "active" : ""}" data-go="settings" aria-label="Settings" ${active === "settings" ? `aria-current="page"` : ""}><span class="mobile-nav-icon">${icon.gear}</span><span class="mobile-nav-label">Settings</span></button>
+    <button type="button" class="mobile-bottom-nav-btn ${active === "home" ? "active" : ""}" data-go="home" aria-label="${navLabels.home}" ${active === "home" ? `aria-current="page"` : ""}><span class="mobile-nav-icon">${icon.home}</span><span class="mobile-nav-label">${navLabels.home}</span></button>
+    <button type="button" class="mobile-bottom-nav-btn ${active === "schedule" ? "active" : ""}" data-go="schedule" aria-label="${navLabels.schedule}" ${active === "schedule" ? `aria-current="page"` : ""}><span class="mobile-nav-icon">${icon.cal}</span><span class="mobile-nav-label">${navLabels.schedule}</span></button>
+    <button type="button" class="mobile-bottom-nav-btn ${active === "settings" ? "active" : ""}" data-go="settings" aria-label="${navLabels.settings}" ${active === "settings" ? `aria-current="page"` : ""}><span class="mobile-nav-icon">${icon.gear}</span><span class="mobile-nav-label">${navLabels.settings}</span></button>
   </nav>`;
+}
+
+function arabicPlural(n, one, dual, few) {
+  if (n === 1) return one;
+  if (n === 2) return dual;
+  if (n >= 3 && n <= 10) return few;
+  return one;
+}
+function arabicDuration(h, m) {
+  const parts = [];
+  if (h > 0) { const p = arabicPlural(h, "ساعة", "ساعتان", "ساعات"); parts.push(h <= 2 ? p : `${h} ${p}`); }
+  if (m > 0) { const p = arabicPlural(m, "دقيقة", "دقيقتان", "دقائق"); parts.push(m <= 2 ? p : `${m} ${p}`); }
+  return parts.join(" و");
+}
+function durText(hrs, mins) {
+  if (isArabic()) return arabicDuration(hrs, mins);
+  return hrs > 0 ? `${hrs}${t("time.h")} ${mins}${t("time.m")}` : `${mins}${t("time.m")}`;
 }
 
 function prayerCardHTML() {
   const np = nextPrayer();
-  const nextName = np ? np.name : (lastErr ? "Unavailable" : "Loading…");
-  const countdown = np ? `${np.h}h ${String(np.m).padStart(2, "0")}m` : "—";
+  const nextName = np ? prayerName(np.name) : (lastErr ? t("prayer.unavailable") : t("prayer.loading"));
+  const collapsed = Boolean(globalThis.__ZAKKIR_MOBILE__ && state.prayerCollapsed);
+  const toggleLabel = collapsed ? t("prayer.show") : t("prayer.minimize");
+  // The head is PERSISTENT across collapse/expand: the same eyebrow, name and
+  // countdown nodes stay mounted and only change size, so the text genuinely
+  // morphs between states instead of two copies cross-fading.
   return `
-    <div class="prayer-collapsed-row">
-      <div class="prayer-collapsed-main"><span class="eyebrow">Next prayer</span><strong>${nextName}</strong></div>
-      <span class="prayer-collapsed-countdown">${countdown}</span>
-      <button type="button" class="prayer-collapse" aria-label="Show prayer times" aria-expanded="false" title="Show prayer times">${icon.chevronDown}</button>
+    <div class="prayer-head">
+      <div class="next-line">
+        <span class="eyebrow">${t("prayer.next")}</span>
+        <div class="prayer-meta"><span class="hijri">${hijriLabel() || ""}</span>${globalThis.__ZAKKIR_MOBILE__ ? `<button type="button" class="prayer-collapse" aria-label="${toggleLabel}" aria-expanded="${!collapsed}" title="${toggleLabel}">${icon.chevronDown}</button>` : ""}</div>
+      </div>
+      <div class="next-prayer">
+        <div class="next-name">${nextName}</div>
+        ${np ? `<div class="next-countdown">${isArabic() ? `<strong class="countdown-ar">${arabicDuration(np.h, np.m)}</strong>` : `<strong>${np.h}<small>${t("time.h")}</small></strong><span>:</span><strong>${String(np.m).padStart(2, "0")}<small>${t("time.m")}</small></strong>`}</div>` : ""}
+      </div>
     </div>
     <div class="prayer-expanded-content">
       <div class="prayer-expanded-inner">
-      <div class="prayer-hero">
-        <div class="next-line">
-          <span class="eyebrow">Next prayer</span>
-          <div class="prayer-meta"><span class="hijri">${hijri || ""}</span>${globalThis.__ZAKKIR_MOBILE__ ? `<button type="button" class="prayer-collapse" aria-label="Minimize prayer times" aria-expanded="true" title="Minimize prayer times">${icon.chevronDown}</button>` : ""}</div>
-        </div>
-        <div class="next-prayer">
-          <div class="next-name">${nextName}</div>
-          ${np ? `<div class="next-countdown"><strong>${np.h}<small>h</small></strong><span>:</span><strong>${String(np.m).padStart(2, "0")}<small>m</small></strong></div>` : ""}
-        </div>
-      </div>
-      ${np ? `<div class="prayer-progress" title="${np.prev} → ${np.name}"><div style="transform:scaleX(${np.pct / 100})"></div></div>` : ""}
+      ${np ? `<div class="prayer-progress" title="${prayerName(np.prev)} → ${prayerName(np.name)}"><div style="transform:scaleX(${np.pct / 100})"></div></div>` : ""}
       <div class="prayer-grid">
         ${PRAYER_ORDER.map((name) => {
           const isCurrent = np && np.name === name;
           const isTap = activePrayer === name;
-          const t = prayers ? fmt12(prayers[name]) : "—";
+          const useTomorrow = isCurrent && np.isTomorrow && tomorrowPrayers && tomorrowPrayers[name];
+          const pt = prayers ? fmt12(useTomorrow ? tomorrowPrayers[name] : prayers[name]) : "—";
           const cls = ["prayer"];
           if (isCurrent) cls.push("current");
           if (isTap) cls.push("tapped");
-          return `<button type="button" class="${cls.join(" ")}" data-prayer="${name}"><div class="n">${name}</div><div class="t">${t}</div></button>`;
+          return `<button type="button" class="${cls.join(" ")}" data-prayer="${name}"><div class="n">${prayerName(name)}</div><div class="t">${pt}</div></button>`;
         }).join("")}
       </div>
       <div class="prayer-detail" id="prayerDetail">${activePrayer ? detailHTML(activePrayer) : ""}</div>
       </div>
     </div>
-    ${lastErr ? `<div class="err">${lastErr}</div>` : ""}`;
+    ${lastErr ? `<div class="err">${lastErr}</div>` : offlinePrayerNotice ? `<div class="offline-notice" role="status">${t("prayers.offline")}</div>` : ""}`;
 }
 
 function wirePrayerCollapse() {
-  // Both the collapsed-row and the expanded-content buttons render at the
-  // same time (CSS shows one of them based on .is-collapsed), so bind both.
+  // One persistent toggle now, so a class-only change on the card drives the
+  // whole morph (name/countdown size, hijri fade, content height, chevron).
   document.querySelectorAll(".prayer-collapse").forEach((button) => {
     if (button.dataset.wired) return;
     button.dataset.wired = "1";
@@ -747,13 +1420,12 @@ function wirePrayerCollapse() {
       state.prayerCollapsed = !state.prayerCollapsed;
       storage.set({ prayerCollapsed: state.prayerCollapsed });
       globalThis.__ZAKKIR_HAPTIC__?.("selection");
-      // Both rows are already in the DOM — a class-only toggle lets the
-      // height transition animate instead of snapping via a re-render.
-      document.querySelectorAll(".prayer-collapse").forEach((b) => {
-        b.setAttribute("aria-expanded", String(!state.prayerCollapsed));
-      });
-      const region = $("#prayerRegion");
-      if (region) region.classList.toggle("is-collapsed", Boolean(globalThis.__ZAKKIR_MOBILE__ && state.prayerCollapsed));
+      const collapsed = Boolean(globalThis.__ZAKKIR_MOBILE__ && state.prayerCollapsed);
+      const label = collapsed ? t("prayer.show") : t("prayer.minimize");
+      button.setAttribute("aria-expanded", String(!collapsed));
+      button.setAttribute("aria-label", label);
+      button.setAttribute("title", label);
+      $("#prayerRegion")?.classList.toggle("is-collapsed", collapsed);
     });
   });
 }
@@ -762,21 +1434,31 @@ function detailHTML(name) {
   if (!prayers || !prayers[name]) return "";
   const now = new Date();
   const nowM = now.getHours() * 60 + now.getMinutes();
-  const prayerM = toMinutes(prayers[name]);
+  let prayerTime = prayers[name];
+  let prayerM = toMinutes(prayerTime);
+  let isPast = prayerM <= nowM;
+
+  if (name === "Fajr" && nowM > toMinutes(prayers.Isha)) {
+    if (tomorrowPrayers && tomorrowPrayers.Fajr) {
+      prayerTime = tomorrowPrayers.Fajr;
+    }
+    prayerM = toMinutes(prayerTime) + 1440;
+    isPast = false;
+  }
+
   const diff = prayerM - nowM;
-  const isPast = diff <= 0;
   const absDiff = Math.abs(diff);
   const hrs = Math.floor(absDiff / 60);
   const mins = absDiff % 60;
-  const timeStr = hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`;
+  const timeStr = durText(hrs, mins);
   const nextIdx = (PRAYER_ORDER.indexOf(name) + 1) % PRAYER_ORDER.length;
   const nextName = PRAYER_ORDER[nextIdx];
   const nextTime = prayers[nextName] ? fmt12(prayers[nextName]) : "";
   return `
     <div class="detail-inner">
-      <span class="detail-name">${name}</span>
-      <span class="detail-time">${isPast ? `${timeStr} ago` : `in ${timeStr}`}</span>
-      ${nextTime ? `<span class="detail-next">→ ${nextName} at ${nextTime}</span>` : ""}
+      <span class="detail-name">${prayerName(name)}</span>
+      <span class="detail-time">${isPast ? t("time.ago", { time: timeStr }) : t("time.in", { time: timeStr })}</span>
+      ${nextTime ? `<span class="detail-next">${t("detail.next", { name: prayerName(nextName), time: nextTime })}</span>` : ""}
     </div>`;
 }
 
@@ -785,7 +1467,7 @@ function catRowHTML() {
   const z = list[state.azkarIndex] || { count: "1" };
   const target = parseInt(z.count, 10) || 1;
   return `
-    <span class="section-label">Today's azkar</span>
+    <span class="section-label">${t("azkar.today")}</span>
     <div class="cat-tools">${dropdownHTML("catPick", state.category, CATS.map((c) => ({ v: c, l: c })), { full: true })}
     <span class="counter">${state.azkarCount} / ${target}</span></div>`;
 }
@@ -816,7 +1498,7 @@ function azkarCardHTML() {
     ${globalThis.__ZAKKIR_MOBILE__ ? `<div class="azkar-context ${morning ? "is-morning" : "is-evening"}" aria-live="polite">
       <span class="azkar-context-balance" aria-hidden="true"></span>
       <div class="azkar-context-copy"><strong lang="ar">${morning ? "أذكار الصباح" : "أذكار المساء"}</strong></div>
-      <span class="counter azkar-current-count" aria-label="Current dhikr progress">${state.azkarCount} / ${target}</span>
+      <span class="counter azkar-current-count" aria-label="${t("azkar.current.aria")}">${state.azkarCount} / ${target}</span>
     </div>` : ""}
     ${globalThis.__ZAKKIR_MOBILE__ ? `<div class="progress azkar-current-progress" aria-hidden="true"><div style="transform:scaleX(${pct / 100})"></div></div>` : ""}
     <div class="azkar-body-wrapper">
@@ -825,9 +1507,9 @@ function azkarCardHTML() {
       ${z.description ? `<div class="desc">${z.description}</div>` : ""}
     </div>
     <div class="azkar-progress-footer">
-      ${!state.azkarHintDismissed ? `<div class="azkar-progress-label azkar-hint"><span>Tap the card to count</span></div>` : ""}
-      <div class="azkar-progress-label"><span>Overall progress</span><strong class="azkar-progress-count">${overall.completed} / ${overall.total}</strong></div>
-      <div class="azkar-progress-track" role="progressbar" aria-label="Overall Azkar progress" aria-valuemin="0" aria-valuemax="${overall.total}" aria-valuenow="${overall.completed}"><div style="transform:scaleX(${overallPct / 100})"></div></div>
+      ${!state.azkarHintDismissed ? `<div class="azkar-progress-label azkar-hint"><span>${t("azkar.tapHint")}</span></div>` : ""}
+      <div class="azkar-progress-label"><span>${t("azkar.overall")}</span><strong class="azkar-progress-count">${overall.completed} / ${overall.total}</strong></div>
+      <div class="azkar-progress-track" role="progressbar" aria-label="${t("azkar.overall.aria")}" aria-valuemin="0" aria-valuemax="${overall.total}" aria-valuenow="${overall.completed}"><div style="transform:scaleX(${overallPct / 100})"></div></div>
     </div>`;
 }
 
@@ -848,13 +1530,13 @@ function renderHome() {
   return `
     <div class="app home-view">
       <div class="header" id="headerRegion">${headerHTML()}</div>
-      <section class="card prayer-card ${globalThis.__ZAKKIR_MOBILE__ && state.prayerCollapsed ? "is-collapsed" : ""}" id="prayerRegion" aria-label="Prayer times">${prayerCardHTML()}</section>
+      <section class="card prayer-card ${globalThis.__ZAKKIR_MOBILE__ && state.prayerCollapsed ? "is-collapsed" : ""}" id="prayerRegion" aria-label="${t("prayer.times")}">${prayerCardHTML()}</section>
       ${globalThis.__ZAKKIR_MOBILE__ ? "" : `<div class="cat-row" id="catRegion">${catRowHTML()}</div>`}
-      <button type="button" class="azkar-card" id="azkarTap" aria-label="Count this dhikr">${azkarCardHTML()}</button>
+      <button type="button" class="azkar-card" id="azkarTap" aria-label="${t("azkar.count")}">${azkarCardHTML()}</button>
       <div class="nav-row azkar-controls" data-nav-mode="${navMode}">
-        <button class="nav-btn" data-nav="-1" title="Previous dhikr">${icon.prev}<span>Previous</span></button>
-        <button class="nav-btn reset-btn" id="resetBtn" title="Reset count" aria-label="Reset count">${icon.reset}<span>Reset</span></button>
-        <button class="nav-btn" data-nav="1" title="Next dhikr"><span>Next</span>${icon.next}</button>
+        <button class="nav-btn" data-nav="-1" title="${t("azkar.prev.title")}">${icon.prev}<span>${t("azkar.prev")}</span></button>
+        <button class="nav-btn reset-btn" id="resetBtn" title="${t("azkar.reset.title")}" aria-label="${t("azkar.reset.title")}">${icon.reset}<span>${t("azkar.reset")}</span></button>
+        <button class="nav-btn" data-nav="1" title="${t("azkar.next.title")}"><span>${t("azkar.next")}</span>${icon.next}</button>
       </div>
       ${globalThis.__ZAKKIR_MOBILE__ ? "" : `<div class="nav-indicator" id="navIndicator" aria-live="polite">${navIndicatorText()}</div>`}
       ${mobileBottomNavHTML("home")}
@@ -866,22 +1548,35 @@ function renderMap() {
   return `
     <div class="map-view">
       <div class="map-toolbar">
-        <button class="icon-btn" id="mapBackBtn">${icon.back}</button>
+        <button class="icon-btn" id="mapBackBtn" title="${t("map.back")}">${icon.back}</button>
         <div class="map-search-wrap">
-          <input class="map-search" id="mapSearch" placeholder="Search city…" autocomplete="off"/>
+          <input class="map-search" id="mapSearch" placeholder="${t("map.search")}" autocomplete="off"/>
           <div class="map-results" id="mapResults"></div>
         </div>
       </div>
       <div id="leafletMap"></div>
       <div class="map-footer">
         <div class="map-loc-label" id="mapLocLabel">${state.locationName}</div>
-        <button class="btn-primary" id="useLocationBtn">✓ Use This Location</button>
+        <button class="btn-primary" id="useLocationBtn">${t("map.use")}</button>
       </div>
     </div>`;
 }
 
 // ---------- Monthly schedule ----------
 const MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const MONTH_NAMES_AR = ["يناير","فبراير","مارس","أبريل","مايو","يونيو","يوليو","أغسطس","سبتمبر","أكتوبر","نوفمبر","ديسمبر"];
+function monthName(index) {
+  const m = MONTH_NAMES_AR[index] ?? MONTH_NAMES[index] ?? "";
+  return isArabic() ? m : (MONTH_NAMES[index] ?? "");
+}
+const WEEKDAYS_AR = {
+  Sunday: "الأحد", Monday: "الاثنين", Tuesday: "الثلاثاء", Wednesday: "الأربعاء",
+  Thursday: "الخميس", Friday: "الجمعة", Saturday: "السبت",
+};
+function weekdayName(day) {
+  if (!day) return "";
+  return isArabic() ? (WEEKDAYS_AR[day] || day) : day;
+}
 
 // Aladhan calendar endpoint returns times like "04:23 (EET)" — strip suffix.
 function cleanTime(s) {
@@ -918,8 +1613,22 @@ const HIJRI_EVENTS = {
   "12|9": "Day of Arafah",
   "12|10": "Eid al-Adha",
 };
+const HIJRI_EVENTS_AR = {
+  "1|1": "رأس السنة الهجرية",
+  "1|10": "يوم عاشوراء",
+  "3|12": "المولد النبوي",
+  "7|27": "الإسراء والمعراج",
+  "8|15": "النصف من شعبان",
+  "9|1": "أول رمضان",
+  "9|27": "ليلة القدر (المرجّحة)",
+  "10|1": "عيد الفطر",
+  "12|9": "يوم عرفة",
+  "12|10": "عيد الأضحى",
+};
 function hijriEventName(hMonthNum, hDay) {
-  return HIJRI_EVENTS[`${Number(hMonthNum)}|${Number(hDay)}`] || "";
+  const key = `${Number(hMonthNum)}|${Number(hDay)}`;
+  if (!HIJRI_EVENTS[key]) return "";
+  return isArabic() ? HIJRI_EVENTS_AR[key] : HIJRI_EVENTS[key];
 }
 
 let _scheduleData = null;     // { ym, key, days: [{g, h, timings}], loading, error }
@@ -974,9 +1683,9 @@ async function fetchMonth(ym) {
     storage.set({ scheduleCache: state.scheduleCache });
     _scheduleData = { ym, key, days, error: null, loading: false };
   } catch (e) {
-    if (_scheduleData) _scheduleData.error = "Failed to load schedule — check your connection.";
+    if (_scheduleData) _scheduleData.error = t("sched.error");
     if (_scheduleData) _scheduleData.loading = false;
-    if (!_scheduleData?.days) _scheduleData = { ym, key, days: null, error: "Failed to load schedule.", loading: false };
+    if (!_scheduleData?.days) _scheduleData = { ym, key, days: null, error: t("sched.errorShort"), loading: false };
   } finally {
     _scheduleLoadingKey = null;
     if (state.view === "schedule") patchSchedule();
@@ -986,7 +1695,7 @@ async function fetchMonth(ym) {
 function scheduleHeaderHTML() {
   const ym = currentScheduleYM();
   const [y, m] = ym.split("-").map(Number);
-  const monthName = MONTH_NAMES[m - 1];
+  const monthNameL = monthName(m - 1);
   // Hijri label: derive a range from first/last day so month transitions are visible.
   let hijriLabel = "";
   const days = _scheduleData?.days || [];
@@ -994,38 +1703,41 @@ function scheduleHeaderHTML() {
     const first = days[0];
     const last = days[days.length - 1];
     if (first?.hMonth && last?.hMonth) {
+      const firstH = isArabic() && first.hMonthAr ? first.hMonthAr : first.hMonth;
+      const lastH = isArabic() && last.hMonthAr ? last.hMonthAr : last.hMonth;
+      const ah = t("sched.ah");
       if (first.hMonth === last.hMonth && first.hYear === last.hYear) {
-        hijriLabel = `${first.hMonth} ${first.hYear} AH`;
+        hijriLabel = `${firstH} ${first.hYear} ${ah}`;
       } else {
         const yA = first.hYear, yB = last.hYear;
         hijriLabel = yA === yB
-          ? `${first.hMonth} → ${last.hMonth} ${yB} AH`
-          : `${first.hMonth} ${yA} → ${last.hMonth} ${yB} AH`;
+          ? `${firstH} → ${lastH} ${yB} ${ah}`
+          : `${firstH} ${yA} → ${lastH} ${yB} ${ah}`;
       }
     }
   }
   const mode = state.scheduleDateMode === "h" ? "h" : "g";
   return `
     <div class="sched-head">
-      <button class="icon-btn" id="schedPrev" title="Previous month">${icon.prev}</button>
+      <button class="icon-btn" id="schedPrev" title="${t("sched.prevMonth")}">${icon.prev}</button>
       <div class="sched-title">
-        <div class="sched-month">${monthName} ${y}</div>
+        <div class="sched-month">${monthNameL} ${y}</div>
         ${hijriLabel ? `<div class="sched-hijri">${hijriLabel}</div>` : ""}
       </div>
-      <button class="icon-btn" id="schedNext" title="Next month">${icon.next}</button>
+      <button class="icon-btn" id="schedNext" title="${t("sched.nextMonth")}">${icon.next}</button>
     </div>
     <div class="sched-mode" role="tablist">
-      <button class="sched-mode-btn ${mode === "g" ? "active" : ""}" data-mode="g" role="tab">Gregorian</button>
-      <button class="sched-mode-btn ${mode === "h" ? "active" : ""}" data-mode="h" role="tab">Hijri</button>
+      <button class="sched-mode-btn ${mode === "g" ? "active" : ""}" data-mode="g" role="tab">${t("sched.gregorian")}</button>
+      <button class="sched-mode-btn ${mode === "h" ? "active" : ""}" data-mode="h" role="tab">${t("sched.hijri")}</button>
     </div>`;
 }
 
 function scheduleBodyHTML() {
   if (_scheduleData?.error && !_scheduleData?.days) {
-    return `<div class="sched-msg">${_scheduleData.error} <button class="loc-btn" id="schedRetry">Retry</button></div>`;
+    return `<div class="sched-msg">${_scheduleData.error} <button class="loc-btn" id="schedRetry">${t("sched.retry")}</button></div>`;
   }
   if (!_scheduleData?.days) {
-    return `<div class="sched-msg">Loading schedule…</div>`;
+    return `<div class="sched-msg">${t("sched.loading")}</div>`;
   }
   const mode = state.scheduleDateMode === "h" ? "h" : "g";
   const ym = currentScheduleYM();
@@ -1041,7 +1753,7 @@ function scheduleBodyHTML() {
     const evt = hijriEventName(d.hMonthNum, d.hDay);
     const wd = (d.weekday || "").toLowerCase();
     const isSunnahFast = state.sunnahFastHighlight && (wd === "monday" || wd === "thursday");
-    const fastTitle = wd === "monday" ? "Sunnah fast — Monday" : "Sunnah fast — Thursday";
+    const fastTitle = wd === "monday" ? t("sched.fast.monday") : t("sched.fast.thursday");
     const classes = [
       isToday ? "today" : "",
       rollover ? "hijri-rollover" : "",
@@ -1052,14 +1764,15 @@ function scheduleBodyHTML() {
     const fastBadge = isSunnahFast ? `<span class="sched-fast" title="${fastTitle}">صوم</span>` : "";
     let dateCell;
     if (mode === "h") {
+      const hMonthL = isArabic() && d.hMonthAr ? d.hMonthAr : d.hMonth;
       const hijriMain = d.hDay
         ? (rollover
-            ? `<b>${d.hDay}</b><span class="wd">${d.hMonth} ${d.hYear}</span>`
-            : `<b>${d.hDay}</b><span class="wd">${(d.hMonth || "").slice(0, 8)}</span>`)
+            ? `<b>${d.hDay}</b><span class="wd">${hMonthL} ${d.hYear}</span>`
+            : `<b>${d.hDay}</b><span class="wd">${(hMonthL || "").slice(0, 8)}</span>`)
         : "";
       dateCell = `<td class="d h-primary">${hijriMain}${evtBadge}${fastBadge}</td>`;
     } else {
-      dateCell = `<td class="d"><b>${d.g}</b><span class="wd">${(d.weekday || "").slice(0, 3)}</span>${evtBadge}${fastBadge}</td>`;
+      dateCell = `<td class="d"><b>${d.g}</b><span class="wd">${weekdayName(d.weekday || "").slice(0, isArabic() ? 14 : 3)}</span>${evtBadge}${fastBadge}</td>`;
     }
     return `<tr class="${classes}">
       ${dateCell}
@@ -1070,24 +1783,24 @@ function scheduleBodyHTML() {
       <td>${fmt12(d.timings.Isha)}</td>
     </tr>`;
   }).join("");
-  const dateHeader = mode === "h" ? "Hijri" : "Date";
+  const dateHeader = mode === "h" ? t("sched.hijri") : t("sched.dateHeader");
   return `
     <div class="sched-table-wrap">
       <table class="sched-table">
-        <thead><tr><th>${dateHeader}</th><th>Fajr</th><th>Dhuhr</th><th>Asr</th><th>Maghrib</th><th>Isha</th></tr></thead>
+        <thead><tr><th>${dateHeader}</th><th>${prayerName("Fajr")}</th><th>${prayerName("Dhuhr")}</th><th>${prayerName("Asr")}</th><th>${prayerName("Maghrib")}</th><th>${prayerName("Isha")}</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
     </div>
-    ${_scheduleData.loading ? `<div class="sched-msg subtle">Updating…</div>` : ""}`;
+    ${_scheduleData.loading ? `<div class="sched-msg subtle">${t("sched.updating")}</div>` : ""}`;
 }
 
 function scheduleFooterHTML() {
   const where = state.locationName || `${Number(state.lat).toFixed(2)}, ${Number(state.lng).toFixed(2)}`;
-  const methodName = (METHODS.find(([v]) => v === state.method) || [, `Method ${state.method}`])[1];
+  const methodNameL = methodName(state.method);
   return `
     <div class="sched-foot">
-      <span>${where} · ${methodName}</span>
-      ${globalThis.__ZAKKIR_MOBILE__ ? "" : `<button class="sched-csv" id="schedCsv" title="Download CSV">Export CSV</button>`}
+      <span>${where} · ${methodNameL}</span>
+      ${globalThis.__ZAKKIR_MOBILE__ ? "" : `<button class="sched-csv" id="schedCsv" title="${t("sched.csvTitle")}">${t("sched.csv")}</button>`}
     </div>`;
 }
 
@@ -1096,7 +1809,7 @@ function renderSchedule() {
     <div class="app">
       <div class="settings-head">
         <button class="icon-btn" data-go="home">${icon.back}</button>
-        <h1>Schedule</h1>
+        <h1>${t("sched.title")}</h1>
         <span style="width:30px"></span>
       </div>
       <div id="schedHead">${scheduleHeaderHTML()}</div>
@@ -1114,10 +1827,21 @@ function patchSchedule() {
   wireSchedule();
 }
 
+// Month navigation: slide the table in from the direction of travel so the
+// change reads as movement through time rather than a flicker. Background data
+// arrival still uses the silent patchSchedule() above.
+function patchScheduleDirectional(delta) {
+  patchSchedule();
+  const body = $("#schedBody");
+  if (body) playEnter(body, delta < 0 ? "slideInFromStart" : "slideInFromEnd");
+}
+
 function downloadScheduleCsv() {
   if (!_scheduleData?.days) return;
   const ym = currentScheduleYM();
-  const header = ["Gregorian", "Weekday", "Hijri", "Hijri Month", "Hijri Year", "Event", "Fajr", "Dhuhr", "Asr", "Maghrib", "Isha"];
+  const header = isArabic()
+    ? ["ميلادي", "اليوم", "هجري", "الشهر الهجري", "السنة الهجرية", "المناسبة", "الفجر", "الظهر", "العصر", "المغرب", "العشاء"]
+    : ["Gregorian", "Weekday", "Hijri", "Hijri Month", "Hijri Year", "Event", "Fajr", "Dhuhr", "Asr", "Maghrib", "Isha"];
   const rows = _scheduleData.days.map((d) => [
     `${ym}-${String(d.g).padStart(2, "0")}`,
     d.weekday || "",
@@ -1142,14 +1866,14 @@ function wireSchedule() {
     state.scheduleMonth = stepScheduleMonth(-1);
     storage.set({ scheduleMonth: state.scheduleMonth });
     fetchMonth(state.scheduleMonth);
-    patchSchedule();
+    patchScheduleDirectional(-1);
   });
   const next = $("#schedNext");
   if (next) next.addEventListener("click", () => {
     state.scheduleMonth = stepScheduleMonth(1);
     storage.set({ scheduleMonth: state.scheduleMonth });
     fetchMonth(state.scheduleMonth);
-    patchSchedule();
+    patchScheduleDirectional(1);
   });
   const retry = $("#schedRetry");
   if (retry) retry.addEventListener("click", () => { fetchMonth(currentScheduleYM()); patchSchedule(); });
@@ -1220,11 +1944,16 @@ function wireDropdowns(handlers, root) {
 // ---------- Smart location card (Electron: GPS / Map / City + advanced) ----------
 function locationCardHTML() {
   const method = state.locationMethod || "manual";
-  const srcLabel = { preset: "via city", detect: "via GPS", map: "via map", manual: "via manual" }[method] || "";
+  const srcLabel = {
+    preset: t("loc.viaPreset"),
+    detect: t("loc.viaGps"),
+    map: t("loc.viaMap"),
+    manual: "",
+  }[method] || "";
   const resolved = state.locationName || `${Number(state.lat).toFixed(3)}, ${Number(state.lng).toFixed(3)}`;
   const locationTabs = globalThis.__ZAKKIR_MOBILE__
-    ? [["gps", "GPS"], ["city", "City"]]
-    : [["gps", "GPS"], ["map", "Map"], ["city", "City"]];
+    ? [["gps", t("loc.gps")], ["city", t("loc.city")]]
+    : [["gps", t("loc.gps")], ["map", t("loc.map")], ["city", t("loc.city")]];
   const tab = locationTabs.some(([id]) => id === state.locationTab)
     ? state.locationTab
     : (method === "detect" ? "gps" : method === "map" && !globalThis.__ZAKKIR_MOBILE__ ? "map" : "city");
@@ -1245,27 +1974,27 @@ function locationCardHTML() {
   const panel =
     tab === "gps"
       ? `<div class="loc-panel">
-          <button class="loc-btn primary" id="detectBtn">Detect my location</button>
-          <div class="loc-sub">Uses your device's location. You'll be asked once for permission.</div>
+          <button class="loc-btn primary" id="detectBtn">${t("loc.detect")}</button>
+          <div class="loc-sub">${t("loc.detect.sub")}</div>
         </div>`
       : tab === "map"
       ? `<div class="loc-panel">
-          <button class="loc-btn primary" id="pickMap">Open map picker</button>
-          <div class="loc-sub">Click anywhere on the map or search to drop a pin.</div>
+          <button class="loc-btn primary" id="pickMap">${t("loc.pickMap")}</button>
+          <div class="loc-sub">${t("loc.pickMap.sub")}</div>
         </div>`
       : `<div class="loc-panel">
           <div class="row">
-            <label>Country</label>
+            <label>${t("loc.country")}</label>
             <select id="presetCountry">
-              <option value="">-- Select Country --</option>
-              ${Object.keys(PRESETS).map((c) => `<option value="${c}" ${c === activeCountry ? "selected" : ""}>${c}</option>`).join("")}
+              <option value="">${t("loc.selectCountry")}</option>
+              ${Object.keys(PRESETS).map((c) => `<option value="${c}" ${c === activeCountry ? "selected" : ""}>${presetCountryLabel(c)}</option>`).join("")}
             </select>
           </div>
           <div class="row">
-            <label>City</label>
+            <label>${t("loc.city")}</label>
             <select id="presetCity">
-              <option value="">-- Select City --</option>
-              ${activeCountry ? Object.keys(PRESETS[activeCountry]).map((c) => `<option value="${c}" ${c === activeCity ? "selected" : ""}>${c}</option>`).join("") : ""}
+              <option value="">${t("loc.selectCity")}</option>
+              ${activeCountry ? Object.keys(PRESETS[activeCountry]).map((c) => `<option value="${c}" ${c === activeCity ? "selected" : ""}>${presetCityLabel(activeCountry, c)}</option>`).join("") : ""}
             </select>
           </div>
         </div>`;
@@ -1302,10 +2031,10 @@ function wireLocation() {
   );
   const detect = $("#detectBtn");
   if (detect) detect.addEventListener("click", async () => {
-    detect.textContent = "Detecting…";
+    detect.textContent = t("loc.detecting");
     detect.disabled = true;
     try {
-      const pos = await new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej, { timeout: 10000 }));
+      const pos = await getCurrentPositionWithFallback();
       const lat = +pos.coords.latitude.toFixed(4);
       const lng = +pos.coords.longitude.toFixed(4);
       const name = await reverseGeocode(lat, lng);
@@ -1315,7 +2044,7 @@ function wireLocation() {
       await loadPrayers(true);
       patchPrayerCard();
     } catch {
-      detect.textContent = "Failed — try manual";
+      detect.textContent = t("loc.failed");
       detect.disabled = false;
     }
   });
@@ -1332,7 +2061,7 @@ function wireLocation() {
       const lng = coords[1];
       state.lat = lat;
       state.lng = lng;
-      state.locationName = `${city}, ${country.split(" (")[0]}`;
+      state.locationName = `${presetCityLabel(country, city)}, ${presetCountryLabel(country)}`;
       state.locationMethod = "preset";
       storage.set({ lat, lng, locationName: state.locationName, locationMethod: "preset", prayerCache: null });
       const latInput = $("#latInput");
@@ -1345,12 +2074,12 @@ function wireLocation() {
     };
     presetCountry.addEventListener("change", async (e) => {
       const country = e.target.value;
-      presetCity.innerHTML = '<option value="">-- Select City --</option>';
+      presetCity.innerHTML = `<option value="">${t("loc.selectCity")}</option>`;
       if (country && PRESETS[country]) {
         Object.keys(PRESETS[country]).forEach((city) => {
           const opt = document.createElement("option");
           opt.value = city;
-          opt.textContent = city;
+          opt.textContent = presetCityLabel(country, city);
           presetCity.appendChild(opt);
         });
         await applyPreset(country, Object.keys(PRESETS[country])[0]);
@@ -1370,9 +2099,9 @@ function wireLocation() {
 
 // ---------- Settings: sections & notifications ----------
 function themeCardsHTML(themes, featured = false) {
-  return themes.map(([id, label]) => `
+  return themes.map(([id]) => `
     <button class="theme-card ${featured ? "theme-featured" : ""} ${state.theme === id ? "active" : ""}" data-theme="${id}">
-      <div class="sw" data-theme-sw="${id}"></div><span class="theme-name">${label}</span>
+      <div class="sw" data-theme-sw="${id}"></div><span class="theme-name">${themeName(id)}</span>
     </button>`).join("");
 }
 const CLASSIC_THEME_INDEX = THEMES.findIndex(([id]) => id === "light");
@@ -1381,15 +2110,8 @@ const SETTINGS_SECTIONS = globalThis.__ZAKKIR_MOBILE__
   ? ["general", "reading", "appearance", "notifications"]
   : ["general", "notifications", "reading", "appearance", "window"];
 const SETTINGS_NAV = globalThis.__ZAKKIR_MOBILE__
-  ? [["general", "General"], ["reading", "Reading"], ["appearance", "Appearance"], ["notifications", "Notifications"]]
-  : [["general", "General"], ["notifications", "Notifications"], ["reading", "Reading"], ["appearance", "Appearance"], ["window", "Window"]];
-const SETTINGS_META = {
-  general: ["General", "Set your prayer location and schedule preferences."],
-  notifications: ["Notifications", "Choose when Zakkir should remind you."],
-  reading: ["Reading", "Tune Arabic text for comfortable daily reading."],
-  appearance: ["Appearance", "Choose the visual atmosphere and accent color."],
-  window: ["Window", "Adjust the popup to fit the way you use it."],
-};
+  ? [["general"], ["reading"], ["appearance"], ["notifications"]]
+  : [["general"], ["notifications"], ["reading"], ["appearance"], ["window"]];
 
 function settingsSectionHTML(id, title, description, body) {
   return `<section class="settings-section" data-settings-panel="${id}">
@@ -1406,20 +2128,25 @@ function prayerTimingHTML(prayer, disabled) {
   const before = prayerMinute(state.reminderMinutesByPrayer, prayer, state.reminderMinutes);
   const after = prayerMinute(state.iqamaMinutesByPrayer, prayer, state.iqamaMinutes);
   const on = (state.reminderPrayers || []).includes(prayer);
-  return `<div class="prayer-timing-row ${on ? "on" : ""}" data-prayer-timing="${prayer}"><label class="prayer-check"><input type="checkbox" data-rp="${prayer}" ${on ? "checked" : ""} ${disabled ? "disabled" : ""}/><strong>${prayer}</strong></label><label class="minute-group"><span>Before</span><span class="minute-field"><input type="number" inputmode="numeric" min="1" max="60" step="1" value="${before}" data-prayer-minutes="before" aria-label="Minutes before ${prayer}" ${disabled ? "disabled" : ""}/><small>min</small></span></label><label class="minute-group"><span>After</span><span class="minute-field"><input type="number" inputmode="numeric" min="1" max="60" step="1" value="${after}" data-prayer-minutes="after" aria-label="Minutes after ${prayer}" ${disabled ? "disabled" : ""}/><small>min</small></span></label></div>`;
+  const beforeOff = disabled || !state.remindersEnabled;
+  const afterOff = disabled || !state.iqamaEnabled;
+  return `<div class="prayer-timing-row ${on ? "on" : ""}" data-prayer-timing="${prayer}"><label class="prayer-check"><input type="checkbox" data-rp="${prayer}" ${on ? "checked" : ""} ${disabled ? "disabled" : ""}/><strong>${prayerName(prayer)}</strong></label><label class="minute-group ${beforeOff ? "is-disabled" : ""}"><span>${t("notify.beforeLbl")}</span><span class="minute-field"><input type="number" inputmode="numeric" min="1" max="60" step="1" value="${before}" data-prayer-minutes="before" aria-label="${t("notify.beforeMin", { prayer: prayerName(prayer) })}" ${beforeOff ? "disabled" : ""}/><small>${t("notify.min")}</small></span></label><label class="minute-group ${afterOff ? "is-disabled" : ""}"><span>${t("notify.afterLbl")}</span><span class="minute-field"><input type="number" inputmode="numeric" min="1" max="60" step="1" value="${after}" data-prayer-minutes="after" aria-label="${t("notify.afterMin", { prayer: prayerName(prayer) })}" ${afterOff ? "disabled" : ""}/><small>${t("notify.min")}</small></span></label></div>`;
 }
 
 function notificationSummary() {
-  if (!state.notificationsEnabled) return "Prayer notifications are paused. Your choices are saved.";
+  if (!state.notificationsEnabled) return t("notify.paused");
   const prayers = (state.reminderPrayers || []).filter((prayer) => PRAYER_ORDER.includes(prayer));
-  if (!prayers.length) return "Choose at least one prayer to start receiving reminders.";
-  const prayerText = prayers.length === PRAYER_ORDER.length ? "all five prayers" : prayers.join(", ");
+  if (!prayers.length) return t("notify.chooseOne");
+  const prayerText = prayers.length === PRAYER_ORDER.length
+    ? t("notify.allFive")
+    : humanList(prayers.map((p) => prayerName(p)));
   const events = [];
-  if (state.remindersEnabled) events.push("before athan");
-  if (state.prayerAlertEnabled) events.push("at athan");
-  if (state.iqamaEnabled) events.push("after athan");
-  if (!events.length) return "Choose when you want to be notified.";
-  return `You will be notified ${events.join(", ")} for ${prayerText}.`;
+  if (state.remindersEnabled) events.push(t("notify.evt.before"));
+  if (state.prayerAlertEnabled) events.push(t("notify.evt.at"));
+  if (state.iqamaEnabled) events.push(t("notify.evt.after"));
+  if (!events.length) return t("notify.chooseWhen");
+  const eventsText = isArabic() ? humanList(events) : events.join(", ");
+  return t("notify.willBe", { events: eventsText, prayers: prayerText });
 }
 
 function syncNotificationUI() {
@@ -1434,20 +2161,31 @@ function syncNotificationUI() {
   if (reminders) { reminders.checked = !!state.remindersEnabled; reminders.disabled = !enabled; }
   const iqama = $("#iqamaEnabled");
   if (iqama) { iqama.checked = !!state.iqamaEnabled; iqama.disabled = !enabled; }
+
+  const beforeOff = !enabled || !state.remindersEnabled;
+  const afterOff = !enabled || !state.iqamaEnabled;
+
   document.querySelectorAll("[data-rp]").forEach((input) => {
     const active = (state.reminderPrayers || []).includes(input.dataset.rp);
     input.checked = active;
     input.disabled = !enabled;
     input.closest("[data-prayer-timing]")?.classList.toggle("on", active);
   });
-  document.querySelectorAll("[data-prayer-minutes]").forEach((input) => { input.disabled = !enabled; });
+  document.querySelectorAll('[data-prayer-minutes="before"]').forEach((input) => {
+    input.disabled = beforeOff;
+    input.closest(".minute-group")?.classList.toggle("is-disabled", beforeOff);
+  });
+  document.querySelectorAll('[data-prayer-minutes="after"]').forEach((input) => {
+    input.disabled = afterOff;
+    input.closest(".minute-group")?.classList.toggle("is-disabled", afterOff);
+  });
   document.querySelectorAll("[data-prayer-action]").forEach((button) => { button.disabled = !enabled; });
   const summary = document.querySelector(".notification-confirmation p");
   if (summary) summary.textContent = notificationSummary();
   document.querySelector(".notification-confirmation")?.classList.toggle("paused", !enabled);
 }
 
-const SOUNDS = [
+const SOUND_CATALOG = [
   ["adhan-1", "Adhan 1"],
   ["adhan-2", "Adhan 2"],
   ["chime", "Chime"],
@@ -1455,108 +2193,86 @@ const SOUNDS = [
   ["soft-ping", "Soft Ping"],
   ["silent", "Silent"],
 ];
+// The mobile renderer inlines only the sounds its build bundles (the Android
+// app omits the adhan recordings until their rights are cleared), so offer just
+// those there. Other builds load sounds/ by URL and get the full catalogue.
+const SOUNDS = globalThis.__ZAKKIR_SOUNDS__
+  ? SOUND_CATALOG.filter(([id]) => id === "silent" || id in globalThis.__ZAKKIR_SOUNDS__)
+  : SOUND_CATALOG;
+const SOUND_NAMES_AR = {
+  "adhan-1": "الأذان 1",
+  "adhan-2": "الأذان 2",
+  chime: "رنين",
+  bell: "جرس",
+  "soft-ping": "نغمة خفيفة",
+  silent: "صامت",
+};
+function soundName(id) {
+  if (!isArabic()) return (SOUNDS.find(([s]) => s === id) || ["", id])[1];
+  return SOUND_NAMES_AR[id] || (SOUNDS.find(([s]) => s === id) || ["", id])[1];
+}
 
 function settingsBodyHTML(id) {
   if (id === "general") return `
     <div id="locRegion">${locationCardHTML()}</div>
     <details class="loc-adv" ${state.locationAdvancedOpen ? "open" : ""}>
-      <summary>Advanced (manual coordinates)</summary>
-      <div class="row"><label>Latitude</label><input class="input" id="latInput" type="number" step="0.0001" placeholder="e.g. 30.0444" value="${state.lat?.toFixed ? state.lat.toFixed(4) : ""}" /></div>
-      <div class="row"><label>Longitude</label><input class="input" id="lngInput" type="number" step="0.0001" placeholder="e.g. 31.2357" value="${state.lng?.toFixed ? state.lng.toFixed(4) : ""}" /></div>
-      <button class="loc-btn" id="useCoordsBtn" style="width:100%;margin:2px 0 8px">Use These Coordinates</button>
+      <summary>${t("loc.advanced")}</summary>
+      <div class="row"><label>${t("loc.latitude")}</label><input class="input" id="latInput" type="number" step="0.0001" placeholder="${t("loc.latPh")}" value="${state.lat?.toFixed ? state.lat.toFixed(4) : ""}" /></div>
+      <div class="row"><label>${t("loc.longitude")}</label><input class="input" id="lngInput" type="number" step="0.0001" placeholder="${t("loc.lngPh")}" value="${state.lng?.toFixed ? state.lng.toFixed(4) : ""}" /></div>
+      <button class="loc-btn" id="useCoordsBtn" style="width:100%;margin:2px 0 8px">${t("loc.useCoords")}</button>
     </details>
-    <div class="settings-card"><div class="row"><label>Calculation method</label>${dropdownHTML("method", state.method, METHODS.map(([v, n]) => ({ v, l: n })))}</div>
-      <div class="row"><label>Highlight Mon/Thu (Sunnah fasting)</label><label class="switch"><input type="checkbox" id="sunnahFastHighlight" ${state.sunnahFastHighlight ? "checked" : ""}/><span></span></label></div>
-      ${globalThis.electronAPI && !globalThis.__ZAKKIR_MOBILE__ ? `<div class="row"><label>Show update alerts</label><label class="switch"><input type="checkbox" id="updateAlertsEnabled" ${state.updateAlertsEnabled ? "checked" : ""}/><span></span></label></div>` : ""}
+    <div class="settings-card"><div class="row"><label>${t("loc.method")}</label>${dropdownHTML("method", state.method, METHODS.map(([v]) => ({ v, l: methodName(v) })))}</div>
+      <div class="row"><label>${t("loc.sunnahFast")}</label><label class="switch"><input type="checkbox" id="sunnahFastHighlight" ${state.sunnahFastHighlight ? "checked" : ""}/><span></span></label></div>
+      ${globalThis.electronAPI && !globalThis.__ZAKKIR_MOBILE__ ? `<div class="row"><label>${t("loc.updateAlerts")}</label><label class="switch"><input type="checkbox" id="updateAlertsEnabled" ${state.updateAlertsEnabled ? "checked" : ""}/><span></span></label></div>` : ""}
+      <div class="row"><label>${t("lang.label")}</label><div class="seg" role="group" aria-label="${t("lang.label")}"><button class="seg-btn ${state.language === "en" ? "active" : ""}" data-language="en">${t("lang.en")}</button><button class="seg-btn ${state.language === "ar" ? "active" : ""}" data-language="ar">${t("lang.ar")}</button></div></div>
     </div>`;
   if (id === "notifications") {
     const notificationsOff = !state.notificationsEnabled;
     return `
-    <div class="notification-master settings-card"><div><strong>Prayer notifications</strong><span>Receive timely reminders around each prayer.</span></div><label class="switch" aria-label="Prayer notifications"><input type="checkbox" id="notificationsEnabled" ${state.notificationsEnabled ? "checked" : ""}/><span></span></label></div>
+    <div class="notification-master settings-card"><div><strong>${t("notify.master")}</strong><span>${t("notify.master.sub")}</span></div><label class="switch" aria-label="${t("notify.master")}"><input type="checkbox" id="notificationsEnabled" ${state.notificationsEnabled ? "checked" : ""}/><span></span></label></div>
     <div class="notification-config ${notificationsOff ? "is-paused" : ""}" aria-disabled="${notificationsOff}">
-      <div class="notification-block settings-card"><div class="notification-block-head"><div><span class="notification-kicker">When to notify</span><strong>Prayer reminders</strong></div></div>
-        <div class="athan-line"><div class="athan-copy"><strong>Before athan</strong><span>Prepare for the prayer ahead of time.</span></div><label class="switch" aria-label="Notify before athan"><input type="checkbox" id="remindersEnabled" ${state.remindersEnabled ? "checked" : ""} ${notificationsOff ? "disabled" : ""}/><span></span></label></div>
-        <div class="athan-line"><div class="athan-copy"><strong>At athan</strong><span>Notify when the exact prayer time begins.</span></div><label class="switch" aria-label="Notify at athan"><input type="checkbox" id="prayerAlertEnabled" ${state.prayerAlertEnabled ? "checked" : ""} ${notificationsOff ? "disabled" : ""}/><span></span></label></div>
-        <div class="athan-line"><div class="athan-copy"><strong>After athan</strong><span>Remind me when it is time for iqama.</span></div><label class="switch" aria-label="Notify for iqama"><input type="checkbox" id="iqamaEnabled" ${state.iqamaEnabled ? "checked" : ""} ${notificationsOff ? "disabled" : ""}/><span></span></label></div>
+      <div class="notification-block settings-card"><div class="notification-block-head"><div><span class="notification-kicker">${t("notify.when")}</span><strong>${t("notify.reminders")}</strong></div></div>
+        <div class="athan-line"><div class="athan-copy"><strong>${t("notify.before")}</strong><span>${t("notify.before.sub")}</span></div><label class="switch" aria-label="${t("notify.aria.before")}"><input type="checkbox" id="remindersEnabled" ${state.remindersEnabled ? "checked" : ""} ${notificationsOff ? "disabled" : ""}/><span></span></label></div>
+        <div class="athan-line"><div class="athan-copy"><strong>${t("notify.at")}</strong><span>${t("notify.at.sub")}</span></div><label class="switch" aria-label="${t("notify.aria.at")}"><input type="checkbox" id="prayerAlertEnabled" ${state.prayerAlertEnabled ? "checked" : ""} ${notificationsOff ? "disabled" : ""}/><span></span></label></div>
+        <div class="athan-line"><div class="athan-copy"><strong>${t("notify.after")}</strong><span>${t("notify.after.sub")}</span></div><label class="switch" aria-label="${t("notify.aria.after")}"><input type="checkbox" id="iqamaEnabled" ${state.iqamaEnabled ? "checked" : ""} ${notificationsOff ? "disabled" : ""}/><span></span></label></div>
         <div class="prayer-timing-list">${PRAYER_ORDER.map((p) => prayerTimingHTML(p, notificationsOff)).join("")}</div>
       </div>
-      <div class="settings-card"><div class="settings-card-title">Reminder sound</div><div class="sound-grid">${SOUNDS.map(([id, label]) => `<label class="sound-option ${state.reminderSound === id ? "active" : ""}" data-sound="${id}"><input type="radio" name="reminderSound" value="${id}" ${state.reminderSound === id ? "checked" : ""} style="display:none">${label}</label>`).join("")}</div><div class="sound-actions"><button class="loc-btn" id="testSoundBtn">Test Sound</button></div></div>
+      <div class="settings-card"><div class="settings-card-title">${t("notify.sound")}</div><div class="sound-grid">${SOUNDS.map(([id]) => `<label class="sound-option ${state.reminderSound === id ? "active" : ""}" data-sound="${id}"><input type="radio" name="reminderSound" value="${id}" ${state.reminderSound === id ? "checked" : ""} style="display:none">${soundName(id)}</label>`).join("")}</div><div class="sound-actions"><button class="loc-btn" id="testSoundBtn">${t("notify.testSound")}</button></div></div>
     </div>
     <div class="notification-confirmation ${state.notificationsEnabled ? "" : "paused"}"><span class="confirmation-dot"></span><p>${notificationSummary()}</p></div>`;
   }
-  if (id === "reading") return `<div class="settings-card"><div class="font-grid">${Object.keys(FONT_MAP).map((f) => `<button class="pill ${state.font === f ? "active" : ""}" data-font="${f}" aria-label="${f}"><span class="font-sample">أبجد</span><span>${f}</span></button>`).join("")}</div><div class="row"><label>Arabic size</label><input type="range" min="0.7" max="2" step="0.05" value="${state.arSize}" id="arSize"/><span>${state.arSize.toFixed(2)}×</span></div>${globalThis.__ZAKKIR_MOBILE__ ? `<div class="row"><label>App scale</label><div class="zoom-row"><button class="zoom-btn" data-zoom="-0.1">−</button><span class="zoom-val">${Math.round(state.zoom * 100)}%</span><button class="zoom-btn" data-zoom="0.1">+</button></div></div><div class="row azkar-navigation-setting"><label>Azkar navigation</label><div class="seg" role="group" aria-label="Azkar navigation mode"><button class="seg-btn ${azkarNavigationMode() === "buttons-and-swipe" ? "active" : ""}" data-azkar-navigation="buttons-and-swipe">Buttons + swipe</button><button class="seg-btn ${azkarNavigationMode() === "swipe-only" ? "active" : ""}" data-azkar-navigation="swipe-only">Swipe only</button><button class="seg-btn ${azkarNavigationMode() === "buttons-only" ? "active" : ""}" data-azkar-navigation="buttons-only">Buttons only</button></div></div>` : ""}<div class="preview">بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</div></div>`;
+  if (id === "reading") return `<div class="settings-card"><div class="font-grid">${Object.keys(FONT_MAP).map((f) => `<button class="pill ${state.font === f ? "active" : ""}" data-font="${f}" aria-label="${f}"><span class="font-sample">أبجد</span><span>${f}</span></button>`).join("")}</div><div class="row"><label>${t("reading.arSize")}</label><input type="range" min="0.7" max="2" step="0.05" value="${state.arSize}" id="arSize"/><span>${state.arSize.toFixed(2)}×</span></div>${globalThis.__ZAKKIR_MOBILE__ ? `<div class="row"><label>${t("reading.appScale")}</label><div class="zoom-row"><button class="zoom-btn" data-zoom="-0.1">−</button><span class="zoom-val">${Math.round(state.zoom * 100)}%</span><button class="zoom-btn" data-zoom="0.1">+</button></div></div><div class="row azkar-navigation-setting"><label>${t("reading.navMode")}</label><div class="seg" role="group" aria-label="${t("reading.navMode.aria")}"><button class="seg-btn ${azkarNavigationMode() === "buttons-and-swipe" ? "active" : ""}" data-azkar-navigation="buttons-and-swipe">${t("reading.both")}</button><button class="seg-btn ${azkarNavigationMode() === "swipe-only" ? "active" : ""}" data-azkar-navigation="swipe-only">${t("reading.swipe")}</button><button class="seg-btn ${azkarNavigationMode() === "buttons-only" ? "active" : ""}" data-azkar-navigation="buttons-only">${t("reading.buttons")}</button></div></div>` : ""}<div class="preview">بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</div></div>`;
   if (id === "appearance") {
-    const designEras = THEMES.filter(([tid]) => ["metro", "material", "neumorphic"].includes(tid));
-    const glassThemes = THEMES.filter(([tid]) => [
-      "aqua", "liquidglass", "frutiger", "monochrome", "monochrome-dark",
-      "nebula", "aurora", "sahara-glass", "nebula-dark", "aurora-dark", "sahara-glass-dark",
-      "macos-ventura", "macos-sequoia", "macos-sonoma", "crystal", "mist", "midnight", "jade", "slatestudio",
-      "macos-ventura-dark", "macos-sequoia-dark", "macos-sonoma-dark", "crystal-dark", "mist-dark", "midnight-dark", "jade-dark", "slatestudio-dark"
-    ].includes(tid));
-    const boldThemes = THEMES.filter(([tid]) => ["neobrutal"].includes(tid));
-    const freshPicks = THEMES.filter(([tid]) => ["onyx", "frutiger-sunset", "prism", "opal", "fajr"].includes(tid));
-    const classicIndex = THEMES.findIndex(([tid]) => tid === "light");
-    const atmosphericThemes = THEMES.slice(0, classicIndex).filter(([tid]) => {
-      return ![
-        "metro", "material", "neumorphic", "aqua", "liquidglass", "frutiger", "monochrome", "monochrome-dark",
-        "nebula", "aurora", "sahara-glass", "nebula-dark", "aurora-dark", "sahara-glass-dark",
-        "macos-ventura", "macos-sequoia", "macos-sonoma", "crystal", "mist", "midnight", "jade", "slatestudio",
-        "macos-ventura-dark", "macos-sequoia-dark", "macos-sonoma-dark", "crystal-dark", "mist-dark", "midnight-dark", "jade-dark", "slatestudio-dark",
-        "neobrutal", "onyx", "frutiger-sunset", "prism", "opal", "fajr"
-      ].includes(tid);
-    });
-    const classicThemes = THEMES.slice(classicIndex);
-
     return `<div class="settings-card">
-      <div class="theme-intro">Choose a complete visual system. Themes can change geometry, depth, texture, motion, and color. The accent palette remains customizable.</div>
-      <div class="theme-collection-title"><span>Design eras</span><span>${designEras.length}</span></div>
-      <div class="theme-grid theme-grid-featured">${themeCardsHTML(designEras, true)}</div>
-      
-      <div class="theme-collection-title classic-title"><span>Glass and depth</span><span>${glassThemes.length}</span></div>
-      <div class="theme-grid theme-grid-featured">${themeCardsHTML(glassThemes, true)}</div>
-      
-      <div class="theme-collection-title classic-title"><span>Bold and experimental</span><span>${boldThemes.length}</span></div>
-      <div class="theme-grid theme-grid-featured">${themeCardsHTML(boldThemes, true)}</div>
-      
-      <div class="theme-collection-title classic-title"><span>Fresh picks</span><span>${freshPicks.length}</span></div>
-      <div class="theme-grid theme-grid-featured">${themeCardsHTML(freshPicks, true)}</div>
-      
+      <div class="theme-intro">${t("appearance.intro")}</div>
+      <div class="theme-grid theme-grid-featured">${themeCardsHTML(THEMES, true)}</div>
       ${state.theme === "neobrutal" ? `<div class="neobrutal-tone">${neobrutalToneHTML()}</div>` : ""}
-      
-      <div class="theme-collection-title classic-title"><span>Atmospheric themes</span><span>${atmosphericThemes.length}</span></div>
-      <div class="theme-grid">${themeCardsHTML(atmosphericThemes)}</div>
-      
-      <details class="settings-advanced">
-        <summary>Browse classic themes (${classicThemes.length})</summary>
-        <div class="theme-grid">${themeCardsHTML(classicThemes)}</div>
-      </details>
     </div>
     <div class="settings-card">
-      <div class="settings-card-title">Accent color</div>
+      <div class="settings-card-title">${t("appearance.accent")}</div>
       ${PALETTE_GROUPS.map(g => `
         <div class="palette-group">
-          <div class="palette-group-title">${g.title}</div>
+          <div class="palette-group-title">${paletteGroupTitle(g.title)}</div>
           <div class="palette-grid">
             ${g.keys.map(k => {
               const p = PALETTES[k];
               if (!p) return "";
-              return `<button class="palette-chip ${state.palette === k ? "active" : ""}" data-palette="${k}" title="${p.name}" style="background:${p.a || "transparent"};${!p.a ? "background:repeating-linear-gradient(45deg,var(--surface-2) 0 4px,var(--line) 4px 8px);" : ""}"></button>`;
+              return `<button class="palette-chip ${state.palette === k ? "active" : ""}" data-palette="${k}" title="${paletteName(k)}" style="background:${p.a || "transparent"};${!p.a ? "background:repeating-linear-gradient(45deg,var(--surface-2) 0 4px,var(--line) 4px 8px);" : ""}"></button>`;
             }).join("")}
           </div>
         </div>
       `).join("")}
     </div>`;
   }
-  if (id === "window") return `<div class="settings-card"><div class="row"><label>UI zoom</label><div class="zoom-row"><button class="zoom-btn" data-zoom="-0.1">−</button><span class="zoom-val">${Math.round(state.zoom * 100)}%</span><button class="zoom-btn" data-zoom="0.1">+</button></div></div><div class="row"><label>Width</label><input type="range" min="360" max="900" step="10" value="${state.popupW}" id="popupW"/><span>${state.popupW}px</span></div><div class="row"><label>Height</label><input type="range" min="480" max="900" step="10" value="${state.popupH}" id="popupH"/><span>${state.popupH}px</span></div></div>`;
+  if (id === "window") return `<div class="settings-card"><div class="row"><label>${t("window.zoom")}</label><div class="zoom-row"><button class="zoom-btn" data-zoom="-0.1">−</button><span class="zoom-val">${Math.round(state.zoom * 100)}%</span><button class="zoom-btn" data-zoom="0.1">+</button></div></div><div class="row"><label>${t("window.width")}</label><input type="range" min="360" max="900" step="10" value="${state.popupW}" id="popupW"/><span>${state.popupW}px</span></div><div class="row"><label>${t("window.height")}</label><input type="range" min="480" max="900" step="10" value="${state.popupH}" id="popupH"/><span>${state.popupH}px</span></div></div>`;
   return "";
 }
 function buildSettingsSection(id) {
-  const [title, description] = SETTINGS_META[id];
-  return settingsSectionHTML(id, title, description, settingsBodyHTML(id));
+  return settingsSectionHTML(id, t("settings." + id), t("settings." + id + ".desc"), settingsBodyHTML(id));
 }
 function renderSettings() {
   const active = SETTINGS_SECTIONS.includes(state.settingsSection) ? state.settingsSection : "general";
-  return `<div class="app settings-view"><div class="settings-head"><button class="icon-btn" data-go="home">${icon.back}</button><h1>Settings</h1><span style="width:30px"></span></div><nav class="settings-nav" aria-label="Settings sections">${SETTINGS_NAV.map(([id, label]) => `<button type="button" class="settings-nav-btn ${active === id ? "active" : ""}" data-settings-section="${id}">${label}</button>`).join("")}</nav>${buildSettingsSection(active)}${mobileBottomNavHTML("settings")}</div>`;
+  return `<div class="app settings-view"><div class="settings-head"><button class="icon-btn" data-go="home">${icon.back}</button><h1>${t("settings.title")}</h1><span style="width:30px"></span></div><nav class="settings-nav" aria-label="${t("settings.nav.aria")}">${SETTINGS_NAV.map(([id]) => `<button type="button" class="settings-nav-btn ${active === id ? "active" : ""}" data-settings-section="${id}">${t("settings." + id)}</button>`).join("")}</nav>${buildSettingsSection(active)}${mobileBottomNavHTML("settings")}</div>`;
 }
 function htmlToNode(html) {
   const doc = new DOMParser().parseFromString(html, "text/html");
@@ -1566,9 +2282,35 @@ function renderSettingsSectionInPlace() {
   const old = document.querySelector(".settings-section");
   if (!old || state.view !== "settings") { render(); return; }
   const active = SETTINGS_SECTIONS.includes(state.settingsSection) ? state.settingsSection : "general";
-  old.replaceWith(htmlToNode(buildSettingsSection(active)));
+  const next = htmlToNode(buildSettingsSection(active));
+  // Avoid a blank flash: insert the new section next to the old one and
+  // remove the old on the next frame so the WebView never paints an empty
+  // .app gap (Appearance's theme grid is heavy to parse). On mobile keep
+  // it instant; desktop keeps the fade.
+  old.after(next);
+  if (!globalThis.__ZAKKIR_MOBILE__) {
+    old.remove();
+    playEnter(next);
+  } else {
+    requestAnimationFrame(() => old.remove());
+  }
   document.querySelectorAll("[data-settings-section]").forEach((b) => b.classList.toggle("active", b.dataset.settingsSection === active));
   wireSettings();
+}
+
+// Replaced content gets no animation restart for free (a fresh node with the
+// same computed style just appears). Re-trigger the enter animation explicitly
+// so swapped panels fade in instead of hard-cutting. Honours reduced motion and
+// is a no-op if the platform has no enter animation defined.
+function playEnter(el, name = "contentEnter") {
+  if (!el || !el.animate) return;
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  el.classList.remove(name);
+  void el.offsetWidth;
+  el.classList.add(name);
+  const done = () => el.classList.remove(name);
+  el.addEventListener("animationend", done, { once: true });
+  setTimeout(done, 400);
 }
 
 // ---------- render & wire ----------
@@ -1588,6 +2330,11 @@ function applyVars() {
   const theme = validThemes.includes(state.theme) ? state.theme : DEFAULTS.theme;
   const palette = state.palette;
   const contrast = state.neobrutalContrast;
+
+  const isAr = state.language === "ar";
+  document.documentElement.setAttribute("lang", isAr ? "ar" : "en");
+  document.documentElement.dir = isAr ? "rtl" : "ltr";
+  document.body.classList.toggle("lang-ar", isAr);
 
   if (_appliedStateCache.theme !== theme || _appliedStateCache.contrast !== contrast) {
     for (const id of validThemes) {
@@ -1611,7 +2358,10 @@ function applyVars() {
   const pinned = globalThis.electronAPI ? true : IS_PINNED;
   document.body.classList.toggle("pinned", pinned);
 
-  if (_appliedStateCache.palette !== palette) {
+  if (state.customAccent) {
+    document.body.style.setProperty("--accent", state.customAccent);
+    document.body.style.setProperty("--accent-ink", contrastInk(state.customAccent));
+  } else if (_appliedStateCache.palette !== palette) {
     document.body.style.removeProperty("--accent");
     document.body.style.removeProperty("--accent-ink");
     const p = PALETTES[palette];
@@ -1620,6 +2370,23 @@ function applyVars() {
       document.body.style.setProperty("--accent-ink", contrastInk(p.a));
     }
     _appliedStateCache.palette = palette;
+  }
+  if (state.customBg) {
+    document.body.style.setProperty("--bg", state.customBg);
+    document.body.style.setProperty("background", state.customBg);
+  } else {
+    document.body.style.removeProperty("--bg");
+    document.body.style.removeProperty("background");
+  }
+  if (state.customSurface) {
+    document.body.style.setProperty("--surface", state.customSurface);
+  } else {
+    document.body.style.removeProperty("--surface");
+  }
+  if (state.customInk) {
+    document.body.style.setProperty("--ink", state.customInk);
+  } else {
+    document.body.style.removeProperty("--ink");
   }
 
   if (globalThis.__ZAKKIR_MOBILE__ && (_appliedStateCache.postedTheme !== theme || _appliedStateCache.postedPalette !== palette)) {
@@ -1651,23 +2418,81 @@ function setHTML(el, html) {
 function render() {
   applyVars();
   const app = $("#app");
-  const previousView = renderedView;
   const paint = () => {
     if (state.view === "map") {
       setHTML(app, renderMap());
       wireMap();
-    } else {
-      const html = state.view === "settings" ? renderSettings()
-        : state.view === "schedule" ? renderSchedule()
-        : renderHome();
-      setHTML(app, html);
-      wire();
-      settleMobileNav(state.view);
+      return;
     }
+    const html = state.view === "settings" ? renderSettings()
+      : state.view === "schedule" ? renderSchedule()
+      : renderHome();
+    // On mobile keep the bottom nav DOM node persistent so tab switches
+    // don't destroy/recreate it (that was the "whole page re-renders"
+    // flash). Preserve the existing sibling nav, replace only the .app
+    // view container.
+    if (globalThis.__ZAKKIR_MOBILE__) {
+      const savedNav = app.querySelector(":scope > .mobile-bottom-nav");
+      const existingApp = app.querySelector(":scope > .app");
+      if (existingApp && savedNav) {
+        const tmp = document.createElement("div");
+        tmp.innerHTML = html;
+        const newApp = tmp.firstElementChild;
+        const newNavInNew = newApp?.querySelector?.(".mobile-bottom-nav");
+        if (newNavInNew) newNavInNew.remove();
+        existingApp.replaceWith(newApp);
+        wire();
+        // Keep the preserved nav's active states in sync (its DOM was
+        // not recreated, so the old .active would otherwise stay on the
+        // previous tab and make e.g. Settings look white on Home).
+        savedNav.querySelectorAll(".mobile-bottom-nav-btn").forEach(btn => {
+          const isActive = btn.dataset.go === state.view;
+          btn.classList.toggle("active", isActive);
+          if (isActive) btn.setAttribute("aria-current", "page");
+          else btn.removeAttribute("aria-current");
+        });
+        settleMobileNav(state.view);
+        return;
+      }
+      // First mobile render (or after map): fall through to full setHTML
+      // then the nav will be moved to sibling below.
+    }
+    setHTML(app, html);
+    wire();
+    settleMobileNav(state.view);
   };
+  // Direction of travel through the bottom-nav order, so a view arrives from the
+  // side you moved toward instead of hard-cutting. mobileNavTransition is set by
+  // the nav handler before update() triggers this render.
+  const order = ["home", "schedule", "settings"];
+  const from = order.indexOf(renderedView);
+  const to = order.indexOf(state.view);
   const viewChanged = renderedView !== null && renderedView !== state.view;
+  const direction = viewChanged && from >= 0 && to >= 0 ? Math.sign(to - from) : 0;
   renderedView = state.view;
   paint();
+  // Bottom nav is position:fixed. If it stays inside the animated .app
+  // (which gets contentEnter/slideIn transforms), fixed becomes relative to
+  // the transformed ancestor and the bar visibly glitches up/down with the
+  // page. Ensure it is a sibling of .app so it stays viewport-fixed.
+  if (globalThis.__ZAKKIR_MOBILE__ && state.view !== "map") {
+    const root = app.querySelector(":scope > .app");
+    const nav = root?.querySelector?.(".mobile-bottom-nav");
+    if (nav && nav.parentElement === root) {
+      app.appendChild(nav);
+    }
+  }
+  if (viewChanged) {
+    // On mobile view switches are instant (animation: none) to avoid the
+    // blank flash that the 31-row schedule table caused while animating.
+    if (globalThis.__ZAKKIR_MOBILE__) return;
+    const root = app.querySelector(":scope > .app");
+    const target = root || app.firstElementChild;
+    if (target) {
+      if (direction !== 0) playEnter(target, direction < 0 ? "slideInFromStart" : "slideInFromEnd");
+      else playEnter(target, "contentEnter");
+    }
+  }
   if (globalThis.__ZAKKIR_MOBILE__) {
     window.ReactNativeWebView?.postMessage(JSON.stringify({ type: "view-change", view: state.view }));
   }
@@ -1765,11 +2590,15 @@ function animateAzkarSwap(direction, paint, fromSwipe = false) {
   const startHeight = el.getBoundingClientRect().height;
   el.style.height = `${startHeight}px`;
 
+  // The azkar box keeps LTR orientation in Arabic mode too (next = right),
+  // so "next" always enters from the right and "previous" from the left.
+  const dirSign = direction;
+
   const innerContent = el.querySelector(".azkar-body-wrapper") || el.querySelector(".dhikr") || el;
 
   if (!fromSwipe) {
     innerContent.style.transition = "transform 0.12s cubic-bezier(0.4, 0, 1, 1), opacity 0.12s ease";
-    innerContent.style.transform = `translateX(${direction > 0 ? -50 : 50}px)`;
+    innerContent.style.transform = `translateX(${dirSign > 0 ? -50 : 50}px)`;
     innerContent.style.opacity = "0.2";
   }
 
@@ -1786,7 +2615,7 @@ function animateAzkarSwap(direction, paint, fromSwipe = false) {
 
     const newInner = newEl.querySelector(".azkar-body-wrapper") || newEl.querySelector(".dhikr") || newEl;
     newInner.style.transition = "none";
-    newInner.style.transform = `translateX(${direction > 0 ? 40 : -40}px)`;
+    newInner.style.transform = `translateX(${dirSign > 0 ? 40 : -40}px)`;
     newInner.style.opacity = "0.2";
 
     requestAnimationFrame(() => {
@@ -1877,6 +2706,7 @@ function wireAzkarSwipe(tap) {
       window.setTimeout(() => { suppressAzkarTap = false; }, 300);
       globalThis.__ZAKKIR_HAPTIC__?.("selection");
 
+      // Swipe left = next, swipe right = previous (azkar box stays LTR).
       const direction = currentDx < 0 ? 1 : -1;
       inner.style.transition = "transform 0.12s cubic-bezier(0.4, 0, 1, 1), opacity 0.12s ease";
       inner.style.transform = `translateX(${currentDx < 0 ? -90 : 90}px)`;
@@ -1899,8 +2729,8 @@ function patchPrayerCard(forceRebuild = false) {
   el.classList.toggle("is-collapsed", Boolean(globalThis.__ZAKKIR_MOBILE__ && state.prayerCollapsed));
 
   const np = nextPrayer();
-  const nextName = np ? np.name : (lastErr ? "Unavailable" : "Loading…");
-  const currentNameEl = el.querySelector(".next-name") || el.querySelector(".prayer-collapsed-main strong");
+  const nextName = np ? prayerName(np.name) : (lastErr ? t("prayer.unavailable") : t("prayer.loading"));
+  const currentNameEl = el.querySelector(".next-name");
 
   // If forceRebuild is true, or structure/prayer changed, re-render HTML cleanly
   if (forceRebuild || !currentNameEl || currentNameEl.textContent.trim() !== nextName) {
@@ -1912,14 +2742,16 @@ function patchPrayerCard(forceRebuild = false) {
 
   // In-place patch: update countdown text and progress bar fill
   if (np) {
-    const countdownCollapsed = el.querySelector(".prayer-collapsed-countdown");
-    if (countdownCollapsed) countdownCollapsed.textContent = `${np.h}h ${String(np.m).padStart(2, "0")}m`;
-
-    const countdownHeroHours = el.querySelector(".next-countdown strong:first-child");
-    const countdownHeroMins = el.querySelector(".next-countdown strong:last-child");
-    if (countdownHeroHours && countdownHeroMins) {
-      countdownHeroHours.innerHTML = `${np.h}<small>h</small>`;
-      countdownHeroMins.innerHTML = `${String(np.m).padStart(2, "0")}<small>m</small>`;
+    const countdownAr = el.querySelector(".next-countdown .countdown-ar");
+    if (countdownAr) {
+      countdownAr.textContent = arabicDuration(np.h, np.m);
+    } else {
+      const countdownHeroHours = el.querySelector(".next-countdown strong:first-child");
+      const countdownHeroMins = el.querySelector(".next-countdown strong:last-child");
+      if (countdownHeroHours && countdownHeroMins && countdownHeroHours !== countdownHeroMins) {
+        countdownHeroHours.innerHTML = `${np.h}<small>${t("time.h")}</small>`;
+        countdownHeroMins.innerHTML = `${String(np.m).padStart(2, "0")}<small>${t("time.m")}</small>`;
+      }
     }
 
     const progress = el.querySelector(".prayer-progress > div");
@@ -1962,6 +2794,7 @@ function update(patch, persist = true) {
     storage.set(save);
   }
   const keys = Object.keys(patch);
+  if (keys.includes("language")) { applyVars(); render(); return; }
   if (keys.length && keys.every((k) => VAR_ONLY_KEYS.has(k))) { applyVars(); return; }
   // View changes always re-render — the settings branch below must not
   // swallow navigation (state.view already reflects the target view here).
@@ -2019,10 +2852,16 @@ function wire() {
       state.azkarHintDismissed = true;
       storage.set({ azkarHintDismissed: true });
     }
-    tap.classList.remove("pulse");
-    void tap.offsetWidth;
-    tap.classList.add("pulse");
-    setTimeout(() => tap.classList.remove("pulse"), 220);
+    // Pulse is desktop-only (mobile suppresses it via `animation: none`).
+    // Running it on mobile forces a synchronous layout and, via the
+    // `mobile-view-enter` :not(.pulse) gate, restarts the enter animation
+    // on every tap — the "whole page re-render" the user reported.
+    if (!globalThis.__ZAKKIR_MOBILE__) {
+      tap.classList.remove("pulse");
+      void tap.offsetWidth;
+      tap.classList.add("pulse");
+      setTimeout(() => tap.classList.remove("pulse"), 220);
+    }
     globalThis.__ZAKKIR_HAPTIC__?.(next >= target ? "success" : "light");
     if (next >= target) {
       // Finish in place, then advance through the same animated path as navigation.
@@ -2041,13 +2880,15 @@ function wire() {
     }
   });
   document.querySelectorAll("[data-nav]").forEach((b) =>
-    b.addEventListener("click", () => {
+    b.addEventListener("click", (e) => {
+      e.currentTarget?.blur?.();
       const dir = parseInt(b.dataset.nav, 10);
       navigateAzkar(dir);
     })
   );
   const reset = $("#resetBtn");
-  if (reset) reset.addEventListener("click", () => {
+  if (reset) reset.addEventListener("click", (e) => {
+    e.currentTarget?.blur?.();
     const list = currentDhikrList();
     const z = list[state.azkarIndex];
     const target = z ? (parseInt(z.count, 10) || 1) : 1;
@@ -2099,7 +2940,7 @@ function wire() {
 }
 
 function neobrutalToneHTML() {
-  return `<span>Neobrutalist contrast</span><div class="seg"><button class="seg-btn ${state.neobrutalContrast === "quiet" ? "active" : ""}" data-neobrutal-contrast="quiet">Quiet</button><button class="seg-btn ${state.neobrutalContrast === "high" ? "active" : ""}" data-neobrutal-contrast="high">High contrast</button></div>`;
+  return `<span>${t("neobrutal.label")}</span><div class="seg"><button class="seg-btn ${state.neobrutalContrast === "quiet" ? "active" : ""}" data-neobrutal-contrast="quiet">${t("neobrutal.quiet")}</button><button class="seg-btn ${state.neobrutalContrast === "high" ? "active" : ""}" data-neobrutal-contrast="high">${t("neobrutal.high")}</button></div>`;
 }
 
 function wireSettings() {
@@ -2111,6 +2952,12 @@ function wireSettings() {
       render();
     },
   });
+  document.querySelectorAll("[data-language]").forEach((b) =>
+    b.addEventListener("click", () => {
+      if (state.language === b.dataset.language) return;
+      update({ language: b.dataset.language, prayerCache: null });
+    })
+  );
   if (state.settingsSection === "general") wireLocation();
   // Track Advanced disclosure open state
   const adv = document.querySelector(".loc-adv");
@@ -2158,6 +3005,21 @@ function wireSettings() {
       patchSettingsActive("data-neobrutal-contrast", b.dataset.neobrutalContrast);
     })
   );
+
+  const accentIn = $("#customAccentInput");
+  const bgIn = $("#customBgInput");
+  const surfaceIn = $("#customSurfaceInput");
+  const inkIn = $("#customInkInput");
+  const resetColorsBtn = $("#resetCustomColors");
+
+  accentIn?.addEventListener("input", (e) => update({ customAccent: e.target.value }));
+  bgIn?.addEventListener("input", (e) => update({ customBg: e.target.value }));
+  surfaceIn?.addEventListener("input", (e) => update({ customSurface: e.target.value }));
+  inkIn?.addEventListener("input", (e) => update({ customInk: e.target.value }));
+
+  resetColorsBtn?.addEventListener("click", () => {
+    update({ customAccent: "", customBg: "", customSurface: "", customInk: "" });
+  });
   // paint theme swatches with each theme's accent/bg preview
   const THEME_SW = {
     metro:       { bg: "#f1f1f1", a: "#e11d48", style: "metro" },
@@ -2167,6 +3029,14 @@ function wireSettings() {
     liquidglass: { bg: "linear-gradient(135deg,#e7ebe6,#cbd2ce 48%,#dfdfd7)", a: "#657d77", style: "liquidglass" },
     frutiger:    { bg: "linear-gradient(180deg,#d3e1dc 0 48%,#aabd9b 49%)", a: "#5d8778", style: "frutiger" },
     neobrutal:   { bg: "#d8d0bd", a: "#657d70", style: "neobrutal" },
+    layl:        { bg: "linear-gradient(180deg,#0d1326,#101a36)", a: "#b9c7e9", style: "layl" },
+    bento:       { bg: "#f5f4ef", a: "#14695a", style: "bento" },
+    zellige:     { bg: "linear-gradient(170deg,#103138,#0c2229)", a: "#d08a52", style: "zellige" },
+    circuit:     { bg: "#0c1f14", a: "#e0954f", style: "circuit" },
+    sakura:      { bg: "linear-gradient(180deg,#fbf5f5,#f4e4e8)", a: "#b8476b", style: "sakura" },
+    sakina:      { bg: "linear-gradient(175deg,#f6f8f1,#e9efe0)", a: "#3e7d5a", style: "sakina" },
+    mushaf:      { bg: "linear-gradient(170deg,#122a25,#0d1f1c)", a: "#d8b46a", style: "mushaf" },
+    riso:        { bg: "#f5f0e6", a: "#f0427c", style: "riso" },
     monochrome:          { bg: "linear-gradient(180deg,#f8fafc,#edf2f7)", a: "#0f172a", style: "monochrome" },
     "monochrome-dark":   { bg: "linear-gradient(180deg,#090a0d,#050507)", a: "#ffffff", style: "monochrome" },
     nebula:              { bg: "linear-gradient(135deg,#fff1f2,#e0e7ff)", a: "#6366f1", style: "nebula" },
@@ -2414,11 +3284,11 @@ function wireSettings() {
     testSoundBtn.addEventListener("click", () => {
       if (activeAudio && !activeAudio.paused) {
         playSound("silent");
-        testSoundBtn.textContent = "Test Sound";
+        testSoundBtn.textContent = t("notify.testSound");
       } else {
-        testSoundBtn.textContent = "Stop Preview";
+        testSoundBtn.textContent = t("notify.stopPreview");
         playSound(state.reminderSound, () => {
-          testSoundBtn.textContent = "Test Sound";
+          testSoundBtn.textContent = t("notify.testSound");
         });
       }
     });
@@ -2486,7 +3356,7 @@ function wireMap() {
   const labelEl = $("#mapLocLabel");
   async function updatePin(lat, lng) {
     pendingLat = lat; pendingLng = lng;
-    if (labelEl) labelEl.textContent = "Fetching…";
+    if (labelEl) labelEl.textContent = t("map.fetching");
     const name = await reverseGeocode(lat, lng);
     if (labelEl) labelEl.textContent = name;
   }
@@ -2531,6 +3401,17 @@ function wireMap() {
   const data = await storage.get();
   const migratedData = migrateNotificationSettings(data);
   state = { ...DEFAULTS, ...migratedData };
+  // The default or a saved choice may name a sound this build doesn't ship.
+  if (!SOUNDS.some(([id]) => id === state.reminderSound)) state.reminderSound = SOUNDS[0][0];
+  // Auto-detect language on first boot: explicit bridge locale (mobile),
+  // else the browser/device language.
+  if (!state.language) {
+    const detected = String(globalThis.__ZAKKIR_LOCALE__ || globalThis.navigator?.language || document.documentElement.lang || "en")
+      .toLowerCase()
+      .startsWith("ar") ? "ar" : "en";
+    state.language = detected;
+    storage.set({ language: detected });
+  }
   if (data.reminderEnabled !== undefined || data.athanEnabled !== undefined) {
     storage.set({
       remindersEnabled: state.remindersEnabled,
@@ -2598,11 +3479,11 @@ function wireMap() {
         document.body.appendChild(banner);
       }
       banner.innerHTML = `
-        <div class="update-title"><span>🚀</span> Zakkir Update Available: v${version}</div>
+        <div class="update-title"><span>🚀</span> ${t("update.available", { version })}</div>
         <div class="update-actions">
-          <button id="updateDownloadBtn" class="btn-primary">Download</button>
-          <button id="updateRemindBtn" class="btn-secondary">Remind Later (3d)</button>
-          <button id="updateNeverBtn" class="btn-dismiss">Never Show Again</button>
+          <button id="updateDownloadBtn" class="btn-primary">${t("update.download")}</button>
+          <button id="updateRemindBtn" class="btn-secondary">${t("update.remind")}</button>
+          <button id="updateNeverBtn" class="btn-dismiss">${t("update.never")}</button>
         </div>
       `;
       banner.style.display = "block";
@@ -2624,7 +3505,7 @@ function wireMap() {
     });
   }
 
-  try { await loadAzkar(); } catch (e) { lastErr = "Failed to load azkar data."; }
+  try { await loadAzkar(); } catch (e) { lastErr = t("err.azkar"); }
   maybeResetDaily();
   applyAutoCategory();
   render();

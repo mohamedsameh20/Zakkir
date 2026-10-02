@@ -6,3 +6,11 @@ ios/
 *.jks
 *.keystore
 google-services.json
+
+# Derived from <repo-root>/sounds by scripts/sounds.cjs on every build.
+assets/sounds/
+
+# Generated from popup.{css,js}, azkar.json, fonts/ and sounds/ by
+# scripts/generate-renderer.cjs. ~3.8 MB of base64, rebuilt by every
+# start/prebuild/build script, so it does not belong in git.
+renderer.generated.ts

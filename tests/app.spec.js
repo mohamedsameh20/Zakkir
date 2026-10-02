@@ -287,3 +287,57 @@ test("rapid settings toggle does not freeze", async () => {
   const brand = await window.locator(".brand .name").textContent();
   expect(brand).toBe("Zakkir");
 });
+
+// --- Arabic (RTL) mode ---
+
+test("switch to Arabic renders RTL layout and Arabic strings", async () => {
+  await toSection("general");
+  await window.locator("[data-language='ar']").click();
+  await window.waitForTimeout(500);
+
+  const dir = await window.evaluate(() => document.documentElement.dir);
+  const lang = await window.evaluate(() => document.documentElement.getAttribute("lang"));
+  expect(dir).toBe("rtl");
+  expect(lang).toBe("ar");
+
+  const heading = await window.locator(".settings-head h1").textContent();
+  expect(heading).toBe("الإعدادات");
+  const navLabels = await window.locator(".settings-nav-btn").allTextContents();
+  expect(navLabels).toContain("عام");
+  expect(navLabels).toContain("المظهر");
+
+  // Settings back arrow flips in RTL
+  const backTransform = await window.locator("[data-go='home'] svg").first().evaluate((el) => getComputedStyle(el).transform);
+  expect(backTransform).not.toBe("none");
+
+  // Home view: prayer names and nav are Arabic
+  await window.locator("[data-go='home']").click();
+  await window.waitForTimeout(400);
+  const firstPrayer = await window.locator(".prayer-grid .prayer .n").first().textContent();
+  expect(firstPrayer).toBe("الفجر");
+  const arPrayerFont = await window.locator(".prayer-grid .prayer .n").first().evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
+  const nextLabel = await window.locator(".prayer-collapsed-main .eyebrow, .next-line .eyebrow").first().textContent();
+  expect(nextLabel).toBe("الصلاة القادمة");
+  const resetLabel = await window.locator("#resetBtn span").textContent();
+  expect(resetLabel).toBe("إعادة");
+
+  // Azkar box keeps LTR orientation in Arabic: next/prev, progress, counters
+  const controlsDir = await window.locator(".azkar-controls").first().evaluate((el) => getComputedStyle(el).direction);
+  expect(controlsDir).toBe("ltr");
+  const countDir = await window.locator(".azkar-progress-count").evaluate((el) => getComputedStyle(el).direction);
+  expect(countDir).toBe("ltr");
+  const countdown = (await window.locator(".prayer-collapsed-countdown").textContent()).trim();
+  expect(countdown).toMatch(/\d+ (ساعة|ساعتان|ساعات|دقيقة|دقيقتان|دقائق)/);
+
+  const schedBtnTitle = await window.locator("[data-go='schedule']").first().getAttribute("title");
+  expect(schedBtnTitle).toBe("الجدول الشهري");
+
+  // Back to English so the rest of the suite is unaffected
+  await toSection("general");
+  await window.locator("[data-language='en']").click();
+  await window.waitForTimeout(400);
+  const dirEn = await window.evaluate(() => document.documentElement.dir);
+  expect(dirEn).toBe("ltr");
+  const enPrayerFont = await window.locator(".prayer-grid .prayer .n").first().evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
+  expect(arPrayerFont).toBeGreaterThan(enPrayerFont);
+});
