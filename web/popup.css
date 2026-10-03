@@ -1926,3 +1926,4 @@ html[dir="rtl"].zakkir-mobile .mobile-nav-liquid {
   right: 6px;
   transform: translateX(calc(var(--nav-index, 0) * (-100% - 6px)));
 }
+.sched-option { margin-top: 12px; }

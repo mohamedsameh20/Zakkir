@@ -1615,7 +1615,8 @@ function scheduleFooterHTML() {
   return `
     <div class="sched-foot">
       <span>${where} · ${methodNameL}</span>
-    </div>`;
+    </div>
+    <div class="settings-card sched-option"><div class="row"><label for="sunnahFastHighlight">${t("loc.sunnahFast")}</label><label class="switch"><input type="checkbox" id="sunnahFastHighlight" ${state.sunnahFastHighlight ? "checked" : ""}/><span></span></label></div></div>`;
 }
 
 function renderSchedule() {
@@ -1651,6 +1652,12 @@ function patchScheduleDirectional(delta) {
 }
 
 function wireSchedule() {
+  const sf = $("#sunnahFastHighlight");
+  if (sf) sf.addEventListener("change", (e) => {
+    state.sunnahFastHighlight = e.target.checked;
+    storage.set({ sunnahFastHighlight: state.sunnahFastHighlight });
+    const body = $("#schedBody"); if (body) setHTML(body, scheduleBodyHTML());
+  });
   const prev = $("#schedPrev");
   if (prev) prev.addEventListener("click", () => {
     state.scheduleMonth = stepScheduleMonth(-1);
@@ -2004,7 +2011,6 @@ function settingsBodyHTML(id) {
       <button class="loc-btn" id="useCoordsBtn" style="width:100%;margin:2px 0 8px">${t("loc.useCoords")}</button>
     </details>
     <div class="settings-card"><div class="row"><label>${t("loc.method")}</label>${dropdownHTML("method", state.method, METHODS.map(([v]) => ({ v, l: methodName(v) })))}</div>
-      <div class="row"><label for="sunnahFastHighlight">${t("loc.sunnahFast")}</label><label class="switch"><input type="checkbox" id="sunnahFastHighlight" ${state.sunnahFastHighlight ? "checked" : ""}/><span></span></label></div>
       <div class="row"><label>${t("lang.label")}</label><div class="seg" role="group" aria-label="${t("lang.label")}"><button class="seg-btn ${state.language === "en" ? "active" : ""}" data-language="en">${t("lang.en")}</button><button class="seg-btn ${state.language === "ar" ? "active" : ""}" data-language="ar">${t("lang.ar")}</button></div></div>
     </div>`;
   if (id === "notifications") {
@@ -2024,7 +2030,7 @@ function settingsBodyHTML(id) {
     </div>
     <div class="notification-confirmation ${state.notificationsEnabled ? "" : "paused"}"><span class="confirmation-dot"></span><p>${notificationSummary()}</p></div>`;
   }
-  if (id === "reading") return `<div class="settings-card"><div class="font-grid">${Object.keys(FONT_MAP).map((f) => `<button class="pill ${state.font === f ? "active" : ""}" data-font="${f}" aria-label="${f}"><span class="font-sample">أبجد</span><span>${f}</span></button>`).join("")}</div><div class="row"><label for="arSize">${t("reading.arSize")}</label><input type="range" min="0.7" max="2" step="0.05" value="${state.arSize}" id="arSize"/><span>${state.arSize.toFixed(2)}×</span></div><div class="row"><label>${t("reading.appScale")}</label><div class="zoom-row"><button class="zoom-btn" data-zoom="-0.1">−</button><span class="zoom-val">${Math.round(state.zoom * 100)}%</span><button class="zoom-btn" data-zoom="0.1">+</button></div></div><div class="row azkar-navigation-setting"><label>${t("reading.navMode")}</label><div class="seg" role="group" aria-label="${t("reading.navMode.aria")}"><button class="seg-btn ${azkarNavigationMode() === "buttons-and-swipe" ? "active" : ""}" data-azkar-navigation="buttons-and-swipe">${t("reading.both")}</button><button class="seg-btn ${azkarNavigationMode() === "swipe-only" ? "active" : ""}" data-azkar-navigation="swipe-only">${t("reading.swipe")}</button><button class="seg-btn ${azkarNavigationMode() === "buttons-only" ? "active" : ""}" data-azkar-navigation="buttons-only">${t("reading.buttons")}</button></div></div><div class="preview">بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</div></div>`;
+  if (id === "reading") return `<div class="settings-card"><div class="preview">بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</div><div class="font-grid">${Object.keys(FONT_MAP).map((f) => `<button class="pill ${state.font === f ? "active" : ""}" data-font="${f}" aria-label="${f}"><span class="font-sample">أبجد</span><span>${f}</span></button>`).join("")}</div><div class="row"><label for="arSize">${t("reading.arSize")}</label><input type="range" min="0.7" max="2" step="0.05" value="${state.arSize}" id="arSize"/><span>${state.arSize.toFixed(2)}×</span></div><div class="row"><label>${t("reading.appScale")}</label><div class="zoom-row"><button class="zoom-btn" data-zoom="-0.1">−</button><span class="zoom-val">${Math.round(state.zoom * 100)}%</span><button class="zoom-btn" data-zoom="0.1">+</button></div></div><div class="row azkar-navigation-setting"><label>${t("reading.navMode")}</label><div class="seg" role="group" aria-label="${t("reading.navMode.aria")}"><button class="seg-btn ${azkarNavigationMode() === "buttons-and-swipe" ? "active" : ""}" data-azkar-navigation="buttons-and-swipe">${t("reading.both")}</button><button class="seg-btn ${azkarNavigationMode() === "swipe-only" ? "active" : ""}" data-azkar-navigation="swipe-only">${t("reading.swipe")}</button><button class="seg-btn ${azkarNavigationMode() === "buttons-only" ? "active" : ""}" data-azkar-navigation="buttons-only">${t("reading.buttons")}</button></div></div></div>`;
   if (id === "appearance") {
     return `<div class="settings-card">
       <div class="theme-grid theme-grid-featured">${themeCardsHTML(THEMES, true)}</div>
@@ -2915,11 +2921,6 @@ function wireSettings() {
       storage.set({ [key]: state[key] });
       syncReminders();
     });
-  });
-  const sf = $("#sunnahFastHighlight");
-  if (sf) sf.addEventListener("change", (e) => {
-    state.sunnahFastHighlight = e.target.checked;
-    storage.set({ sunnahFastHighlight: state.sunnahFastHighlight });
   });
 
   // Sound picker
