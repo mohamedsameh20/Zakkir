@@ -119,8 +119,9 @@ const STRINGS = {
     "sched.ah": "AH",
     "sched.loading": "Loading schedule…",
     "sched.updating": "Updating…",
-    "sched.error": "Failed to load schedule — check your connection.",
-    "sched.errorShort": "Failed to load schedule.",
+    "sched.error": "Showing saved times — couldn't refresh them.",
+    "sched.errorShort": "Couldn't reach the prayer-times service. Try again.",
+    "sched.errorOffline": "You're offline and this month isn't saved yet. Connect once to load it.",
     "sched.retry": "Retry",
     "sched.fast.monday": "Sunnah fast — Monday",
     "sched.fast.thursday": "Sunnah fast — Thursday",
@@ -263,8 +264,9 @@ const STRINGS = {
     "sched.ah": "هـ",
     "sched.loading": "جارٍ تحميل الجدول…",
     "sched.updating": "جارٍ التحديث…",
-    "sched.error": "تعذّر تحميل الجدول — يُرجى التحقق من الاتصال.",
-    "sched.errorShort": "تعذّر تحميل الجدول.",
+    "sched.error": "نعرض المواقيت المحفوظة — تعذّر تحديثها.",
+    "sched.errorShort": "تعذّر الوصول إلى خدمة المواقيت. حاول مرة أخرى.",
+    "sched.errorOffline": "أنت غير متصل وهذا الشهر غير محفوظ بعد. اتصل مرة واحدة لتحميله.",
     "sched.retry": "إعادة المحاولة",
     "sched.fast.monday": "صيام الاثنين (سُنّة)",
     "sched.fast.thursday": "صيام الخميس (سُنّة)",
@@ -1519,7 +1521,7 @@ async function fetchMonth(ym) {
   } catch (e) {
     if (_scheduleData) _scheduleData.error = t("sched.error");
     if (_scheduleData) _scheduleData.loading = false;
-    if (!_scheduleData?.days) _scheduleData = { ym, key, days: null, error: t("sched.errorShort"), loading: false };
+    if (!_scheduleData?.days) _scheduleData = { ym, key, days: null, error: t(navigator.onLine === false ? "sched.errorOffline" : "sched.errorShort"), loading: false };
   } finally {
     _scheduleLoadingKey = null;
     if (state.view === "schedule") patchSchedule();
