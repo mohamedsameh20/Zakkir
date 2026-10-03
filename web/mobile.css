@@ -632,3 +632,6 @@ html.zakkir-mobile.large-text .prayer-grid { grid-template-columns: repeat(3, 1f
 html.zakkir-mobile .athan-copy + .switch { margin-inline-start: auto; }
 html.zakkir-mobile .minute-field { width: auto; min-width: 88px; }
 html.zakkir-mobile .minute-field input { width: 2.4em; }
+html.zakkir-mobile .sched-foot { font-size: var(--t-label); }
+html.zakkir-mobile .prayer-custom-hint { font-size: var(--t-label); }
+html.zakkir-mobile .welcome-sub { color: var(--ink); }
