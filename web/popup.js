@@ -1047,6 +1047,12 @@ async function loadPrayers(force = false) {
     hijri = cache.hijri;
     loadedPrayerDate = today;
     syncReminders();
+    // Reaching here means the rolling cache doesn't cover today (missing,
+    // or for another location/method), so the notification window would
+    // only have today. Fill it in the background and reschedule.
+    refreshOfflinePrayerCache().then(() => {
+      if (applyOfflineCacheForToday()) syncReminders();
+    }).catch(() => {});
     return;
   }
   const controller = new AbortController();
