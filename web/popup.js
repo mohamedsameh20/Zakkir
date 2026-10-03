@@ -173,6 +173,11 @@ const STRINGS = {
     "notify.beforeLbl": "Before",
     "notify.afterLbl": "After",
     "notify.min": "min",
+    "notify.beforeAll": "Minutes before athan, for every prayer",
+    "notify.afterAll": "Minutes after athan, for every prayer",
+    "notify.prayers": "Which prayers",
+    "notify.customise": "Customise per prayer",
+    "notify.customise.sub": "Set different minutes for a single prayer. Changing the main value above resets these.",
     "notify.sound": "Reminder sound",
     "notify.testSound": "Test Sound",
     "notify.stopPreview": "Stop Preview",
@@ -307,6 +312,11 @@ const STRINGS = {
     "notify.beforeLbl": "التنبيه قبل",
     "notify.afterLbl": "الإقامة بعد",
     "notify.min": "د",
+    "notify.beforeAll": "عدد الدقائق قبل الأذان لكل الصلوات",
+    "notify.afterAll": "عدد الدقائق بعد الأذان لكل الصلوات",
+    "notify.prayers": "الصلوات المُنبَّه لها",
+    "notify.customise": "تخصيص كل صلاة",
+    "notify.customise.sub": "اضبط دقائق مختلفة لصلاة بعينها. تغيير القيمة الرئيسية أعلاه يعيد ضبطها.",
     "notify.sound": "نغمة التنبيه",
     "notify.testSound": "تجربة النغمة",
     "notify.stopPreview": "إيقاف الصوت",
@@ -1891,13 +1901,22 @@ function prayerMinute(map, prayer, fallback) {
   return Math.min(60, Math.max(1, Number(map?.[prayer]) || fallback));
 }
 
+function minuteFieldHTML(attrs, value, label, disabled) {
+  return `<span class="minute-field ${disabled ? "is-disabled" : ""}"><input type="number" inputmode="numeric" min="1" max="60" step="1" value="${value}" ${attrs} aria-label="${label}" ${disabled ? "disabled" : ""}/><small>${t("notify.min")}</small></span>`;
+}
+
 function prayerTimingHTML(prayer, disabled) {
   const before = prayerMinute(state.reminderMinutesByPrayer, prayer, state.reminderMinutes);
   const after = prayerMinute(state.iqamaMinutesByPrayer, prayer, state.iqamaMinutes);
-  const on = (state.reminderPrayers || []).includes(prayer);
   const beforeOff = disabled || !state.remindersEnabled;
   const afterOff = disabled || !state.iqamaEnabled;
-  return `<div class="prayer-timing-row ${on ? "on" : ""}" data-prayer-timing="${prayer}"><label class="prayer-check"><input type="checkbox" data-rp="${prayer}" ${on ? "checked" : ""} ${disabled ? "disabled" : ""}/><strong>${prayerName(prayer)}</strong></label><label class="minute-group ${beforeOff ? "is-disabled" : ""}"><span>${t("notify.beforeLbl")}</span><span class="minute-field"><input type="number" inputmode="numeric" min="1" max="60" step="1" value="${before}" data-prayer-minutes="before" aria-label="${t("notify.beforeMin", { prayer: prayerName(prayer) })}" ${beforeOff ? "disabled" : ""}/><small>${t("notify.min")}</small></span></label><label class="minute-group ${afterOff ? "is-disabled" : ""}"><span>${t("notify.afterLbl")}</span><span class="minute-field"><input type="number" inputmode="numeric" min="1" max="60" step="1" value="${after}" data-prayer-minutes="after" aria-label="${t("notify.afterMin", { prayer: prayerName(prayer) })}" ${afterOff ? "disabled" : ""}/><small>${t("notify.min")}</small></span></label></div>`;
+  const name = prayerName(prayer);
+  return `<div class="prayer-timing-row" data-prayer-timing="${prayer}"><strong>${name}</strong><label class="minute-group ${beforeOff ? "is-disabled" : ""}"><span>${t("notify.beforeLbl")}</span>${minuteFieldHTML('data-prayer-minutes="before"', before, t("notify.beforeMin", { prayer: name }), beforeOff)}</label><label class="minute-group ${afterOff ? "is-disabled" : ""}"><span>${t("notify.afterLbl")}</span>${minuteFieldHTML('data-prayer-minutes="after"', after, t("notify.afterMin", { prayer: name }), afterOff)}</label></div>`;
+}
+
+function prayerChipHTML(prayer, disabled) {
+  const on = (state.reminderPrayers || []).includes(prayer);
+  return `<label class="sound-option prayer-chip ${on ? "active" : ""}"><input type="checkbox" class="sr-only" data-rp="${prayer}" ${on ? "checked" : ""} ${disabled ? "disabled" : ""}/>${prayerName(prayer)}</label>`;
 }
 
 function notificationSummary() {
@@ -1936,8 +1955,12 @@ function syncNotificationUI() {
     const active = (state.reminderPrayers || []).includes(input.dataset.rp);
     input.checked = active;
     input.disabled = !enabled;
-    input.closest("[data-prayer-timing]")?.classList.toggle("on", active);
+    input.closest(".prayer-chip")?.classList.toggle("active", active);
   });
+  const beforeAll = $("#reminderMinutesAll");
+  if (beforeAll) { beforeAll.disabled = beforeOff; beforeAll.closest(".minute-field")?.classList.toggle("is-disabled", beforeOff); }
+  const afterAll = $("#iqamaMinutesAll");
+  if (afterAll) { afterAll.disabled = afterOff; afterAll.closest(".minute-field")?.classList.toggle("is-disabled", afterOff); }
   document.querySelectorAll('[data-prayer-minutes="before"]').forEach((input) => {
     input.disabled = beforeOff;
     input.closest(".minute-group")?.classList.toggle("is-disabled", beforeOff);
@@ -1996,10 +2019,12 @@ function settingsBodyHTML(id) {
     <div class="notification-master settings-card"><div><strong>${t("notify.master")}</strong><span>${t("notify.master.sub")}</span></div><label class="switch"><input aria-label="${t("notify.master")}" type="checkbox" id="notificationsEnabled" ${state.notificationsEnabled ? "checked" : ""}/><span></span></label></div>
     <div class="notification-config ${notificationsOff ? "is-paused" : ""}" aria-disabled="${notificationsOff}">
       <div class="notification-block settings-card"><div class="notification-block-head"><div><strong>${t("notify.reminders")}</strong></div></div>
-        <div class="athan-line"><div class="athan-copy"><strong>${t("notify.before")}</strong><span>${t("notify.before.sub")}</span></div><label class="switch"><input aria-label="${t("notify.aria.before")}" type="checkbox" id="remindersEnabled" ${state.remindersEnabled ? "checked" : ""} ${notificationsOff ? "disabled" : ""}/><span></span></label></div>
+        <div class="athan-line"><div class="athan-copy"><strong>${t("notify.before")}</strong><span>${t("notify.before.sub")}</span></div>${minuteFieldHTML('id="reminderMinutesAll"', prayerMinute(null, "", state.reminderMinutes), t("notify.beforeAll"), notificationsOff || !state.remindersEnabled)}<label class="switch"><input aria-label="${t("notify.aria.before")}" type="checkbox" id="remindersEnabled" ${state.remindersEnabled ? "checked" : ""} ${notificationsOff ? "disabled" : ""}/><span></span></label></div>
         <div class="athan-line"><div class="athan-copy"><strong>${t("notify.at")}</strong><span>${t("notify.at.sub")}</span></div><label class="switch"><input aria-label="${t("notify.aria.at")}" type="checkbox" id="prayerAlertEnabled" ${state.prayerAlertEnabled ? "checked" : ""} ${notificationsOff ? "disabled" : ""}/><span></span></label></div>
-        <div class="athan-line"><div class="athan-copy"><strong>${t("notify.after")}</strong><span>${t("notify.after.sub")}</span></div><label class="switch"><input aria-label="${t("notify.aria.after")}" type="checkbox" id="iqamaEnabled" ${state.iqamaEnabled ? "checked" : ""} ${notificationsOff ? "disabled" : ""}/><span></span></label></div>
-        <div class="prayer-timing-list">${PRAYER_ORDER.map((p) => prayerTimingHTML(p, notificationsOff)).join("")}</div>
+        <div class="athan-line"><div class="athan-copy"><strong>${t("notify.after")}</strong><span>${t("notify.after.sub")}</span></div>${minuteFieldHTML('id="iqamaMinutesAll"', prayerMinute(null, "", state.iqamaMinutes), t("notify.afterAll"), notificationsOff || !state.iqamaEnabled)}<label class="switch"><input aria-label="${t("notify.aria.after")}" type="checkbox" id="iqamaEnabled" ${state.iqamaEnabled ? "checked" : ""} ${notificationsOff ? "disabled" : ""}/><span></span></label></div>
+      </div>
+      <div class="settings-card"><div class="settings-card-title">${t("notify.prayers")}</div><div class="sound-grid">${PRAYER_ORDER.map((p) => prayerChipHTML(p, notificationsOff)).join("")}</div>
+        <details class="prayer-custom"><summary>${t("notify.customise")}</summary><p class="prayer-custom-hint">${t("notify.customise.sub")}</p><div class="prayer-timing-list">${PRAYER_ORDER.map((p) => prayerTimingHTML(p, notificationsOff)).join("")}</div></details>
       </div>
       <div class="settings-card"><div class="settings-card-title">${t("notify.sound")}</div><div class="sound-grid">${SOUNDS.map(([id]) => `<label class="sound-option ${state.reminderSound === id ? "active" : ""}" data-sound="${id}"><input type="radio" name="reminderSound" value="${id}" ${state.reminderSound === id ? "checked" : ""} class="sr-only">${soundName(id)}</label>`).join("")}</div><div class="sound-actions"><button class="loc-btn" id="testSoundBtn">${t("notify.testSound")}</button></div></div>
     </div>
@@ -2867,6 +2892,21 @@ function wireSettings() {
       syncNotificationUI();
     })
   );
+  // One value for every prayer; editing it clears any per-prayer overrides so
+  // what you see in "Customise per prayer" always matches what is scheduled.
+  [["reminderMinutesAll", "reminderMinutes", "reminderMinutesByPrayer", "before"], ["iqamaMinutesAll", "iqamaMinutes", "iqamaMinutesByPrayer", "after"]].forEach(([id, valueKey, mapKey, kind]) => {
+    const input = $("#" + id);
+    if (!input) return;
+    input.addEventListener("change", () => {
+      const minutes = Math.min(60, Math.max(1, parseInt(input.value, 10) || 1));
+      input.value = String(minutes);
+      state[valueKey] = minutes;
+      state[mapKey] = {};
+      document.querySelectorAll(`[data-prayer-minutes="${kind}"]`).forEach((field) => { field.value = String(minutes); });
+      storage.set({ [valueKey]: minutes, [mapKey]: {} });
+      syncReminders();
+    });
+  });
   document.querySelectorAll("[data-prayer-minutes]").forEach((input) => {
     input.addEventListener("input", () => {
       const minutes = Math.min(60, Math.max(1, parseInt(input.value, 10) || 1));

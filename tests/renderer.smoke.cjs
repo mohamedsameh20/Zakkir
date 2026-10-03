@@ -206,3 +206,62 @@ test("azkar session keeps counts, undoes, and ends with a summary", (t) => {
   assert.match(checks.partialSummary, /^\d+ of \d+ done$/);
   assert.equal(checks.jumpedTo, 2, "tapping the summary resumes at the first unfinished item");
 });
+
+// One minutes value per reminder; per-prayer overrides sit behind a disclosure.
+const NOTIFY_TAIL = `<script>
+setTimeout(async () => {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  const checks = {};
+  const fire = (el, type) => el.dispatchEvent(new Event(type, { bubbles: true }));
+  const lastSettings = () => __smoke.messages.filter((m) => m.type === "schedule-notifications").pop()?.settings;
+  try {
+    // Offline there are no prayer times, and nothing is scheduled without them.
+    prayers = { Fajr: "05:00", Dhuhr: "12:00", Asr: "15:30", Maghrib: "18:00", Isha: "19:30" };
+    document.querySelector(".mobile-bottom-nav [data-go='settings']").click();
+    await wait(50);
+    document.querySelector("[data-settings-section='notifications']").click();
+    await wait(50);
+    checks.chips = document.querySelectorAll(".prayer-chip").length;
+    checks.customiseClosed = document.querySelector(".prayer-custom").open === false;
+
+    const dhuhr = document.querySelector('[data-prayer-timing="Dhuhr"] [data-prayer-minutes="before"]');
+    dhuhr.value = "25"; fire(dhuhr, "input"); fire(dhuhr, "change");
+    await wait(50);
+    checks.overrideSaved = lastSettings()?.reminderMinutesByPrayer?.Dhuhr;
+
+    const all = document.querySelector("#reminderMinutesAll");
+    all.value = "15"; fire(all, "change");
+    await wait(50);
+    const s = lastSettings();
+    checks.globalMinutes = s?.reminderMinutes;
+    checks.overridesCleared = Object.keys(s?.reminderMinutesByPrayer || {}).length === 0;
+    checks.rowsFollow = [...document.querySelectorAll('[data-prayer-minutes="before"]')].every((i) => i.value === "15");
+
+    document.querySelector('[data-rp="Fajr"]').click();
+    await wait(50);
+    checks.fajrOff = !lastSettings()?.reminderPrayers?.includes("Fajr");
+    checks.chipInactive = !document.querySelector('[data-rp="Fajr"]').closest(".prayer-chip").classList.contains("active");
+  } catch (e) {
+    __smoke.errors.push("harness: " + e.message);
+  }
+  const out = document.createElement("pre");
+  out.id = "smoke-result";
+  out.textContent = JSON.stringify({ errors: __smoke.errors, checks });
+  document.body.appendChild(out);
+}, 3000);
+</script>`;
+
+test("notification settings use one minutes value with per-prayer overrides", (t) => {
+  const result = runPage(NOTIFY_TAIL);
+  if (!result) return t.skip("no Chromium/Chrome found (set CHROME_BIN)");
+  const { errors, checks } = result;
+  assert.deepEqual(errors, []);
+  assert.equal(checks.chips, 5, "one chip per prayer");
+  assert.equal(checks.customiseClosed, true, "per-prayer rows start collapsed");
+  assert.equal(checks.overrideSaved, 25, "a per-prayer override is scheduled");
+  assert.equal(checks.globalMinutes, 15);
+  assert.equal(checks.overridesCleared, true, "changing the main value resets overrides");
+  assert.equal(checks.rowsFollow, true, "per-prayer rows show the new value");
+  assert.equal(checks.fajrOff, true, "unticking a prayer chip removes it from the schedule");
+  assert.equal(checks.chipInactive, true);
+});

@@ -1140,25 +1140,31 @@ html[dir="rtl"] { --slide-dir: -1; }
 }
 
 /* Per-prayer timing */
-.prayer-timing { margin: 0 14px; border-top: 1px solid var(--line); padding: 10px 0 14px; }
 
 .athan-line { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 2px 14px 12px; }
 .athan-copy { display: grid; gap: 2px; }
 .athan-copy strong { color: var(--ink); font-size: .85em; }
 .athan-copy span { color: var(--muted); font-size: .72em; }
-.prayer-timing-list { display: grid; gap: 4px; padding: 0 14px 14px; }
+.prayer-timing-list { display: grid; gap: 4px; }
 .prayer-timing-row { display: grid; grid-template-columns: minmax(64px,1fr) auto auto; align-items: center; gap: 12px; padding: 11px 0; border-top: 1px solid var(--line); }
+.prayer-timing-row > strong { color: var(--ink); font-size: .98em; }
+.prayer-custom { margin-top: 6px; border-top: 1px solid var(--line); }
+.prayer-custom > summary { cursor: pointer; padding: 12px 0; color: var(--accent); font-weight: 700; font-size: .85em; list-style: none; }
+.prayer-custom > summary::-webkit-details-marker { display: none; }
+.prayer-custom > summary { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.prayer-custom > summary::after { content: ""; width: 8px; height: 8px; border: solid currentColor; border-width: 0 2px 2px 0; transform: rotate(45deg); margin-top: -3px; transition: transform .2s ease; }
+.prayer-custom[open] > summary::after { transform: rotate(-135deg); margin-top: 3px; }
+.prayer-custom-hint { margin: 0 0 6px; color: var(--muted); font-size: .72em; }
+.athan-line .minute-field { margin-inline-start: auto; flex: none; }
+.minute-field.is-disabled { opacity: .42; pointer-events: none; }
+.minute-group .minute-field.is-disabled { opacity: 1; }
 .prayer-timing-row:first-child { border-top: 0; }
-.prayer-check { display: inline-flex; align-items: center; gap: 9px; cursor: pointer; min-width: 0; }
-.prayer-check input { accent-color: var(--accent); width: 16px; height: 16px; margin: 0; }
-.prayer-check strong { color: var(--ink); font-size: .98em; }
-.prayer-timing-row.on .prayer-check strong { color: var(--accent); }
 .minute-group { display: grid; gap: 3px; transition: opacity .2s ease; }
 .minute-group > span { color: var(--muted); font-size: .7em; }
 .minute-field { display: flex; align-items: center; width: 88px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface-2); overflow: hidden; transition: opacity .2s ease, background-color .2s ease; }
 .minute-field:focus-within { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in oklab,var(--accent) 14%,transparent); }
-.minute-field input { width: 50px; padding: 8px 2px 8px 10px; border: 0; outline: 0; background: transparent; color: var(--ink); font: inherit; font-size: .95em; font-weight: 750; font-variant-numeric: tabular-nums; }
-.minute-field small { padding-right: 8px; color: var(--muted); font-size: .68em; }
+.minute-field input { width: 50px; padding: 8px 2px; padding-inline-start: 10px; border: 0; outline: 0; background: transparent; color: var(--ink); font: inherit; font-size: .95em; font-weight: 750; font-variant-numeric: tabular-nums; }
+.minute-field small { padding-inline-end: 8px; color: var(--muted); font-size: .68em; }
 .minute-field input:disabled { cursor: default; }
 .minute-group.is-disabled { opacity: .42; pointer-events: none; }
 .minute-group.is-disabled .minute-field { background: color-mix(in oklab, var(--surface) 60%, transparent); }

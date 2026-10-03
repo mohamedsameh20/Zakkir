@@ -476,7 +476,7 @@ html.zakkir-mobile .loc-adv summary { font-size: var(--t-control); }
 html.zakkir-mobile :is(.theme-intro, .palette-group-title, .theme-name, .pill span:not(.font-sample)) { font-size: var(--t-label); }
 html.zakkir-mobile .athan-copy strong,
 html.zakkir-mobile .notification-block-head strong,
-html.zakkir-mobile .prayer-check strong { font-size: var(--t-body); }
+html.zakkir-mobile .prayer-timing-row > strong { font-size: var(--t-body); }
 html.zakkir-mobile .athan-copy span,
 html.zakkir-mobile .notification-master span { font-size: var(--t-label); }
 html.zakkir-mobile .minute-group > span { font-size: var(--t-label); }
@@ -524,7 +524,7 @@ html.zakkir-mobile .sound-option:focus-within {
 }
 
 /* Touch targets: 44px minimum on everything you tap. */
-html.zakkir-mobile :is(.seg-btn, .settings-nav-btn, .sched-mode-btn, .sound-option, .loc-btn, .zoom-btn, .ts-btn, .icon-btn) { min-height: 44px; }
+html.zakkir-mobile :is(.seg-btn, .settings-nav-btn, .sched-mode-btn, .sound-option, .prayer-custom > summary, .loc-btn, .zoom-btn, .ts-btn, .icon-btn) { min-height: 44px; }
 html.zakkir-mobile :is(.zoom-btn, .icon-btn) { min-width: 44px; }
 html.zakkir-mobile .sound-option { display: inline-flex; align-items: center; padding-inline: 14px; }
 /* The switch keeps its look; its label grows to a 44px hit area. */
