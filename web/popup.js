@@ -191,7 +191,7 @@ const STRINGS = {
     "reading.both": "Buttons + swipe",
     "reading.swipe": "Swipe only",
     "reading.buttons": "Buttons only",
-    "appearance.intro": "Choose a complete visual system. Themes can change geometry, depth, texture, motion, and color. The accent palette remains customizable.",
+    "appearance.intro": "Pick a look you enjoy opening every day. The accent colour below works with any theme.",
     "appearance.accent": "Accent color",
     "neobrutal.label": "Neobrutalist contrast",
     "neobrutal.quiet": "Quiet",
@@ -325,7 +325,7 @@ const STRINGS = {
     "reading.both": "الأزرار والسحب",
     "reading.swipe": "السحب باللمس فقط",
     "reading.buttons": "الأزرار فقط",
-    "appearance.intro": "تخصيص المظهر وتجربة الاستخدام البصرية والتنقل بين السمات المختلفة.",
+    "appearance.intro": "اختر مظهرًا تحبّ أن تفتحه كل يوم. ويمكنك اختيار لون مميّز يناسب أي سمة.",
     "appearance.accent": "اللون الرئيسي للواجهة",
     "neobrutal.label": "درجة التباين",
     "neobrutal.quiet": "عادي",
@@ -398,41 +398,29 @@ const FONT_MAP = {
 
 // Minimal themes — no gradients, clean surfaces
 const THEMES = [
-  ["light",         "Minimal Light"],
-  ["dark",          "Minimal Dark"],
   ["frutiger",      "Frutiger Aero"],
   ["frutiger-dark", "Frutiger Space"],
-  ["liquidglass",   "Glassmorphic System"],
-  ["onyx",          "Onyx OLED"],
-  ["neobrutal",     "Neobrutalist & Bold"],
-  ["material",      "Soft Material & Clay"],
-  ["layl",          "Layl"],
-  ["bento",         "Bento"],
-  ["zellige",       "Zellige"],
-  ["circuit",       "Circuit"],
+  ["liquidglass",   "Liquid Glass"],
   ["sakura",        "Sakura"],
-  ["sakina",        "Sakina"],
+  ["light",         "Light"],
+  ["dark",          "Dark"],
+  ["onyx",          "Onyx"],
   ["mushaf",        "Mushaf"],
-  ["riso",          "Risograph"]
+  ["layl",          "Layl"],
+  ["zellige",       "Zellige"],
 ];
-// Arabic theme labels — transliterated brands + translated descriptors.
+// Arabic names describe each look in Arabic rather than transliterating it.
 const THEME_NAMES_AR = {
-  light: "بسيط فاتح (Minimal Light)",
-  dark: "بسيط داكن (Minimal Dark)",
-  frutiger: "فروتيجر أيرو (Frutiger Aero)",
-  "frutiger-dark": "فروتيجر الفضاء (Frutiger Space)",
-  liquidglass: "النظام الزجاجي (Glassmorphism)",
-  onyx: "أونيكس (Onyx OLED)",
-  neobrutal: "نيوبروتاليست (Neobrutalist)",
-  material: "متريال ناعم (Material)",
-  layl: "ليل هادئ (Layl)",
-  bento: "بينتو (Bento)",
-  zellige: "زليج (Zellige)",
-  circuit: "لوحة دوائر (Circuit)",
-  sakura: "ساكورا (Sakura)",
-  sakina: "سكينة (Sakina)",
-  mushaf: "مصحف (Mushaf)",
-  riso: "ريزوغراف (Risograph)",
+  frutiger: "مروج",
+  "frutiger-dark": "مجرّة",
+  liquidglass: "زجاج",
+  sakura: "أزهار",
+  light: "فاتح",
+  dark: "داكن",
+  onyx: "أسود حالك",
+  mushaf: "مصحف",
+  layl: "ليل",
+  zellige: "زليج",
 };
 
 function themeName(id) {
@@ -443,145 +431,44 @@ function themeName(id) {
 }
 
 const THEME_BASES = {
-  "metro-dark": "metro",
-  "material-dark": "material",
-  "neumorphic-dark": "neumorphic",
-  "aqua-dark": "aqua",
-  "liquidglass-dark": "liquidglass",
   "frutiger-dark": "frutiger",
-  "frutiger-sunset": "frutiger",
-  "editorial-dark": "editorial",
-  "monochrome-dark": "monochrome",
-  "nebula-dark": "nebula",
-  "aurora-dark": "aurora",
-  "sahara-glass-dark": "sahara-glass",
-  "macos-ventura-dark": "macos-ventura",
-  "macos-sequoia-dark": "macos-sequoia",
-  "macos-sonoma-dark": "macos-sonoma",
-  "crystal-dark": "crystal",
-  "mist-dark": "mist",
-  "midnight-dark": "midnight",
-  "jade-dark": "jade",
-  "slatestudio-dark": "slatestudio",
-  "swiss-dark": "swiss",
-  "scandi-dark": "scandi",
-  "porcelain-dark": "porcelain",
-  "terracotta-dark": "terracotta",
-  "dusk-dark": "dusk",
 };
 
 // Organized Palette Categories (Lightest -> Darkest)
+// Accents named for things from the culture the app serves. Any accent is
+// nudged toward the theme's ink until it reads at 4.5:1 on that theme's
+// cards (see readableAccent), so all of them work on light and dark themes.
 const PALETTES = {
-  default:   { name: "Theme default" },
-  // Neutrals (White -> Slate -> Black)
-  purewhite: { name: "Pure White",  a: "#ffffff" },
-  pearl:     { name: "Pearl",       a: "#f5f5f4" },
-  silver:    { name: "Silver",      a: "#cbd5e1" },
-  slate:     { name: "Slate",       a: "#94a3b8" },
-  charcoal:  { name: "Charcoal",    a: "#475569" },
-  pureblack: { name: "Pure Black",  a: "#0f172a" },
-  // Greens (Light Mint -> Quiet Emerald -> Deep Forest)
-  mintlight: { name: "Light Mint",  a: "#bbf7d0" },
-  quietgreen:{ name: "Quiet Green", a: "#86efac" },
-  mint:      { name: "Mint",        a: "#6ee7b7" },
-  seafoam:   { name: "Seafoam",     a: "#34d399" },
-  emerald:   { name: "Emerald",     a: "#10b981" },
-  forest:    { name: "Forest",      a: "#059669" },
-  deepgreen: { name: "Deep Pine",   a: "#047857" },
-  // Blues & Cyans (Light Sky -> Azure -> Deep Ocean)
-  iceblue:   { name: "Ice Blue",    a: "#e0f2fe" },
-  sky:       { name: "Sky Blue",    a: "#7dd3fc" },
-  cyan:      { name: "Cyan",        a: "#38bdf8" },
-  azure:     { name: "Azure Blue",  a: "#60a5fa" },
-  blue:      { name: "Royal Blue",  a: "#3b82f6" },
-  sapphire:  { name: "Sapphire",    a: "#2563eb" },
-  ocean:     { name: "Deep Ocean",  a: "#0369a1" },
-  // Orange & Peach (Soft Peach -> Coral -> Deep Ember)
-  peachlight:{ name: "Light Peach", a: "#ffedd5" },
-  peach:     { name: "Peach",       a: "#fed7aa" },
-  apricot:   { name: "Apricot",     a: "#fdba74" },
-  coral:     { name: "Coral",       a: "#fb7185" },
-  orange:    { name: "Pure Orange", a: "#f97316" },
-  tangerine: { name: "Tangerine",   a: "#ea580c" },
-  ember:     { name: "Ember",       a: "#c2410c" },
-  // Warm Gold & Amber (Butter -> Gold -> Copper)
-  butter:    { name: "Butter",      a: "#fde68a" },
-  amber:     { name: "Amber",       a: "#fbbf24" },
-  gold:      { name: "Gold",        a: "#eab308" },
-  sand:      { name: "Sand",        a: "#d4a574" },
-  copper:    { name: "Copper",      a: "#d97706" },
-  bronze:    { name: "Bronze",      a: "#b45309" },
-  // Purples & Pinks (Soft Lavender -> Orchid -> Deep Violet)
-  lavender:  { name: "Lavender",    a: "#e9d5ff" },
-  pink:      { name: "Light Pink",  a: "#f472b6" },
-  orchid:    { name: "Orchid",      a: "#c084fc" },
-  violet:    { name: "Violet",      a: "#a78bfa" },
-  rose:      { name: "Rose",        a: "#e11d48" },
-  purple:    { name: "Purple",      a: "#9333ea" },
-  plum:      { name: "Deep Plum",   a: "#6b21a8" },
+  default:     { name: "Theme color" },
+  emerald:     { name: "Emerald",     a: "#0f8a5f" },
+  turquoise:   { name: "Turquoise",   a: "#0e8a96" },
+  lapis:       { name: "Lapis",       a: "#2f5bd3" },
+  amethyst:    { name: "Amethyst",    a: "#7a3fc0" },
+  pomegranate: { name: "Pomegranate", a: "#c0263f" },
+  henna:       { name: "Henna",       a: "#b5532a" },
+  saffron:     { name: "Saffron",     a: "#e08a00" },
+  olive:       { name: "Olive",       a: "#6b7a1e" },
+  gold:        { name: "Gold",        a: "#c79a1e" },
 };
 
 const PALETTE_GROUPS = [
-  { title: "Essentials", keys: ["default", "purewhite", "pearl", "silver", "slate", "charcoal", "pureblack"] },
-  { title: "Greens", keys: ["mintlight", "quietgreen", "mint", "seafoam", "emerald", "forest", "deepgreen"] },
-  { title: "Blues", keys: ["iceblue", "sky", "cyan", "azure", "blue", "sapphire", "ocean"] },
-  { title: "Orange & Peach", keys: ["peachlight", "peach", "apricot", "coral", "orange", "tangerine", "ember"] },
-  { title: "Warm Gold", keys: ["butter", "amber", "gold", "sand", "copper", "bronze"] },
-  { title: "Purples & Pinks", keys: ["lavender", "pink", "orchid", "violet", "rose", "purple", "plum"] }
+  { title: "", keys: Object.keys(PALETTES) },
 ];
 
 const PALETTE_NAMES_AR = {
-  default: "افتراضي",
-  purewhite: "أبيض نقي",
-  pearl: "لؤلؤي",
-  silver: "فضي",
-  slate: "إردواز",
-  charcoal: "فحمي",
-  pureblack: "أسود نقي",
-  mintlight: "نعناع فاتح",
-  quietgreen: "أخضر هادئ",
-  mint: "نعناعي",
-  seafoam: "رغوة البحر",
-  emerald: "زمردي",
-  forest: "غابي",
-  deepgreen: "صنوبري داكن",
-  iceblue: "أزرق ثلجي",
-  sky: "أزرق سماوي",
-  cyan: "سماوي",
-  azure: "لازوردي",
-  blue: "أزرق ملكي",
-  sapphire: "ياقوتي أزرق",
-  ocean: "محيطي داكن",
-  peachlight: "خوخي فاتح",
-  peach: "خوخي",
-  apricot: "مشمشي",
-  coral: "مرجاني",
-  orange: "برتقالي",
-  tangerine: "يوسفي",
-  ember: "جمرة داكنة",
-  butter: "زبدة",
-  amber: "كهرماني",
+  default: "لون السمة",
+  emerald: "زمرّدي",
+  turquoise: "فيروزي",
+  lapis: "لازوردي",
+  amethyst: "بنفسجي",
+  pomegranate: "رمّاني",
+  henna: "حنّائي",
+  saffron: "زعفراني",
+  olive: "زيتوني",
   gold: "ذهبي",
-  sand: "رملي",
-  copper: "نحاسي",
-  bronze: "برونزي",
-  lavender: "لافندر",
-  pink: "وردي فاتح",
-  orchid: "سحلبي",
-  violet: "بنفسجي",
-  rose: "وردي أحمر",
-  purple: "أرجواني",
-  plum: "برقوقي داكن",
 };
 
-const PALETTE_GROUP_TITLES_AR = {
-  Essentials: "أساسيات",
-  "Orange & Peach": "برتقالي وخوخي",
-  "Warm Gold": "ذهبي دافئ",
-  Greens: "خضر",
-  Blues: "أزرق",
-  "Purples & Pinks": "بنفسجي ووردي",
-};
+const PALETTE_GROUP_TITLES_AR = {};
 
 function paletteName(id) {
   if (!isArabic()) return PALETTES[id]?.name || id;
@@ -1318,7 +1205,7 @@ function prayerCardHTML() {
         <button type="button" class="prayer-collapse" aria-label="${toggleLabel}" aria-expanded="${!collapsed}" title="${toggleLabel}">${icon.chevronDown}</button>
       </div>
       <div class="next-prayer">
-        <div class="next-name">${nextName}</div>
+        <div class="next-name">${nextName}${np && !isArabic() ? `<span class="next-name-ar" lang="ar" aria-hidden="true">${PRAYER_NAMES[np.name] || ""}</span>` : ""}</div>
         ${np ? `<div class="next-countdown">${countdownHTML(np)}</div>` : ""}
       </div>
     </div>
@@ -2121,7 +2008,6 @@ function settingsBodyHTML(id) {
   if (id === "reading") return `<div class="settings-card"><div class="font-grid">${Object.keys(FONT_MAP).map((f) => `<button class="pill ${state.font === f ? "active" : ""}" data-font="${f}" aria-label="${f}"><span class="font-sample">أبجد</span><span>${f}</span></button>`).join("")}</div><div class="row"><label for="arSize">${t("reading.arSize")}</label><input type="range" min="0.7" max="2" step="0.05" value="${state.arSize}" id="arSize"/><span>${state.arSize.toFixed(2)}×</span></div><div class="row"><label>${t("reading.appScale")}</label><div class="zoom-row"><button class="zoom-btn" data-zoom="-0.1">−</button><span class="zoom-val">${Math.round(state.zoom * 100)}%</span><button class="zoom-btn" data-zoom="0.1">+</button></div></div><div class="row azkar-navigation-setting"><label>${t("reading.navMode")}</label><div class="seg" role="group" aria-label="${t("reading.navMode.aria")}"><button class="seg-btn ${azkarNavigationMode() === "buttons-and-swipe" ? "active" : ""}" data-azkar-navigation="buttons-and-swipe">${t("reading.both")}</button><button class="seg-btn ${azkarNavigationMode() === "swipe-only" ? "active" : ""}" data-azkar-navigation="swipe-only">${t("reading.swipe")}</button><button class="seg-btn ${azkarNavigationMode() === "buttons-only" ? "active" : ""}" data-azkar-navigation="buttons-only">${t("reading.buttons")}</button></div></div><div class="preview">بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</div></div>`;
   if (id === "appearance") {
     return `<div class="settings-card">
-      <div class="theme-intro">${t("appearance.intro")}</div>
       <div class="theme-grid theme-grid-featured">${themeCardsHTML(THEMES, true)}</div>
       ${state.theme === "neobrutal" ? `<div class="neobrutal-tone">${neobrutalToneHTML()}</div>` : ""}
     </div>
@@ -2129,7 +2015,7 @@ function settingsBodyHTML(id) {
       <div class="settings-card-title">${t("appearance.accent")}</div>
       ${PALETTE_GROUPS.map(g => `
         <div class="palette-group">
-          <div class="palette-group-title">${paletteGroupTitle(g.title)}</div>
+          ${g.title ? `<div class="palette-group-title">${paletteGroupTitle(g.title)}</div>` : ""}
           <div class="palette-grid">
             ${g.keys.map(k => {
               const p = PALETTES[k];
@@ -2185,6 +2071,50 @@ function playEnter(el, name = "contentEnter") {
 }
 
 // ---------- render & wire ----------
+/** [r, g, b] for any CSS colour, alpha-blended over `under` when translucent. */
+function cssRGB(value, under = [255, 255, 255]) {
+  const probe = document.createElement("span");
+  probe.style.color = value;
+  document.body.appendChild(probe);
+  const parts = getComputedStyle(probe).color.match(/[\d.]+/g)?.map(Number) || [0, 0, 0];
+  probe.remove();
+  const [r, g, b, alpha = 1] = parts;
+  return [r, g, b].map((c, i) => c * alpha + under[i] * (1 - alpha));
+}
+function contrastRatio(a, b) {
+  const lum = (c) => {
+    const [r, g, bl] = c.map((v) => v / 255).map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
+    return 0.2126 * r + 0.7152 * g + 0.0722 * bl;
+  };
+  const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p);
+  return (x + 0.05) / (y + 0.05);
+}
+const toHex = (c) => "#" + c.map((v) => Math.round(v).toString(16).padStart(2, "0")).join("");
+
+/**
+ * The accent as it should render on the current theme: unchanged if it already
+ * reads at 4.5:1 as text on the theme's cards, otherwise moved toward the
+ * theme's ink just far enough. Used for picked accents, never for theme defaults.
+ */
+function readableAccent(hex) {
+  const cs = getComputedStyle(document.documentElement);
+  const bg = cssRGB(cs.getPropertyValue("--bg").trim() || "#ffffff");
+  const surface = cssRGB(cs.getPropertyValue("--surface").trim() || "#ffffff", bg);
+  const ink = cssRGB(cs.getPropertyValue("--ink").trim() || "#000000");
+  const base = cssRGB(hex);
+  for (let t = 0; t <= 1; t += 0.04) {
+    const mixed = base.map((c, i) => c + (ink[i] - c) * t);
+    if (contrastRatio(mixed, surface) >= 4.5) return toHex(mixed);
+  }
+  return toHex(ink);
+}
+
+/** White or near-black text, whichever reads better on `hex`. */
+function inkOn(hex) {
+  const c = cssRGB(hex);
+  return contrastRatio(c, [255, 255, 255]) >= contrastRatio(c, [11, 15, 26]) ? "#ffffff" : "#0b0f1a";
+}
+
 function contrastInk(hex) {
   const h = hex.replace("#", "");
   const r = parseInt(h.substr(0, 2), 16);
@@ -2230,18 +2160,18 @@ function applyVars() {
   // extension's pinned window); the app always uses that layout.
   document.body.classList.add("pinned");
 
-  if (state.customAccent) {
-    document.body.style.setProperty("--accent", state.customAccent);
-    document.body.style.setProperty("--accent-ink", contrastInk(state.customAccent));
-  } else if (_appliedStateCache.palette !== palette) {
+  // Picked accents depend on the theme's surfaces, so recompute on theme change.
+  const accentKey = `${state.customAccent || palette}|${theme}`;
+  if (_appliedStateCache.accentKey !== accentKey) {
     document.body.style.removeProperty("--accent");
     document.body.style.removeProperty("--accent-ink");
-    const p = PALETTES[palette];
-    if (p && p.a) {
-      document.body.style.setProperty("--accent", p.a);
-      document.body.style.setProperty("--accent-ink", contrastInk(p.a));
+    const picked = state.customAccent || PALETTES[palette]?.a;
+    if (picked) {
+      const accent = readableAccent(picked);
+      document.body.style.setProperty("--accent", accent);
+      document.body.style.setProperty("--accent-ink", inkOn(accent));
     }
-    _appliedStateCache.palette = palette;
+    _appliedStateCache.accentKey = accentKey;
   }
   if (state.customBg) {
     document.body.style.setProperty("--bg", state.customBg);
@@ -2546,7 +2476,7 @@ function wireAzkarSwipe(tap) {
         navigateAzkar(direction, true);
       }, 90);
     } else {
-      inner.style.transition = "transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.2), opacity 0.2s ease";
+      inner.style.transition = "transform 0.2s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s ease";
       inner.style.transform = "translateX(0)";
       inner.style.opacity = "1";
     }
@@ -2835,119 +2765,16 @@ function wireSettings() {
   });
   // paint theme swatches with each theme's accent/bg preview
   const THEME_SW = {
-    metro:       { bg: "#f1f1f1", a: "#e11d48", style: "metro" },
-    material:    { bg: "#eef2f6", a: "#6750a4", style: "material" },
-    neumorphic:  { bg: "#dce3e8", a: "#315f75", style: "neumorphic" },
-    aqua:        { bg: "linear-gradient(180deg,#edf3ed,#a9c4bd)", a: "#5c827a", style: "aqua" },
-    liquidglass: { bg: "linear-gradient(135deg,#e7ebe6,#cbd2ce 48%,#dfdfd7)", a: "#657d77", style: "liquidglass" },
-    frutiger:    { bg: "linear-gradient(180deg,#d3e1dc 0 48%,#aabd9b 49%)", a: "#5d8778", style: "frutiger" },
-    neobrutal:   { bg: "#d8d0bd", a: "#657d70", style: "neobrutal" },
+    light:      { bg: "#fafafa", a: "#1d4ed8", style: "plain" },
+    dark:       { bg: "#0b0d12", a: "#4b8df8", style: "plain" },
+    liquidglass: { bg: "linear-gradient(135deg,#e7ebe6,#cbd2ce 48%,#dfdfd7)", a: "#4f625d", style: "liquidglass" },
+    frutiger:    { bg: "linear-gradient(180deg,#d3e1dc 0 48%,#aabd9b 49%)", a: "#4b6d61", style: "frutiger" },
     layl:        { bg: "linear-gradient(180deg,#0d1326,#101a36)", a: "#b9c7e9", style: "layl" },
-    bento:       { bg: "#f5f4ef", a: "#14695a", style: "bento" },
     zellige:     { bg: "linear-gradient(170deg,#103138,#0c2229)", a: "#d08a52", style: "zellige" },
-    circuit:     { bg: "#0c1f14", a: "#e0954f", style: "circuit" },
-    sakura:      { bg: "linear-gradient(180deg,#fbf5f5,#f4e4e8)", a: "#b8476b", style: "sakura" },
-    sakina:      { bg: "linear-gradient(175deg,#f6f8f1,#e9efe0)", a: "#3e7d5a", style: "sakina" },
+    sakura:      { bg: "linear-gradient(180deg,#fbf5f5,#f4e4e8)", a: "#a43d5d", style: "sakura" },
     mushaf:      { bg: "linear-gradient(170deg,#122a25,#0d1f1c)", a: "#d8b46a", style: "mushaf" },
-    riso:        { bg: "#f5f0e6", a: "#f0427c", style: "riso" },
-    monochrome:          { bg: "linear-gradient(180deg,#f8fafc,#edf2f7)", a: "#0f172a", style: "monochrome" },
-    "monochrome-dark":   { bg: "linear-gradient(180deg,#090a0d,#050507)", a: "#ffffff", style: "monochrome" },
-    nebula:              { bg: "linear-gradient(135deg,#fff1f2,#e0e7ff)", a: "#6366f1", style: "nebula" },
-    aurora:              { bg: "linear-gradient(180deg,#ebfbf5,#d1fae5)", a: "#0d9488", style: "aurora" },
-    "sahara-glass":      { bg: "linear-gradient(180deg,#fef7e0,#e0f2fe)", a: "#0ea5e9", style: "sahara-glass" },
-    "nebula-dark":       { bg: "linear-gradient(180deg,#0c0814,#040306)", a: "#db2777", style: "nebula" },
-    "aurora-dark":       { bg: "linear-gradient(180deg,#090e0c,#040605)", a: "#10b981", style: "aurora" },
-    "sahara-glass-dark": { bg: "linear-gradient(180deg,#100b08,#060403)", a: "#f97316", style: "sahara-glass" },
-    "macos-ventura":     { bg: "linear-gradient(180deg,#e8ecf2,#d8e0ec)", a: "#0066cc", style: "macos-ventura" },
-    "macos-sequoia":     { bg: "linear-gradient(180deg,#e5ece9,#d5e2dc)", a: "#059669", style: "macos-sequoia" },
-    "macos-sonoma":      { bg: "linear-gradient(180deg,#efe8f0,#dfd4e4)", a: "#7c3aed", style: "macos-sonoma" },
-    crystal:             { bg: "linear-gradient(135deg,#eef2f7,#e2e8f0)", a: "#2563eb", style: "crystal" },
-    mist:                { bg: "linear-gradient(180deg,#eceef1,#dedfe4)", a: "#4b5563", style: "mist" },
-    midnight:            { bg: "linear-gradient(180deg,#e2e6f0,#d4daf0)", a: "#1d4ed8", style: "midnight" },
-    jade:                { bg: "linear-gradient(180deg,#e8f0ec,#d6e6dc)", a: "#15803d", style: "jade" },
-    slatestudio:         { bg: "linear-gradient(180deg,#e5e7eb,#d8dce4)", a: "#0284c7", style: "slatestudio" },
-    "macos-ventura-dark": { bg: "linear-gradient(180deg,#181a20,#101216)", a: "#3388ff", style: "macos-ventura" },
-    "macos-sequoia-dark": { bg: "linear-gradient(180deg,#141c19,#0d1210)", a: "#10b981", style: "macos-sequoia" },
-    "macos-sonoma-dark":  { bg: "linear-gradient(180deg,#1a141c,#100b12)", a: "#a78bfa", style: "macos-sonoma" },
-    "crystal-dark":       { bg: "linear-gradient(135deg,#0f1523,#070912)", a: "#6366f1", style: "crystal" },
-    "mist-dark":          { bg: "linear-gradient(180deg,#16181c,#0f1013)", a: "#9ca3af", style: "mist" },
-    "midnight-dark":      { bg: "linear-gradient(180deg,#0d0f17,#05060b)", a: "#3b82f6", style: "midnight" },
-    "jade-dark":          { bg: "linear-gradient(180deg,#0e1a13,#060e09)", a: "#22c55e", style: "jade" },
-    "slatestudio-dark":   { bg: "linear-gradient(180deg,#131b2c,#0b0f19)", a: "#38bdf8", style: "slatestudio" },
-    "metro-dark":       { bg: "#151719", a: "#69aa98", style: "metro" },
-    "material-dark":    { bg: "#17181d", a: "#b5a3d4", style: "material" },
-    "neumorphic-dark":  { bg: "#222a2e", a: "#78ad9e", style: "neumorphic" },
-    "aqua-dark":        { bg: "linear-gradient(180deg,#183139,#0c1c22)", a: "#79b7a9", style: "aqua" },
-    "liquidglass-dark": { bg: "linear-gradient(135deg,#18211f,#29322f 48%,#111817)", a: "#8bb6a8", style: "liquidglass" },
     "frutiger-dark":    { bg: "linear-gradient(180deg,#243b42 0 48%,#1d3028 49%)", a: "#91b69b", style: "frutiger" },
-    "editorial-dark":   { bg: "#1d1b19", a: "#c9826c", style: "editorial" },
     onyx:       { bg: "#0b0b0d", a: "#e8e2d4", style: "onyx" },
-    "frutiger-sunset": { bg: "linear-gradient(180deg,#ffd9c4 0 46%,#8fc4b6 47% 58%,#5fa392 59%)", a: "#d9776f", style: "sunset" },
-    prism:      { bg: "linear-gradient(145deg,#eef2f6,#e7eaf1 55%,#ece9f2)", a: "#7f8fd0", style: "prism" },
-    opal:       { bg: "linear-gradient(135deg,#f2f5f8,#dfe5ec 55%,#e8e6ee)", a: "#6f7f92", style: "opal" },
-    fajr:       { bg: "linear-gradient(180deg,#ffe8dc 0%,#f9dbe0 46%,#e6dcf0 78%,#dcd4ea)", a: "#c97f8f", style: "fajr" },
-    editorial:  { bg: "#f3efe6", a: "#b53824", style: "editorial" },
-    control:    { bg: "#15191c", a: "#d8f34a", style: "control" },
-    swiss:      { bg: "#f8f8f8", a: "#d92b2b", style: "swiss" },
-    scandi:     { bg: "#f5f1ec", a: "#5a7a62", style: "scandi" },
-    porcelain:  { bg: "#f7f9fc", a: "#2855a0", style: "porcelain" },
-    terracotta: { bg: "#ece4d9", a: "#b35c2a", style: "terracotta" },
-    dusk:       { bg: "linear-gradient(165deg,#f5ece2,#efe4dd 45%,#e8dde6)", a: "#b8862a", style: "dusk" },
-    "swiss-dark":      { bg: "#111113", a: "#e85454", style: "swiss" },
-    "scandi-dark":     { bg: "#1a1816", a: "#7da67f", style: "scandi" },
-    "porcelain-dark":  { bg: "#0e1117", a: "#5b8fd4", style: "porcelain" },
-    "terracotta-dark": { bg: "#1c1614", a: "#d4845a", style: "terracotta" },
-    "dusk-dark":       { bg: "linear-gradient(165deg,#181420,#1a1525 45%,#18121e)", a: "#e8b84d", style: "dusk" },
-    glass:      { bg: "linear-gradient(135deg,#102c38,#38555d)", a: "#8be0c7", style: "glass" },
-    noor:       { bg: "linear-gradient(145deg,#fffaf0,#ead7a8)", a: "#b88632", style: "light" },
-    celestial:  { bg: "linear-gradient(145deg,#080d2a,#263169)", a: "#b6c8ff", style: "stars" },
-    sahara:     { bg: "linear-gradient(145deg,#f8e4c3,#d99361)", a: "#a94f2a", style: "dune" },
-    andalus:    { bg: "linear-gradient(145deg,#092d2a,#286a5d)", a: "#d9bd76", style: "tile" },
-    motherpearl:{ bg: "linear-gradient(135deg,#f8f5f1,#d9eced 48%,#eadde6)", a: "#397f80", style: "pearl" },
-    minaret:    { bg: "linear-gradient(145deg,#eaf5f3,#a9d1cc)", a: "#126c6f", style: "arch" },
-    olive:      { bg: "linear-gradient(145deg,#f0edda,#9eaa72)", a: "#576737", style: "leaf" },
-    ramadan:    { bg: "linear-gradient(145deg,#21103b,#623970)", a: "#ffc96b", style: "lantern" },
-    zen:        { bg: "linear-gradient(145deg,#eeece6,#aaa9a3)", a: "#52575a", style: "stone" },
-    nightdune:  { bg: "linear-gradient(145deg,#101328,#3d3153)", a: "#e0b873", style: "nightdune" },
-    wadi:       { bg: "linear-gradient(145deg,#092d3b,#54a8a3)", a: "#baf1d7", style: "wadi" },
-    patina:     { bg: "linear-gradient(145deg,#123d3c,#987453)", a: "#e5b96c", style: "patina" },
-    calligraphy:{ bg: "linear-gradient(145deg,#f5f2e9,#292827)", a: "#ba8d32", style: "calligraphy" },
-    light:      { bg: "#ffffff", a: "#2563eb" },
-    paper:      { bg: "#f7f5ef", a: "#374151" },
-    sepia:      { bg: "#fbf5e3", a: "#6b4f2a" },
-    "solar-l":  { bg: "#fdf6e3", a: "#268bd2" },
-    "gruv-l":   { bg: "#fbf1c7", a: "#af3a03" },
-    "rosepine-d": { bg: "#faf4ed", a: "#b4637a" },
-    "mint-l":   { bg: "#f1faf5", a: "#0f766e" },
-    latte:      { bg: "#eff1f5", a: "#8839ef" },
-    dark:       { bg: "#161922", a: "#60a5fa" },
-    midnight:   { bg: "#11162a", a: "#7dd3fc" },
-    slate:      { bg: "#1a2029", a: "#94a3b8" },
-    coffee:     { bg: "#221a14", a: "#d4a574" },
-    nord:       { bg: "#2e3440", a: "#88c0d0" },
-    dracula:    { bg: "#282a36", a: "#bd93f9" },
-    "gruv-d":   { bg: "#282828", a: "#fabd2f" },
-    "solar-d":  { bg: "#002b36", a: "#268bd2" },
-    rosepine:   { bg: "#191724", a: "#ebbcba" },
-    mocha:      { bg: "#1e1e2e", a: "#cba6f7" },
-    tokyo:      { bg: "#1a1b26", a: "#7aa2f7" },
-    forest:     { bg: "#0f1a14", a: "#7cb992" },
-    ocean:      { bg: "#0a1929", a: "#5eead4" },
-    mono:       { bg: "#f5f5f5", a: "#111111" },
-    terminal:   { bg: "#0a0e0a", a: "#22c55e" },
-    linen:      { bg: "#fbfaf6", a: "#475569" },
-    fog:        { bg: "#f8fafc", a: "#475569" },
-    "sky-l":    { bg: "#f0f9ff", a: "#0ea5e9" },
-    "sage-l":   { bg: "#f1f7f2", a: "#15803d" },
-    "rose-l":   { bg: "#fff1f2", a: "#e11d48" },
-    "lavender-l":{ bg: "#f5f3ff", a: "#7c3aed" },
-    "peach-l":  { bg: "#fff7ed", a: "#ea580c" },
-    "lemon-l":  { bg: "#fefce8", a: "#ca8a04" },
-    obsidian:   { bg: "#050507", a: "#f59e0b" },
-    carbon:     { bg: "#1a1a1a", a: "#ef4444" },
-    cyberpunk:  { bg: "#0a0014", a: "#ec4899" },
-    matrix:     { bg: "#000a00", a: "#22ff66" },
-    wine:       { bg: "#1a0e14", a: "#f9a8d4" },
   };
   document.querySelectorAll("[data-theme-sw]").forEach((el) => {
     const t = THEME_SW[el.dataset.themeSw];
@@ -3174,6 +3001,10 @@ function playSound(soundId, onEndCb) {
   state.autoTime = true;
   storage.set({ autoTime: true });
 
+  if (!PALETTES[state.palette]) {
+    state.palette = DEFAULTS.palette;
+    storage.set({ palette: state.palette });
+  }
   // Removed themes fall back cleanly instead of leaving stale stored classes.
   if (!THEMES.some(([id]) => id === state.theme)) {
     state.theme = DEFAULTS.theme;
