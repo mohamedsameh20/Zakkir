@@ -7,17 +7,14 @@ const css = fs.readFileSync(path.join(web, "popup.css"), "utf8");
 const js = fs.readFileSync(path.join(web, "popup.js"), "utf8");
 const scheduler = fs.readFileSync(path.join(web, "notification-scheduler.js"), "utf8");
 const azkar = fs.readFileSync(path.join(web, "azkar.json"), "utf8");
+// Four reading faces: three classical naskh styles for Quran and azkar text and
+// one clean sans. Each is inlined (~1.3x its size), so every extra face costs
+// startup time on a low-end phone.
 const fontNames = [
-  ["noto-naskh-arabic", "Noto Naskh Arabic"],
-  ["amiri", "Amiri"],
   ["scheherazade-new", "Scheherazade New"],
-  ["lateef", "Lateef"],
-  ["mada", "Mada"],
-  ["reem-kufi", "Reem Kufi"],
-  ["aref-ruqaa", "Aref Ruqaa"],
+  ["amiri", "Amiri"],
+  ["noto-naskh-arabic", "Noto Naskh Arabic"],
   ["cairo", "Cairo"],
-  ["tajawal", "Tajawal"],
-  ["el-messiri", "El Messiri"],
 ];
 
 const fonts = fontNames.map(([fileName, familyName]) => {

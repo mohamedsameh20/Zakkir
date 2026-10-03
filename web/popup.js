@@ -394,16 +394,10 @@ function cancelPendingAzkarCount() {
 }
 
 const FONT_MAP = {
-  "Noto Naskh Arabic": '"Noto Naskh Arabic", serif',
-  Amiri: '"Amiri", serif',
   Scheherazade: '"Scheherazade New", serif',
-  Lateef: '"Lateef", serif',
-  Mada: '"Mada", sans-serif',
-  "Reem Kufi": '"Reem Kufi", sans-serif',
-  "Aref Ruqaa": '"Aref Ruqaa", serif',
+  Amiri: '"Amiri", serif',
+  "Noto Naskh Arabic": '"Noto Naskh Arabic", serif',
   Cairo: '"Cairo", sans-serif',
-  Tajawal: '"Tajawal", sans-serif',
-  "El Messiri": '"El Messiri", sans-serif',
 };
 
 // Minimal themes — no gradients, clean surfaces

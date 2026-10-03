@@ -1,0 +1,980 @@
+{
+  "version": "1.0.0",
+  "schema_version": 1,
+  "project": {
+    "name": "zakkir_desktop",
+    "is_monorepo": false,
+    "total_files": 27,
+    "entry_points": [
+      "main.js",
+      "mobile/App.tsx"
+    ],
+    "tech_stack": [
+      {
+        "name": "Node.js",
+        "version": null,
+        "category": "language"
+      },
+      {
+        "name": "TypeScript",
+        "version": null,
+        "category": "language"
+      }
+    ],
+    "entry_candidates": [
+      "main.js",
+      "mobile/App.tsx"
+    ],
+    "graph_mode": "flow"
+  },
+  "nodes": [
+    {
+      "id": "file:.github/workflows/build.yml",
+      "type": "pipeline",
+      "filePath": ".github/workflows/build.yml",
+      "language": "yaml",
+      "symbolCount": 0,
+      "lineCount": 34,
+      "complexity": "simple",
+      "pagerank": 0.019743,
+      "communityId": 4,
+      "tags": [
+        "config",
+        "ci"
+      ],
+      "summary": "GitHub Actions CI/CD workflow definition."
+    },
+    {
+      "id": "file:.repro-nav.cjs",
+      "type": "file",
+      "filePath": ".repro-nav.cjs",
+      "language": "javascript",
+      "symbolCount": 1,
+      "lineCount": 66,
+      "complexity": "simple",
+      "pagerank": 0.019743,
+      "communityId": 1,
+      "tags": [],
+      "summary": "Application module .repro-nav defining run."
+    },
+    {
+      "id": "file:README.md",
+      "type": "document",
+      "filePath": "README.md",
+      "language": "markdown",
+      "symbolCount": 0,
+      "lineCount": 112,
+      "complexity": "moderate",
+      "pagerank": 0.019743,
+      "communityId": 5,
+      "tags": [],
+      "summary": "Project overview and entry point for new readers."
+    },
+    {
+      "id": "file:app.json",
+      "type": "config",
+      "filePath": "app.json",
+      "language": "json",
+      "symbolCount": 0,
+      "lineCount": 4,
+      "complexity": "simple",
+      "pagerank": 0.019743,
+      "communityId": 6,
+      "tags": [
+        "entry_point",
+        "config"
+      ],
+      "summary": "Configuration file: app.json."
+    },
+    {
+      "id": "file:azkar.json",
+      "type": "config",
+      "filePath": "azkar.json",
+      "language": "json",
+      "symbolCount": 0,
+      "lineCount": 1673,
+      "complexity": "complex",
+      "pagerank": 0.019743,
+      "communityId": 7,
+      "tags": [
+        "config"
+      ],
+      "summary": "Configuration file: azkar.json."
+    },
+    {
+      "id": "file:eas.json",
+      "type": "config",
+      "filePath": "eas.json",
+      "language": "json",
+      "symbolCount": 0,
+      "lineCount": 8,
+      "complexity": "simple",
+      "pagerank": 0.019743,
+      "communityId": 8,
+      "tags": [
+        "config"
+      ],
+      "summary": "Configuration file: eas.json."
+    },
+    {
+      "id": "file:leaflet/leaflet.js",
+      "type": "file",
+      "filePath": "leaflet/leaflet.js",
+      "language": "javascript",
+      "symbolCount": 106,
+      "lineCount": 3688,
+      "complexity": "complex",
+      "pagerank": 0.019743,
+      "communityId": 11,
+      "tags": [],
+      "summary": "Application module leaflet defining l, N, a.",
+      "primaryOwner": "Mohamed Sameh"
+    },
+    {
+      "id": "file:main.js",
+      "type": "file",
+      "filePath": "main.js",
+      "language": "javascript",
+      "symbolCount": 10,
+      "lineCount": 421,
+      "complexity": "moderate",
+      "pagerank": 0.019743,
+      "communityId": 2,
+      "tags": [
+        "entry_point"
+      ],
+      "summary": "Application module main defining persistNotificationKeys, createTray, createWindow.",
+      "primaryOwner": "Mohamed Sameh"
+    },
+    {
+      "id": "file:manifest.json",
+      "type": "config",
+      "filePath": "manifest.json",
+      "language": "json",
+      "symbolCount": 0,
+      "lineCount": 18,
+      "complexity": "simple",
+      "pagerank": 0.019743,
+      "communityId": 12,
+      "tags": [
+        "config"
+      ],
+      "summary": "Configuration file: manifest.json."
+    },
+    {
+      "id": "file:mobile/.export-test/metadata.json",
+      "type": "config",
+      "filePath": "mobile/.export-test/metadata.json",
+      "language": "json",
+      "symbolCount": 0,
+      "lineCount": 3,
+      "complexity": "simple",
+      "pagerank": 0.019743,
+      "communityId": 13,
+      "tags": [
+        "config"
+      ],
+      "summary": "Configuration file: metadata.json."
+    },
+    {
+      "id": "file:mobile/App.tsx",
+      "type": "file",
+      "filePath": "mobile/App.tsx",
+      "language": "typescript",
+      "symbolCount": 14,
+      "lineCount": 580,
+      "complexity": "complex",
+      "pagerank": 0.019743,
+      "communityId": 0,
+      "tags": [
+        "entry_point"
+      ],
+      "summary": "Application module App defining arabicPlural, getDeviceLanguage, clampMinutes.",
+      "primaryOwner": "Mohamed Sameh"
+    },
+    {
+      "id": "file:mobile/README.md",
+      "type": "document",
+      "filePath": "mobile/README.md",
+      "language": "markdown",
+      "symbolCount": 0,
+      "lineCount": 19,
+      "complexity": "simple",
+      "pagerank": 0.019743,
+      "communityId": 14,
+      "tags": [],
+      "summary": "Project overview and entry point for new readers."
+    },
+    {
+      "id": "file:mobile/_rtest.ts",
+      "type": "file",
+      "filePath": "mobile/_rtest.ts",
+      "language": "typescript",
+      "symbolCount": 0,
+      "lineCount": 2,
+      "complexity": "simple",
+      "pagerank": 0.019743,
+      "communityId": 15,
+      "tags": [],
+      "summary": "Application module _rtest.",
+      "primaryOwner": "Mohamed Sameh"
+    },
+    {
+      "id": "file:mobile/app.json",
+      "type": "config",
+      "filePath": "mobile/app.json",
+      "language": "json",
+      "symbolCount": 0,
+      "lineCount": 17,
+      "complexity": "simple",
+      "pagerank": 0.019743,
+      "communityId": 16,
+      "tags": [
+        "entry_point",
+        "config"
+      ],
+      "summary": "Configuration file: app.json."
+    },
+    {
+      "id": "file:mobile/eas.json",
+      "type": "config",
+      "filePath": "mobile/eas.json",
+      "language": "json",
+      "symbolCount": 0,
+      "lineCount": 6,
+      "complexity": "simple",
+      "pagerank": 0.019743,
+      "communityId": 17,
+      "tags": [
+        "config"
+      ],
+      "summary": "Configuration file: eas.json."
+    },
+    {
+      "id": "file:mobile/metro.config.js",
+      "type": "file",
+      "filePath": "mobile/metro.config.js",
+      "language": "javascript",
+      "symbolCount": 0,
+      "lineCount": 5,
+      "complexity": "simple",
+      "pagerank": 0.019743,
+      "communityId": 3,
+      "tags": [],
+      "summary": "Application module metro.config.",
+      "primaryOwner": "Mohamed Sameh"
+    },
+    {
+      "id": "file:mobile/package.json",
+      "type": "config",
+      "filePath": "mobile/package.json",
+      "language": "json",
+      "symbolCount": 0,
+      "lineCount": 19,
+      "complexity": "simple",
+      "pagerank": 0.019743,
+      "communityId": 18,
+      "tags": [
+        "config"
+      ],
+      "summary": "Node package manifest: dependencies, scripts, and metadata."
+    },
+    {
+      "id": "file:mobile/scripts/generate-renderer.cjs",
+      "type": "file",
+      "filePath": "mobile/scripts/generate-renderer.cjs",
+      "language": "javascript",
+      "symbolCount": 6,
+      "lineCount": 363,
+      "complexity": "moderate",
+      "pagerank": 0.019743,
+      "communityId": 1,
+      "tags": [],
+      "summary": "Docs & Tooling module generate-renderer (6 symbols).",
+      "primaryOwner": "Mohamed Sameh"
+    },
+    {
+      "id": "file:mobile/src/core/prayerTimes.ts",
+      "type": "file",
+      "filePath": "mobile/src/core/prayerTimes.ts",
+      "language": "typescript",
+      "symbolCount": 5,
+      "lineCount": 34,
+      "complexity": "moderate",
+      "pagerank": 0.019743,
+      "communityId": 19,
+      "tags": [],
+      "summary": "Service module prayerTimes defining fetchPrayerTimes, toMinutes.",
+      "primaryOwner": "Mohamed Sameh"
+    },
+    {
+      "id": "file:mobile/tsconfig.json",
+      "type": "config",
+      "filePath": "mobile/tsconfig.json",
+      "language": "json",
+      "symbolCount": 0,
+      "lineCount": 3,
+      "complexity": "simple",
+      "pagerank": 0.019743,
+      "communityId": 20,
+      "tags": [
+        "config"
+      ],
+      "summary": "TypeScript compiler configuration."
+    },
+    {
+      "id": "file:notification-scheduler.js",
+      "type": "file",
+      "filePath": "notification-scheduler.js",
+      "language": "javascript",
+      "symbolCount": 9,
+      "lineCount": 120,
+      "complexity": "moderate",
+      "pagerank": 0.029533,
+      "communityId": 2,
+      "tags": [],
+      "summary": "Application module notification-scheduler defining clampMinutes, normalizePrayers, normalizeSettings.",
+      "primaryOwner": "Mohamed Sameh"
+    },
+    {
+      "id": "file:package.json",
+      "type": "config",
+      "filePath": "package.json",
+      "language": "json",
+      "symbolCount": 0,
+      "lineCount": 29,
+      "complexity": "simple",
+      "pagerank": 0.019743,
+      "communityId": 21,
+      "tags": [
+        "config"
+      ],
+      "summary": "Node package manifest: dependencies, scripts, and metadata."
+    },
+    {
+      "id": "file:playwright.config.js",
+      "type": "file",
+      "filePath": "playwright.config.js",
+      "language": "javascript",
+      "symbolCount": 0,
+      "lineCount": 4,
+      "complexity": "simple",
+      "pagerank": 0.019743,
+      "communityId": 22,
+      "tags": [],
+      "summary": "Application module playwright.config.",
+      "primaryOwner": "Mohamed Sameh"
+    },
+    {
+      "id": "file:popup.js",
+      "type": "file",
+      "filePath": "popup.js",
+      "language": "javascript",
+      "symbolCount": 156,
+      "lineCount": 3650,
+      "complexity": "complex",
+      "pagerank": 0.019743,
+      "communityId": 23,
+      "tags": [],
+      "summary": "Application module popup defining migrateNotificationSettings, t, isArabic.",
+      "primaryOwner": "Mohamed Sameh"
+    },
+    {
+      "id": "file:preload.js",
+      "type": "file",
+      "filePath": "preload.js",
+      "language": "javascript",
+      "symbolCount": 0,
+      "lineCount": 22,
+      "complexity": "simple",
+      "pagerank": 0.019743,
+      "communityId": 2,
+      "tags": [],
+      "summary": "Application module preload.",
+      "primaryOwner": "Mohamed Sameh"
+    },
+    {
+      "id": "file:tests/app.spec.js",
+      "type": "file",
+      "filePath": "tests/app.spec.js",
+      "language": "javascript",
+      "symbolCount": 3,
+      "lineCount": 347,
+      "complexity": "moderate",
+      "pagerank": 0.019743,
+      "communityId": 3,
+      "tags": [
+        "test"
+      ],
+      "summary": "Tests for app.",
+      "primaryOwner": "Mohamed Sameh"
+    },
+    {
+      "id": "file:tests/notification-scheduler.node.cjs",
+      "type": "file",
+      "filePath": "tests/notification-scheduler.node.cjs",
+      "language": "javascript",
+      "symbolCount": 1,
+      "lineCount": 59,
+      "complexity": "simple",
+      "pagerank": 0.019743,
+      "communityId": 9,
+      "tags": [
+        "test"
+      ],
+      "summary": "Tests for notification-scheduler.node.",
+      "primaryOwner": "Mohamed Sameh"
+    },
+    {
+      "id": "function:notification-scheduler.js:buildEvents",
+      "type": "function",
+      "filePath": "notification-scheduler.js",
+      "name": "buildEvents",
+      "language": "javascript",
+      "tags": [],
+      "summary": ""
+    },
+    {
+      "id": "function:notification-scheduler.js:clampMinutes",
+      "type": "function",
+      "filePath": "notification-scheduler.js",
+      "name": "clampMinutes",
+      "language": "javascript",
+      "tags": [],
+      "summary": ""
+    },
+    {
+      "id": "function:notification-scheduler.js:dueEvents",
+      "type": "function",
+      "filePath": "notification-scheduler.js",
+      "name": "dueEvents",
+      "language": "javascript",
+      "tags": [],
+      "summary": ""
+    },
+    {
+      "id": "function:notification-scheduler.js:localDateKey",
+      "type": "function",
+      "filePath": "notification-scheduler.js",
+      "name": "localDateKey",
+      "language": "javascript",
+      "tags": [],
+      "summary": ""
+    },
+    {
+      "id": "function:notification-scheduler.js:migrateSettings",
+      "type": "function",
+      "filePath": "notification-scheduler.js",
+      "name": "migrateSettings",
+      "language": "javascript",
+      "tags": [],
+      "summary": ""
+    },
+    {
+      "id": "function:notification-scheduler.js:normalizePrayers",
+      "type": "function",
+      "filePath": "notification-scheduler.js",
+      "name": "normalizePrayers",
+      "language": "javascript",
+      "tags": [],
+      "summary": ""
+    },
+    {
+      "id": "function:notification-scheduler.js:normalizeSettings",
+      "type": "function",
+      "filePath": "notification-scheduler.js",
+      "name": "normalizeSettings",
+      "language": "javascript",
+      "tags": [],
+      "summary": ""
+    },
+    {
+      "id": "function:notification-scheduler.js:parseHHMM",
+      "type": "function",
+      "filePath": "notification-scheduler.js",
+      "name": "parseHHMM",
+      "language": "javascript",
+      "tags": [],
+      "summary": ""
+    },
+    {
+      "id": "function:notification-scheduler.js:targetDate",
+      "type": "function",
+      "filePath": "notification-scheduler.js",
+      "name": "targetDate",
+      "language": "javascript",
+      "tags": [],
+      "summary": ""
+    }
+  ],
+  "edges": [
+    {
+      "source": "file:.repro-nav.cjs",
+      "target": "file:external:fs",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:.repro-nav.cjs",
+      "target": "file:external:http",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:.repro-nav.cjs",
+      "target": "file:external:playwright",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:main.js",
+      "target": "file:external:electron",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:main.js",
+      "target": "file:external:fs",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:main.js",
+      "target": "file:external:path",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:main.js",
+      "target": "file:notification-scheduler.js",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:mobile/App.tsx",
+      "target": "file:external:@react-native-async-storage/async-storage",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:mobile/App.tsx",
+      "target": "file:external:expo-haptics",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:mobile/App.tsx",
+      "target": "file:external:expo-notifications",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:mobile/App.tsx",
+      "target": "file:external:expo-status-bar",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:mobile/App.tsx",
+      "target": "file:external:react",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:mobile/App.tsx",
+      "target": "file:external:react-native",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:mobile/App.tsx",
+      "target": "file:external:react-native-webview",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:mobile/metro.config.js",
+      "target": "file:external:expo/metro-config",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:mobile/metro.config.js",
+      "target": "file:external:path",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:mobile/scripts/generate-renderer.cjs",
+      "target": "file:external:fs",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:mobile/scripts/generate-renderer.cjs",
+      "target": "file:external:path",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:notification-scheduler.js",
+      "target": "function:notification-scheduler.js:buildEvents",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:notification-scheduler.js",
+      "target": "function:notification-scheduler.js:clampMinutes",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:notification-scheduler.js",
+      "target": "function:notification-scheduler.js:dueEvents",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:notification-scheduler.js",
+      "target": "function:notification-scheduler.js:localDateKey",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:notification-scheduler.js",
+      "target": "function:notification-scheduler.js:migrateSettings",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:notification-scheduler.js",
+      "target": "function:notification-scheduler.js:normalizePrayers",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:notification-scheduler.js",
+      "target": "function:notification-scheduler.js:normalizeSettings",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:notification-scheduler.js",
+      "target": "function:notification-scheduler.js:parseHHMM",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:notification-scheduler.js",
+      "target": "function:notification-scheduler.js:targetDate",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:playwright.config.js",
+      "target": "file:external:@playwright/test",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:preload.js",
+      "target": "file:external:electron",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:tests/app.spec.js",
+      "target": "file:external:@playwright/test",
+      "type": "tested_by",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:tests/app.spec.js",
+      "target": "file:external:path",
+      "type": "tested_by",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:tests/notification-scheduler.node.cjs",
+      "target": "file:external:node:assert/strict",
+      "type": "tested_by",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:tests/notification-scheduler.node.cjs",
+      "target": "file:external:node:test",
+      "type": "tested_by",
+      "direction": "forward",
+      "weight": 1.0
+    },
+    {
+      "source": "file:tests/notification-scheduler.node.cjs",
+      "target": "file:notification-scheduler.js",
+      "type": "tested_by",
+      "direction": "forward",
+      "weight": 1.0
+    }
+  ],
+  "layers": [
+    {
+      "id": "layer:service",
+      "name": "Service",
+      "description": "",
+      "nodeIds": [
+        "file:mobile/src/core/prayerTimes.ts"
+      ],
+      "display_order": 0,
+      "order_basis": "canonical"
+    },
+    {
+      "id": "layer:application",
+      "name": "Application",
+      "description": "",
+      "nodeIds": [
+        "file:.repro-nav.cjs",
+        "file:README.md",
+        "file:app.json",
+        "file:azkar.json",
+        "file:eas.json",
+        "file:leaflet/leaflet.js",
+        "file:main.js",
+        "file:manifest.json",
+        "file:mobile/.export-test/metadata.json",
+        "file:mobile/App.tsx",
+        "file:mobile/README.md",
+        "file:mobile/_rtest.ts",
+        "file:mobile/app.json",
+        "file:mobile/eas.json",
+        "file:mobile/metro.config.js",
+        "file:mobile/package.json",
+        "file:mobile/tsconfig.json",
+        "file:notification-scheduler.js",
+        "file:package.json",
+        "file:playwright.config.js",
+        "file:popup.js",
+        "file:preload.js"
+      ],
+      "display_order": 1,
+      "order_basis": "canonical"
+    },
+    {
+      "id": "layer:config",
+      "name": "Config",
+      "description": "",
+      "nodeIds": [
+        "file:.github/workflows/build.yml"
+      ],
+      "display_order": 2,
+      "order_basis": "canonical"
+    },
+    {
+      "id": "layer:docs-tooling",
+      "name": "Docs & Tooling",
+      "description": "",
+      "nodeIds": [
+        "file:mobile/scripts/generate-renderer.cjs"
+      ],
+      "display_order": 3,
+      "order_basis": "canonical"
+    },
+    {
+      "id": "layer:test",
+      "name": "Test",
+      "description": "",
+      "nodeIds": [
+        "file:tests/app.spec.js",
+        "file:tests/notification-scheduler.node.cjs"
+      ],
+      "display_order": 4,
+      "order_basis": "canonical"
+    }
+  ],
+  "tour": [
+    {
+      "order": 1,
+      "target_path": "README.md",
+      "page_type": "repo_overview",
+      "title": "README.md",
+      "depth": 0,
+      "kind": "overview",
+      "reason": "Start here for the end-to-end picture before diving into the code.",
+      "layer_id": "layer:application"
+    },
+    {
+      "order": 2,
+      "target_path": "main.js",
+      "page_type": "file_page",
+      "title": "main.js",
+      "depth": 0,
+      "kind": "code",
+      "reason": "An entry point \u2014 execution and imports fan out from here.",
+      "layer_id": "layer:application"
+    },
+    {
+      "order": 3,
+      "target_path": "mobile/App.tsx",
+      "page_type": "file_page",
+      "title": "App.tsx",
+      "depth": 0,
+      "kind": "code",
+      "reason": "An entry point \u2014 execution and imports fan out from here.",
+      "layer_id": "layer:application"
+    },
+    {
+      "order": 4,
+      "target_path": "notification-scheduler.js",
+      "page_type": "file_page",
+      "title": "notification-scheduler.js",
+      "depth": 1,
+      "kind": "code",
+      "reason": "Directly used by the entry points above; a core collaborator.",
+      "layer_id": "layer:application"
+    },
+    {
+      "order": 5,
+      "target_path": "leaflet/leaflet.js",
+      "page_type": "file_page",
+      "title": "leaflet.js",
+      "depth": 2,
+      "kind": "code",
+      "reason": "Off the import path from the entry points \u2014 a standalone or supporting file.",
+      "layer_id": "layer:application"
+    },
+    {
+      "order": 6,
+      "target_path": "mobile/_rtest.ts",
+      "page_type": "file_page",
+      "title": "_rtest.ts",
+      "depth": 2,
+      "kind": "code",
+      "reason": "Off the import path from the entry points \u2014 a standalone or supporting file.",
+      "layer_id": "layer:application"
+    },
+    {
+      "order": 7,
+      "target_path": "mobile/metro.config.js",
+      "page_type": "file_page",
+      "title": "metro.config.js",
+      "depth": 2,
+      "kind": "code",
+      "reason": "Off the import path from the entry points \u2014 a standalone or supporting file.",
+      "layer_id": "layer:application"
+    },
+    {
+      "order": 8,
+      "target_path": "playwright.config.js",
+      "page_type": "file_page",
+      "title": "playwright.config.js",
+      "depth": 2,
+      "kind": "code",
+      "reason": "Off the import path from the entry points \u2014 a standalone or supporting file.",
+      "layer_id": "layer:application"
+    },
+    {
+      "order": 9,
+      "target_path": "popup.js",
+      "page_type": "file_page",
+      "title": "popup.js",
+      "depth": 2,
+      "kind": "code",
+      "reason": "Off the import path from the entry points \u2014 a standalone or supporting file.",
+      "layer_id": "layer:application"
+    },
+    {
+      "order": 10,
+      "target_path": "mobile/src/core/prayerTimes.ts",
+      "page_type": "file_page",
+      "title": "prayerTimes.ts",
+      "depth": 2,
+      "kind": "code",
+      "reason": "The Service layer's anchor \u2014 its most depended-on file.",
+      "layer_id": "layer:service"
+    },
+    {
+      "order": 11,
+      "target_path": "mobile/scripts/generate-renderer.cjs",
+      "page_type": "file_page",
+      "title": "generate-renderer.cjs",
+      "depth": 2,
+      "kind": "code",
+      "reason": "Off the import path from the entry points \u2014 a standalone or supporting file.",
+      "layer_id": "layer:docs-tooling"
+    },
+    {
+      "order": 12,
+      "target_path": "tests/app.spec.js",
+      "page_type": "file_page",
+      "title": "app.spec.js",
+      "depth": 3,
+      "kind": "code",
+      "reason": "The test suite \u2014 how the system's behavior is verified.",
+      "layer_id": "layer:test"
+    }
+  ],
+  "modules": [
+    {
+      "id": "module:application",
+      "name": "Application",
+      "path": "",
+      "layerId": "layer:application",
+      "nodeIds": [
+        "file:.repro-nav.cjs",
+        "file:README.md",
+        "file:app.json",
+        "file:azkar.json",
+        "file:eas.json",
+        "file:leaflet/leaflet.js",
+        "file:main.js",
+        "file:manifest.json",
+        "file:mobile/.export-test/metadata.json",
+        "file:mobile/App.tsx",
+        "file:mobile/README.md",
+        "file:mobile/_rtest.ts",
+        "file:mobile/app.json",
+        "file:mobile/eas.json",
+        "file:mobile/metro.config.js",
+        "file:mobile/package.json",
+        "file:mobile/tsconfig.json",
+        "file:notification-scheduler.js",
+        "file:package.json",
+        "file:playwright.config.js",
+        "file:popup.js",
+        "file:preload.js"
+      ],
+      "wholeLayer": true,
+      "language": "json"
+    }
+  ]
+}

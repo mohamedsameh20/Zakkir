@@ -1,13 +1,3 @@
-@font-face { font-family: "Noto Naskh Arabic"; src: url("fonts/noto-naskh-arabic.ttf") format("truetype"); font-display: swap; }
-@font-face { font-family: "Amiri"; src: url("fonts/amiri.ttf") format("truetype"); font-display: swap; }
-@font-face { font-family: "Scheherazade New"; src: url("fonts/scheherazade-new.ttf") format("truetype"); font-display: swap; }
-@font-face { font-family: "Lateef"; src: url("fonts/lateef.ttf") format("truetype"); font-display: swap; }
-@font-face { font-family: "Mada"; src: url("fonts/mada.ttf") format("truetype"); font-display: swap; }
-@font-face { font-family: "Reem Kufi"; src: url("fonts/reem-kufi.ttf") format("truetype"); font-display: swap; }
-@font-face { font-family: "Aref Ruqaa"; src: url("fonts/aref-ruqaa.ttf") format("truetype"); font-display: swap; }
-@font-face { font-family: "Cairo"; src: url("fonts/cairo.ttf") format("truetype"); font-display: swap; }
-@font-face { font-family: "Tajawal"; src: url("fonts/tajawal.ttf") format("truetype"); font-display: swap; }
-@font-face { font-family: "El Messiri"; src: url("fonts/el-messiri.ttf") format("truetype"); font-display: swap; }
 
 /* ===== MOTION SCALE =====
    One shared set of durations and easings so co-moving properties land

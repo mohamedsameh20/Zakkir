@@ -265,3 +265,34 @@ test("notification settings use one minutes value with per-prayer overrides", (t
   assert.equal(checks.fajrOff, true, "unticking a prayer chip removes it from the schedule");
   assert.equal(checks.chipInactive, true);
 });
+
+// The reading faces are inlined as data URIs; a bad @font-face would silently
+// fall back to a system font, so prove each one really loads.
+const FONT_TAIL = `<script>
+setTimeout(async () => {
+  const checks = {};
+  try {
+    checks.families = [...new Set([...document.fonts].map((f) => f.family.replace(/"/g, "")))].sort();
+    checks.loaded = {};
+    for (const family of checks.families) {
+      const faces = await document.fonts.load('16px "' + family + '"', "أبجد");
+      checks.loaded[family] = faces.length > 0 && faces.every((f) => f.status === "loaded");
+    }
+  } catch (e) {
+    __smoke.errors.push("harness: " + e.message);
+  }
+  const out = document.createElement("pre");
+  out.id = "smoke-result";
+  out.textContent = JSON.stringify({ errors: __smoke.errors, checks });
+  document.body.appendChild(out);
+}, 3000);
+</script>`;
+
+test("every inlined reading font loads", (t) => {
+  const result = runPage(FONT_TAIL);
+  if (!result) return t.skip("no Chromium/Chrome found (set CHROME_BIN)");
+  const { errors, checks } = result;
+  assert.deepEqual(errors, []);
+  assert.deepEqual(checks.families, ["Amiri", "Cairo", "Noto Naskh Arabic", "Scheherazade New"]);
+  for (const family of checks.families) assert.equal(checks.loaded[family], true, `${family} loads`);
+});
