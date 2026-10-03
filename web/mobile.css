@@ -607,3 +607,28 @@ html.zakkir-mobile .welcome-title { margin: 0; font-size: var(--t-display); line
 html.zakkir-mobile .welcome-sub { margin: 0; font-size: var(--t-body); color: var(--muted); line-height: 1.5; }
 html.zakkir-mobile .welcome-view .loc-btn.primary:disabled { opacity: .5; }
 html.zakkir-mobile .welcome-lang { justify-self: center; width: min(260px, 100%); margin-top: 8px; }
+
+/* ===== Large text =====
+   App scale goes to 200% and Android font scale stacks on top, so rows wrap
+   and grids reflow instead of pushing the page sideways. */
+html.zakkir-mobile .row { flex-wrap: wrap; row-gap: 6px; }
+html.zakkir-mobile .row > label { flex: 1 1 8em; min-width: 0; }
+html.zakkir-mobile .row > :is(.seg, .zoom-row) { flex: 0 1 auto; min-width: 0; max-width: 100%; }
+html.zakkir-mobile .row > input[type="range"] { flex: 1 1 8em; min-width: 0; }
+html.zakkir-mobile .seg-btn { min-width: 0; overflow-wrap: anywhere; }
+html.zakkir-mobile .next-prayer { flex-wrap: wrap; row-gap: 2px; }
+html.zakkir-mobile .theme-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 128px), 1fr)); }
+html.zakkir-mobile .theme-card { min-width: 0; }
+html.zakkir-mobile .theme-name { overflow-wrap: anywhere; }
+/* The tab bar has fixed room for three labels: let them grow with the text
+   setting, but only up to what fits. */
+html.zakkir-mobile .mobile-bottom-nav-btn { font-size: calc(12px * min(var(--zoom, 1), 1.35)); }
+html.zakkir-mobile .switch { flex: none; }
+html.zakkir-mobile .athan-line { flex-wrap: wrap; row-gap: 8px; }
+html.zakkir-mobile .athan-copy { flex: 1 1 10em; min-width: 0; }
+html.zakkir-mobile .counter { white-space: nowrap; }
+/* Five prayer columns stop fitting once the app scale passes ~140%. */
+html.zakkir-mobile.large-text .prayer-grid { grid-template-columns: repeat(3, 1fr); row-gap: 8px; }
+html.zakkir-mobile .athan-copy + .switch { margin-inline-start: auto; }
+html.zakkir-mobile .minute-field { width: auto; min-width: 88px; }
+html.zakkir-mobile .minute-field input { width: 2.4em; }

@@ -2251,6 +2251,7 @@ function applyVars() {
   document.documentElement.setAttribute("lang", isAr ? "ar" : "en");
   document.documentElement.dir = isAr ? "rtl" : "ltr";
   document.body.classList.toggle("lang-ar", isAr);
+  document.documentElement.classList.toggle("large-text", state.zoom >= 1.4);
 
   if (_appliedStateCache.theme !== theme || _appliedStateCache.contrast !== contrast) {
     for (const id of validThemes) {
