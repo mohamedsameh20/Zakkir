@@ -10,10 +10,15 @@ versions live on their own branches: the Firefox extension on
 
 The app is an Expo / React Native shell around a WebView.
 
-- `App.tsx` is the native shell. It handles notifications (one channel per
-  sound), settings storage, haptics and the back button.
-- `web/` is the UI that runs inside the WebView: `popup.js`, `popup.css`, the
-  Azkar data, fonts, sounds and the notification scheduler.
+- `App.tsx` is the native shell: it hosts the WebView, stores settings, and
+  handles haptics and the back button.
+- `src/bridge.ts` types every message between the shell and the page; the
+  page side is `web/bridge.js` (`window.ZakkirNative`). Change both together.
+- `src/notifications/` schedules prayer notifications: `plan.ts` is the pure
+  planning logic, `schedule.ts` talks to `expo-notifications`.
+- `web/` is the UI that runs inside the WebView: `popup.js`, `popup.css`,
+  `mobile.css` (Android layout on top of `popup.css`), the Azkar data, fonts
+  and sounds.
 - `scripts/generate-renderer.cjs` inlines `web/` into `renderer.generated.ts`,
   a single HTML document. `scripts/sounds.cjs` copies the notification sounds
   to `assets/sounds/` for Android's `res/raw`. Both outputs are generated on
@@ -24,10 +29,25 @@ The app is an Expo / React Native shell around a WebView.
 ```bash
 npm install
 npm run typecheck   # regenerate the renderer and type-check
-npm test            # unit tests (node:test)
+npm test            # unit tests + renderer smoke test (node:test)
 ```
 
-### Local build on the emulator (quick checks)
+The smoke test (`tests/renderer.smoke.cjs`) loads the generated renderer in
+headless Chromium with a fake native bridge and clicks through every view. It
+needs `npm run generate-renderer` first and skips if no Chromium/Chrome is
+found (set `CHROME_BIN` to point at one).
+
+### Quick checks on the emulator (Expo Go)
+
+```bash
+npm run generate-renderer && npx expo start --android
+```
+
+This loads the app in Expo Go with no native build. Expo Go doesn't apply
+`app.json` config plugins, so custom notification sounds can only be checked
+in a real APK.
+
+### Local release build
 
 On NixOS, `shell.nix` provides JDK 17 and the Android SDK paths. If `nix-shell`
 is unavailable, export them yourself:
