@@ -24,6 +24,7 @@ const DEFAULTS = {
   lng: 31.2357,
   locationName: "Cairo, Egypt",
   locationSet: false,
+  arabicDigits: false,
   locationMethod: "manual",
   locationTab: "city",
   locationAdvancedOpen: false,
@@ -177,6 +178,7 @@ const STRINGS = {
     "welcome.sub": "Prayer times depend on where you are. Your location is only used to fetch them.",
     "welcome.continue": "Continue",
     "loc.notSet": "Not chosen yet",
+    "lang.digits": "Numerals",
     "notify.min": "min",
     "notify.beforeAll": "Minutes before athan, for every prayer",
     "notify.afterAll": "Minutes after athan, for every prayer",
@@ -320,6 +322,7 @@ const STRINGS = {
     "welcome.sub": "تختلف مواقيت الصلاة بحسب مكانك، ولا يُستخدم موقعك إلا لجلبها.",
     "welcome.continue": "متابعة",
     "loc.notSet": "لم يُحدَّد بعد",
+    "lang.digits": "الأرقام",
     "notify.min": "د",
     "notify.beforeAll": "عدد الدقائق قبل الأذان لكل الصلوات",
     "notify.afterAll": "عدد الدقائق بعد الأذان لكل الصلوات",
@@ -599,11 +602,11 @@ const PRESETS_AR = {
 
 function presetCountryLabel(key) {
   if (isArabic()) return PRESETS_AR[key]?.ar || String(key).split(" (")[0] || key;
-  return key;
+  return String(key).split(" (")[0];
 }
 function presetCityLabel(countryKey, cityKey) {
   if (isArabic()) return PRESETS_AR[countryKey]?.cities?.[cityKey] || String(cityKey).split(" (")[0] || cityKey;
-  return cityKey;
+  return String(cityKey).split(" (")[0];
 }
 
 let state = { ...DEFAULTS };
@@ -1753,6 +1756,34 @@ function wireDropdowns(handlers, root) {
 }
 
 // ---------- Smart location card (Electron: GPS / Map / City + advanced) ----------
+function presetForCoords() {
+  for (const [country, cities] of Object.entries(PRESETS)) {
+    for (const [city, coords] of Object.entries(cities)) {
+      if (Math.abs(coords[0] - state.lat) < 0.001 && Math.abs(coords[1] - state.lng) < 0.001) return { country, city };
+    }
+  }
+  return { country: "", city: "" };
+}
+
+// The stored place name is text in whichever language was active when it was
+// chosen. After a language switch, re-derive it so "Cairo, Egypt" does not sit
+// in an Arabic screen.
+async function relocalizeLocationName() {
+  if (!state.locationSet) return;
+  let name = "";
+  const { country, city } = presetForCoords();
+  if (state.locationMethod === "preset" && country) {
+    name = `${presetCityLabel(country, city)}, ${presetCountryLabel(country)}`;
+  } else if (state.locationMethod === "detect") {
+    name = await reverseGeocode(state.lat, state.lng);
+  }
+  if (!name || name === state.locationName) return;
+  state.locationName = name;
+  storage.set({ locationName: name });
+  if (state.view === "settings" && state.settingsSection === "general") patchLocation();
+  else if (state.view === "schedule") patchSchedule();
+}
+
 function locationCardHTML() {
   const method = state.locationMethod || "manual";
   const srcLabel = {
@@ -1766,18 +1797,7 @@ function locationCardHTML() {
     ? state.locationTab
     : (method === "detect" ? "gps" : "city");
 
-  let activeCountry = "";
-  let activeCity = "";
-  for (const [country, cities] of Object.entries(PRESETS)) {
-    for (const [city, coords] of Object.entries(cities)) {
-      if (Math.abs(coords[0] - state.lat) < 0.001 && Math.abs(coords[1] - state.lng) < 0.001) {
-        activeCountry = country;
-        activeCity = city;
-        break;
-      }
-    }
-    if (activeCountry) break;
-  }
+  const { country: activeCountry, city: activeCity } = presetForCoords();
 
   const panel =
     tab === "gps"
@@ -2040,6 +2060,7 @@ function settingsBodyHTML(id) {
     </details>
     <div class="settings-card"><div class="row"><label>${t("loc.method")}</label>${dropdownHTML("method", state.method, METHODS.map(([v]) => ({ v, l: methodName(v) })))}</div>
       <div class="row"><label>${t("lang.label")}</label><div class="seg" role="group" aria-label="${t("lang.label")}"><button class="seg-btn ${state.language === "en" ? "active" : ""}" data-language="en">${t("lang.en")}</button><button class="seg-btn ${state.language === "ar" ? "active" : ""}" data-language="ar">${t("lang.ar")}</button></div></div>
+      ${isArabic() ? `<div class="row"><label>${t("lang.digits")}</label><div class="seg" role="group" aria-label="${t("lang.digits")}"><button class="seg-btn ${!state.arabicDigits ? "active" : ""}" data-digits="latin" dir="ltr">123</button><button class="seg-btn ${state.arabicDigits ? "active" : ""}" data-digits="arabic">١٢٣</button></div></div>` : ""}
     </div>`;
   if (id === "notifications") {
     const notificationsOff = !state.notificationsEnabled;
@@ -2085,6 +2106,25 @@ function settingsBodyHTML(id) {
 function buildSettingsSection(id) {
   return settingsSectionHTML(id, t("settings." + id), t("settings." + id + ".desc"), settingsBodyHTML(id));
 }
+// Optional Arabic-Indic digits. Text is converted after it is painted, so no
+// template has to know about it; inputs and stored values stay Latin.
+const ARABIC_INDIC_DIGITS = "٠١٢٣٤٥٦٧٨٩";
+function arabicDigitsOn() { return isArabic() && Boolean(state.arabicDigits); }
+function localizeDigits(root) {
+  if (!arabicDigitsOn() || !root) return;
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    if (/[0-9]/.test(node.nodeValue)) node.nodeValue = node.nodeValue.replace(/[0-9]/g, (d) => ARABIC_INDIC_DIGITS[d]);
+  }
+}
+new MutationObserver((records) => {
+  if (!arabicDigitsOn()) return;
+  for (const record of records) {
+    if (record.type === "characterData") localizeDigits(record.target.parentNode);
+    else record.addedNodes.forEach((node) => localizeDigits(node.nodeType === 1 ? node : node.parentNode));
+  }
+}).observe(document.getElementById("app"), { childList: true, characterData: true, subtree: true });
+
 function renderWelcome() {
   return `<div class="app welcome-view">
     <h1 class="welcome-title">${t("welcome.title")}</h1>
@@ -2631,7 +2671,7 @@ function update(patch, persist = true) {
     storage.set(save);
   }
   const keys = Object.keys(patch);
-  if (keys.includes("language")) { applyVars(); render(); return; }
+  if (keys.includes("language")) { applyVars(); render(); relocalizeLocationName(); return; }
   if (keys.length && keys.every((k) => VAR_ONLY_KEYS.has(k))) { applyVars(); return; }
   // View changes always re-render — the settings branch below must not
   // swallow navigation (state.view already reflects the target view here).
@@ -2777,6 +2817,15 @@ function wireSettings() {
     b.addEventListener("click", () => {
       if (state.language === b.dataset.language) return;
       update({ language: b.dataset.language, prayerCache: null });
+    })
+  );
+  document.querySelectorAll("[data-digits]").forEach((b) =>
+    b.addEventListener("click", () => {
+      const arabic = b.dataset.digits === "arabic";
+      if (Boolean(state.arabicDigits) === arabic) return;
+      state.arabicDigits = arabic;
+      storage.set({ arabicDigits: arabic });
+      render();
     })
   );
   if (state.settingsSection === "general") wireLocation();

@@ -97,7 +97,11 @@ function runPage(tail, settings) {
   const head = settings
     ? HARNESS_HEAD.replace(/window\.SETTINGS = [^;]*;/, () => `window.SETTINGS = ${JSON.stringify(settings)};`)
     : HARNESS_HEAD;
-  const page = html.replace("<head>", "<head>" + head).replace("</body>", tail + "</body>");
+  // Inject after the charset declaration: placed before it, the head script
+  // pushes the meta past the encoding sniff window and the page is misdecoded.
+  const charset = '<meta charset="utf-8"/>';
+  assert.ok(html.includes(charset), "renderer html declares its charset");
+  const page = html.replace(charset, charset + head).replace("</body>", tail + "</body>");
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "zakkir-smoke-"));
   const file = path.join(dir, "index.html");
   fs.writeFileSync(file, page);
@@ -347,4 +351,41 @@ test("first launch asks for a location before showing prayer times", (t) => {
   assert.equal(checks.continueEnabled, true, "picking a city unlocks Continue");
   assert.equal(checks.saved, true, "the choice is persisted");
   assert.equal(checks.home, true);
+});
+
+const DIGITS_TAIL = `<script>
+setTimeout(async () => {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  const checks = {};
+  try {
+    const text = () => document.querySelector("#app").innerText;
+    checks.arabicHome = /[\\u0660-\\u0669]/.test(text()) && !/[0-9]/.test(text());
+    document.querySelector("#azkarTap").click();
+    await wait(80);
+    checks.afterTap = document.querySelector(".azkar-current-count").textContent.trim();
+    document.querySelector(".mobile-bottom-nav [data-go='settings']").click();
+    await wait(80);
+    document.querySelector('[data-digits="latin"]').click();
+    await wait(80);
+    document.querySelector(".mobile-bottom-nav [data-go='home']").click();
+    await wait(80);
+    checks.latinAgain = /[0-9]/.test(text()) && !/[\\u0660-\\u0669]/.test(text());
+  } catch (e) {
+    __smoke.errors.push("harness: " + e.message);
+  }
+  const out = document.createElement("pre");
+  out.id = "smoke-result";
+  out.textContent = JSON.stringify({ errors: __smoke.errors, checks });
+  document.body.appendChild(out);
+}, 3000);
+</script>`;
+
+test("Arabic-Indic digits can be switched on and back off", (t) => {
+  const result = runPage(DIGITS_TAIL, { language: "ar", arabicDigits: true, lat: 30.0444, lng: 31.2357, locationSet: true });
+  if (!result) return t.skip("no Chromium/Chrome found (set CHROME_BIN)");
+  const { errors, checks } = result;
+  assert.deepEqual(errors, []);
+  assert.equal(checks.arabicHome, true, "no Latin digits remain on the home screen");
+  assert.match(checks.afterTap, /^[\u0660-\u0669]+ \/ [\u0660-\u0669]+$/, "counts converted as they change");
+  assert.equal(checks.latinAgain, true, "turning the option off restores Latin digits");
 });
