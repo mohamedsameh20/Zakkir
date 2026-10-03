@@ -140,11 +140,7 @@ body.pinned {
   width: 100vw;
   min-height: 100vh;
 }
-body.pinned #pinBtn {
-  background: var(--accent);
-  color: var(--accent-ink);
-  border-color: var(--accent);
-}
+
 ::selection { background: color-mix(in oklab, var(--accent) 35%, transparent); }
 
 ::-webkit-scrollbar { width: 8px; }
@@ -178,11 +174,7 @@ body.pinned #pinBtn {
   letter-spacing: 0.01em;
   color: var(--ink);
 }
-.brand .logo {
-  width: 36px; height: 36px; border-radius: 8px;
-  object-fit: contain;
-  display: block;
-}
+
 .brand .dot {
   width: 10px; height: 10px; border-radius: 50%;
   background: var(--accent);
@@ -221,7 +213,7 @@ body.pinned #pinBtn {
   font-weight: 500;
   margin-bottom: 8px;
 }
-.next-line .next-text { letter-spacing: 0.01em; }
+
 .next-line b { color: var(--accent); font-weight: 700; }
 .hijri {
   font-size: 0.8em;
@@ -245,7 +237,6 @@ body.pinned #pinBtn {
   transition: transform 0.4s ease;
   will-change: transform;
 }
-
 
 .prayer-grid {
   display: grid;
@@ -310,24 +301,6 @@ body.pinned #pinBtn {
 }
 @media (hover: hover) { .azkar-card:hover { border-color: color-mix(in oklab, var(--accent) 45%, var(--line)); } }
 
-.cat-row {
-  display: flex; align-items: center; justify-content: space-between;
-  gap: 8px;
-}
-.cat-pick {
-  flex: 1;
-  background: var(--surface);
-  color: var(--ink);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 8px 10px;
-  font-size: 0.85em;
-  font-family: inherit;
-  cursor: pointer;
-  transition: border-color 0.18s, box-shadow 0.18s;
-}
-.cat-pick:focus { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 18%, transparent); outline: none; }
-@media (hover: hover) { .cat-pick:hover { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 18%, transparent); outline: none; } }
 .counter {
   font-variant-numeric: tabular-nums;
   font-weight: 700;
@@ -371,14 +344,6 @@ body.pinned #pinBtn {
   line-height: 2;
   padding-top: 8px;
   border-top: 1px dashed var(--line);
-}
-.tap-hint {
-  text-align: center;
-  font-size: 0.68em;
-  color: var(--muted);
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  font-weight: 500;
 }
 
 .nav-row {
@@ -502,43 +467,7 @@ input[type="range"] { max-width: 50%; accent-color: var(--accent); flex: 1; }
   font-size: 0.76em;
   line-height: 1.55;
 }
-.color-picker-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  margin-top: 10px;
-}
-.color-picker-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 8px 12px;
-  background: var(--surface-2);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  font-size: 0.8em;
-  font-weight: 550;
-  color: var(--ink);
-}
-.color-picker-row input[type="color"] {
-  -webkit-appearance: none;
-  border: 0;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  cursor: pointer;
-  background: transparent;
-  padding: 0;
-}
-.color-picker-row input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
-.color-picker-row input[type="color"]::-webkit-color-swatch { border: 1px solid var(--line); border-radius: 50%; }
-.reset-colors-btn {
-  margin-top: 12px;
-  width: 100%;
-  padding: 8px;
-  font-size: 0.8em;
-}
+
 .theme-collection-title {
   display: flex;
   align-items: center;
@@ -558,7 +487,7 @@ input[type="range"] { max-width: 50%; accent-color: var(--accent); flex: 1; }
   font-size: 0.9em;
   text-align: center;
 }
-.theme-collection-title.classic-title { margin-top: 19px; }
+
 .theme-name { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .theme-card .sw { position: relative; overflow: hidden; height: 32px; border-radius: 6px; }
 .theme-card.theme-featured { padding: 5px 5px 7px; font-weight: 600; font-size: 0.72em; }
@@ -1194,7 +1123,12 @@ html.theme-calligraphy .dhikr { font-weight: 400; }
 button, input, select { font: inherit; }
 /* Suppress the grey flash on tap for every interactive surface, not just
    <button> — labels and the custom dropdown rows are tapped just as often. */
-button, label, .ts-item, .map-result, [data-go], [data-nav], [data-prayer] {
+button,
+label,
+.ts-item,
+[data-go],
+[data-nav],
+[data-prayer] {
   -webkit-tap-highlight-color: transparent;
 }
 /* Tapping a control should never start a text selection or bring up the
@@ -1217,20 +1151,10 @@ summary:focus-visible,
 .home-view { min-height: var(--popup-h, 580px); }
 .header { min-height: 42px; }
 .brand { gap: 11px; }
-.brand .logo {
-  width: 38px;
-  height: 38px;
-  border-radius: 12px;
-  filter: drop-shadow(0 5px 10px rgba(0,0,0,0.14));
-}
+
 .brand > span { display: flex; flex-direction: column; gap: 1px; }
 .brand .name { font-size: 1.03em; line-height: 1.1; }
-.brand-sub {
-  color: var(--muted);
-  font-size: 0.58em;
-  font-weight: 500;
-  letter-spacing: 0.045em;
-}
+
 .icons { gap: 5px; }
 .icon-btn {
   width: 36px;
@@ -1260,8 +1184,7 @@ summary:focus-visible,
 }
 .prayer-head { margin-bottom: 12px; }
 .next-line { margin-bottom: 7px; }
-.eyebrow,
-.section-label {
+.eyebrow {
   color: var(--muted);
   font-size: 0.68em;
   font-weight: 700;
@@ -1303,14 +1226,6 @@ summary:focus-visible,
 .prayer .t { font-size: 0.79em; }
 .prayer.current { box-shadow: 0 7px 18px color-mix(in oklab, var(--accent) 22%, transparent); }
 
-.cat-row {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 7px;
-}
-.cat-tools { display: flex; align-items: center; gap: 8px; }
-.cat-pick,
 .ts-btn { min-height: 38px; border-radius: 12px; }
 .counter {
   flex: 0 0 auto;
@@ -1363,21 +1278,7 @@ summary:focus-visible,
   pointer-events: none;
 }
 @media (hover: hover) { .azkar-card:hover { border-color: color-mix(in oklab, var(--accent) 55%, var(--line)); } }
-.azkar-card.azkar-swap-out-prev,
-.azkar-card.azkar-swap-out-next,
-.azkar-card.azkar-swap-in-prev,
-.azkar-card.azkar-swap-in-next {
-  will-change: height, opacity, transform;
-  transition: height 0.22s ease, opacity 0.16s ease, transform 0.22s ease;
-}
-.azkar-card.azkar-swap-out-prev,
-.azkar-card.azkar-swap-out-next { opacity: 0; }
-.azkar-card.azkar-swap-out-prev { transform: translateX(10px); }
-.azkar-card.azkar-swap-out-next { transform: translateX(-10px); }
-.azkar-card.azkar-swap-in-prev,
-.azkar-card.azkar-swap-in-next { opacity: 1; }
-.azkar-card.azkar-swap-in-prev { transform: translateX(-10px); }
-.azkar-card.azkar-swap-in-next { transform: translateX(10px); }
+
 .dhikr {
   z-index: 1;
   margin: auto 0;
@@ -1450,20 +1351,6 @@ summary:focus-visible,
 .nav-btn:first-child { justify-content: flex-start; padding-left: 14px; }
 .nav-btn:last-child { justify-content: flex-end; padding-right: 14px; }
 .nav-btn.reset-btn { min-width: 42px; min-height: 40px; padding: 0 12px; }
-.nav-indicator {
-  margin-top: -5px;
-  min-width: 48px;
-  padding: 3px 8px;
-  color: var(--muted);
-  background: color-mix(in oklab, var(--surface) 82%, transparent);
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  font-size: 0.65em;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  text-align: center;
-  white-space: nowrap;
-}
 
 /* Settings and schedule use the same surface rhythm. */
 .settings-head {
@@ -1550,16 +1437,7 @@ html[dir="rtl"] { --slide-dir: -1; }
 .settings-card .preview { margin: 4px 0 13px; }
 .settings-card .theme-intro { margin: 11px 0 8px; }
 .settings-card .palette-grid { padding: 13px 0; }
-.settings-advanced { margin: 13px 0; border-top: 1px solid var(--line); }
-.settings-advanced summary {
-  padding: 13px 2px;
-  color: var(--muted);
-  font-size: 0.78em;
-  font-weight: 650;
-  cursor: pointer;
-}
-.settings-advanced[open] summary { color: var(--ink); }
-.settings-advanced .theme-grid { padding-bottom: 2px; }
+
 .font-grid .pill { display: flex; min-width: 0; flex-direction: column; align-items: center; gap: 3px; }
 .font-grid .pill > span:last-child { max-width: 100%; overflow: hidden; text-overflow: ellipsis; font-family: "Inter", system-ui, sans-serif; font-size: 0.72em; white-space: nowrap; }
 .font-sample { font-size: 1.35em; line-height: 1.25; }
@@ -1575,12 +1453,11 @@ html[dir="rtl"] { --slide-dir: -1; }
 .sched-table-wrap { border-radius: 14px; }
 .sched-table thead th { padding-block: 8px; }
 .sched-table tbody td { padding-block: 7px; }
-.sched-csv { min-height: 34px; border-radius: 10px; }
 
 @media (max-width: 360px) {
   .app { padding: 12px; gap: 11px; }
-  .brand-sub { display: none; }
-  .brand .logo { width: 34px; height: 34px; }
+  
+  
   .icon-btn { width: 33px; height: 33px; }
   .prayer-card { padding: 12px 10px; }
   .next-name { font-size: 1.25em; }
@@ -1794,18 +1671,7 @@ html.theme-control .switch span::before { border-radius: 1px; box-shadow: none; 
 }
 
 /* ===== NEW (v1.2): location, reminders, focused-prayer countdown ===== */
-.loc-status {
-  font-size: 0.85em;
-  color: var(--muted);
-  padding: 6px 0 0;
-}
-.loc-status b { color: var(--ink); }
-.loc-actions {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px;
-  padding: 8px 0 4px;
-}
+
 .loc-btn {
   background: var(--surface);
   border: 1px solid var(--line);
@@ -1845,12 +1711,6 @@ html.theme-control .switch span::before { border-radius: 1px; box-shadow: none; 
 .switch input:checked + span { background: var(--accent); }
 .switch input:checked + span::before { transform: translateX(16px); }
 
-.notification-summary {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 7px;
-  margin-bottom: 9px;
-}
 .notification-master {
   display: grid;
   grid-template-columns: 1fr auto;
@@ -1872,61 +1732,15 @@ html.theme-control .switch span::before { border-radius: 1px; box-shadow: none; 
 .notification-block-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 13px 14px 10px; }
 .notification-kicker { display: block; color: var(--accent); font-size: .65em; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
 .notification-block-head strong { color: var(--ink); font-size: .88em; }
-.prayer-actions { display: flex; gap: 5px; }
-.prayer-actions button { padding: 4px 8px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface-2); color: var(--muted); font: inherit; font-size: .68em; cursor: pointer; }
-@media (hover: hover) { .prayer-actions button:hover { border-color: var(--accent); color: var(--ink); } }
-.prayer-actions button:disabled { cursor: default; opacity: .55; }
-.notification-timeline { position: relative; padding: 0 14px 8px 28px; }
-.notification-timeline::before { content: ""; position: absolute; top: 5px; bottom: 20px; left: 19px; width: 1px; background: var(--line); }
-.timeline-item { position: relative; display: grid; grid-template-columns: 1fr auto; align-items: start; gap: 10px; min-height: 58px; padding: 9px 0; }
-.timeline-marker { position: absolute; left: -13px; top: 14px; width: 9px; height: 9px; border: 2px solid var(--line); border-radius: 50%; background: var(--surface); }
-.timeline-item.enabled .timeline-marker { border-color: var(--accent); background: var(--accent); box-shadow: 0 0 0 3px color-mix(in oklab,var(--accent) 15%,transparent); }
-.timeline-copy { display: grid; gap: 3px; min-width: 0; }
-.timeline-copy strong { color: var(--ink); font-size: .82em; }
-.timeline-copy > span { color: var(--muted); font-size: .7em; line-height: 1.35; }
-.timeline-copy select { width: max-content; max-width: 100%; margin-top: 3px; padding: 5px 8px; border-radius: 7px; font-size: .72em; }
+
 .notification-confirmation { display: flex; align-items: flex-start; gap: 8px; margin-top: 9px; padding: 10px 12px; border: 1px solid color-mix(in oklab,var(--accent) 35%,var(--line)); border-radius: 10px; background: color-mix(in oklab,var(--accent) 8%,var(--surface)); }
 .notification-confirmation.paused { border-color: var(--line); background: var(--surface-2); }
 .confirmation-dot { flex: 0 0 auto; width: 8px; height: 8px; margin-top: 4px; border-radius: 50%; background: var(--accent); }
 .notification-confirmation.paused .confirmation-dot { background: var(--muted); }
 .notification-confirmation p { margin: 0; color: var(--ink); font-size: .72em; line-height: 1.45; }
-.notification-summary > div {
-  display: flex;
-  align-items: baseline;
-  gap: 7px;
-  min-width: 0;
-  padding: 10px 12px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--surface-2);
-}
-.notification-summary :is(strong,.notification-summary-count) { color: var(--accent); font-size: 1.35em; font-weight: 800; font-variant-numeric: tabular-nums; }
-.notification-summary span:last-child { color: var(--muted); font-size: .68em; line-height: 1.25; }
-.notification-stack { display: grid; gap: 7px; }
-.notify-card { position: relative; padding: 0; overflow: hidden; }
-.notify-card::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 3px; background: var(--line); }
-.notify-card.enabled::before { background: var(--accent); }
-.notify-head { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; padding: 12px 12px 12px 14px; }
-.notify-step { min-width: 48px; padding: 4px 7px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); font-size: .65em; font-weight: 700; text-align: center; text-transform: uppercase; letter-spacing: .05em; }
-.notify-card.enabled .notify-step { border-color: color-mix(in oklab,var(--accent) 45%,var(--line)); color: var(--accent); background: color-mix(in oklab,var(--accent) 9%,transparent); }
-.notify-copy { display: grid; gap: 2px; min-width: 0; }
-.notify-copy strong { color: var(--ink); font-size: .83em; }
-.notify-copy span { color: var(--muted); font-size: .7em; line-height: 1.35; }
-.notify-timing { margin: 0 12px 0 14px; padding: 10px 0 11px; }
-.prayer-selection { margin-top: 9px; }
-.prayer-selection p { margin: 3px 0 9px; color: var(--muted); font-size: .7em; line-height: 1.4; }
-.badge-setting { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 12px; margin-top: 9px; }
-.badge-setting > div { display: grid; gap: 3px; }
-.badge-setting strong { color: var(--ink); font-size: .83em; }
-.badge-setting > div > span { color: var(--muted); font-size: .7em; line-height: 1.4; }
 
 /* Per-prayer reminder toggles */
-.prayer-toggles {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px;
-  padding: 0 14px 14px;
-}
+
 .pt {
   display: flex; flex-direction: row; align-items: center; gap: 8px;
   background: var(--surface);
@@ -1943,15 +1757,13 @@ html.theme-control .switch span::before { border-radius: 1px; box-shadow: none; 
 .pt.on { border-color: var(--accent); background: color-mix(in oklab, var(--accent) 12%, transparent); }
 
 @media (max-width: 350px) {
-  .prayer-toggles { grid-template-columns: 1fr; }
+  
   .pt:last-child { grid-column: auto; }
 }
 
 /* Per-prayer timing */
 .prayer-timing { margin: 0 14px; border-top: 1px solid var(--line); padding: 10px 0 14px; }
-.prayer-timing-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.prayer-timing-head strong { color: var(--ink); font-size: .78em; }
-.prayer-timing-head p { margin: 3px 0 0; color: var(--muted); font-size: .68em; }
+
 .athan-line { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 2px 14px 12px; }
 .athan-copy { display: grid; gap: 2px; }
 .athan-copy strong { color: var(--ink); font-size: .85em; }
@@ -1973,33 +1785,7 @@ html.theme-control .switch span::before { border-radius: 1px; box-shadow: none; 
 .minute-group.is-disabled { opacity: .42; pointer-events: none; }
 .minute-group.is-disabled .minute-field { background: color-mix(in oklab, var(--surface) 60%, transparent); }
 
-
-
-
 /* Focused-prayer countdown line */
-.focus-line {
-  display: flex; align-items: center; justify-content: space-between; gap: 8px;
-  background: transparent;
-  border: 0;
-  border-radius: 0;
-  padding: 0;
-  margin: 14px 2px 2px;
-  font-size: 0.8em;
-  color: var(--muted);
-  animation: fadeIn 0.2s ease;
-}
-.focus-line b { color: var(--accent); font-weight: 600; }
-.focus-x {
-  background: transparent;
-  border: 0;
-  color: var(--muted);
-  font-size: 1.2em;
-  line-height: 1;
-  cursor: pointer;
-  padding: 0 4px;
-  border-radius: 6px;
-}
-@media (hover: hover) { .focus-x:hover { color: var(--ink); background: var(--surface-2); } }
 
 /* ===== Themed dropdown (replaces native <select>) ===== */
 .ts-wrap {
@@ -2335,23 +2121,12 @@ html.theme-control .switch span::before { border-radius: 1px; box-shadow: none; 
   font-size: 11px;
   color: var(--muted);
 }
-.sched-csv {
-  background: transparent;
-  border: 1px solid var(--line);
-  color: var(--ink);
-  border-radius: 8px;
-  padding: 5px 10px;
-  font-size: 11px;
-  cursor: pointer;
-}
-@media (hover: hover) { .sched-csv:hover { border-color: var(--accent); color: var(--accent); } }
 
 /* Final responsive overrides for components declared later in this file. */
 .loc-card { border-radius: 16px; padding: 14px; }
 .sched-table-wrap { border-radius: 14px; }
 .sched-table thead th { padding-block: 8px; }
 .sched-table tbody td { padding-block: 7px; }
-.sched-csv { min-height: 34px; border-radius: 10px; }
 
 /* Structural themes must also win over the final component polish above. */
 html.theme-editorial :is(.loc-card,.loc-adv,.sched-table-wrap) { border-radius: 0; box-shadow: none; }
@@ -3363,79 +3138,6 @@ body.electron .settings-head button {
 }
 
 /* ===== MAP VIEW ===== */
-.map-view {
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  width: 100%;
-  position: fixed;
-  inset: 0;
-  background: var(--bg);
-  z-index: 10;
-}
-.map-toolbar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 10px;
-  background: var(--surface);
-  border-bottom: 1px solid var(--line);
-  flex-shrink: 0;
-}
-.map-search-wrap {
-  flex: 1;
-  position: relative;
-}
-.map-search {
-  width: 100%;
-  background: var(--surface-2);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  color: var(--ink);
-  padding: 7px 12px;
-  font-size: 0.88em;
-  outline: none;
-  box-sizing: border-box;
-}
-.map-results {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0; right: 0;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  z-index: 1000;
-  max-height: 200px;
-  overflow-y: auto;
-  box-shadow: var(--shadow);
-}
-.map-result {
-  padding: 8px 12px;
-  font-size: 0.82em;
-  color: var(--ink);
-  cursor: pointer;
-  border-bottom: 1px solid var(--line);
-}
-.map-result:last-child { border-bottom: none; }
-@media (hover: hover) { .map-result:hover { background: var(--surface-2); } }
-#leafletMap {
-  flex: 1;
-  z-index: 1;
-}
-.map-footer {
-  padding: 10px 12px;
-  background: var(--surface);
-  border-top: 1px solid var(--line);
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  flex-shrink: 0;
-}
-.map-loc-label {
-  font-size: 0.82em;
-  color: var(--muted);
-  text-align: center;
-}
 
 /* ===== SOUND PICKER ===== */
 .sound-grid {
@@ -3510,97 +3212,12 @@ body.electron .settings-head button {
 }
 
 /* ===== PRIMARY BUTTON ===== */
-.btn-primary {
-  background: var(--accent);
-  color: var(--accent-ink);
-  border: none;
-  border-radius: 8px;
-  padding: 10px 20px;
-  font-size: 0.9em;
-  font-weight: 600;
-  cursor: pointer;
-  width: 100%;
-  transition: opacity 0.15s;
-}
-@media (hover: hover) { .btn-primary:hover { opacity: 0.88; } }
 
 /* ---------- update toast ---------- */
-#updateBanner {
-  display: none;
-  position: fixed;
-  bottom: 24px;
-  left: 20px;
-  right: 20px;
-  background: var(--surface);
-  color: var(--ink);
-  padding: 16px;
-  border: 1px solid var(--accent);
-  border-radius: 12px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.15), 0 0 0 1px color-mix(in oklab, var(--accent) 30%, transparent);
-  z-index: 9999;
-  font-family: inherit;
-  animation: slideUpFade 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-}
+
 @keyframes slideUpFade {
   0% { transform: translateY(20px); opacity: 0; }
   100% { transform: translateY(0); opacity: 1; }
-}
-#updateBanner .update-title {
-  font-size: 14px;
-  font-weight: 600;
-  margin-bottom: 12px;
-  text-align: left;
-}
-#updateBanner span {
-  margin-right: 6px;
-}
-#updateBanner .update-actions {
-  display: flex;
-  justify-content: flex-start;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-#updateBanner button {
-  border: 1px solid var(--line);
-  background: var(--surface-2);
-  color: var(--ink);
-  padding: 6px 12px;
-  border-radius: 8px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color var(--dur-base) var(--ease-out), border-color var(--dur-base) var(--ease-out), color var(--dur-base) var(--ease-out), filter var(--dur-base) var(--ease-out), opacity var(--dur-base) var(--ease-out);
-  flex: 1;
-  text-align: center;
-}
-@media (hover: hover) {
-  #updateBanner button:hover {
-    background: color-mix(in oklab, var(--accent) 15%, transparent);
-    border-color: var(--accent);
-  }
-}
-#updateBanner button.btn-primary {
-  background: var(--accent);
-  color: var(--accent-ink);
-  border-color: var(--accent);
-}
-@media (hover: hover) {
-  #updateBanner button.btn-primary:hover {
-    filter: brightness(1.1);
-  }
-}
-#updateBanner button.btn-dismiss {
-  background: transparent;
-  border-color: transparent;
-  color: var(--muted);
-  text-decoration: underline;
-  opacity: 0.8;
-}
-@media (hover: hover) {
-  #updateBanner button.btn-dismiss:hover {
-    color: var(--ink);
-    opacity: 1;
-  }
 }
 
 /* Row inside the general location advanced disclosure keeps switch padding tidy. */
@@ -3613,7 +3230,6 @@ html[dir="rtl"] { direction: rtl; }
 /* Directional chevrons (back / prev / next) point the other way in RTL.
    The azkar box keeps LTR orientation, so its nav buttons are excluded. */
 html[dir="rtl"] .icon-btn[data-go="home"] svg,
-html[dir="rtl"] #mapBackBtn svg,
 html[dir="rtl"] #schedPrev svg,
 html[dir="rtl"] #schedNext svg { transform: scaleX(-1); }
 
@@ -3626,15 +3242,13 @@ html[dir="rtl"] .azkar-controls { direction: ltr; }
 html[dir="rtl"] .azkar-progress-track > div,
 html[dir="rtl"] .progress > div { transform-origin: left; }
 html[dir="rtl"] .azkar-current-count,
-html[dir="rtl"] .azkar-progress-count,
-html[dir="rtl"] #navIndicator { direction: ltr; unicode-bidi: isolate; }
+html[dir="rtl"] .azkar-progress-count { direction: ltr; unicode-bidi: isolate; }
 
 /* Arabic glyphs render smaller than Latin at the same em size. */
 html[dir="rtl"] .prayer .n { font-size: 0.85em; letter-spacing: 0; text-transform: none; }
 html[dir="rtl"] .next-name { font-size: 1.6em; letter-spacing: 0; }
 html[dir="rtl"] .countdown-ar { font-size: 1em; letter-spacing: 0; white-space: nowrap; }
-html[dir="rtl"] .eyebrow,
-html[dir="rtl"] .section-label { font-size: 0.86em; letter-spacing: 0; text-transform: none; }
+html[dir="rtl"] .eyebrow { font-size: 0.86em; letter-spacing: 0; text-transform: none; }
 html[dir="rtl"] .azkar-progress-label { font-size: 0.84em; letter-spacing: 0; }
 
 /* Mobile bottom-nav liquid follows the reversed (right-aligned) order. */
