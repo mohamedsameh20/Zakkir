@@ -2069,7 +2069,6 @@ const SOUND_CATALOG = [
   ["adhan-1", "Adhan 1"],
   ["adhan-2", "Adhan 2"],
   ["chime", "Chime"],
-  ["bell", "Bell"],
   ["soft-ping", "Soft Ping"],
   ["silent", "Silent"],
 ];
@@ -2083,7 +2082,6 @@ const SOUND_NAMES_AR = {
   "adhan-1": "الأذان 1",
   "adhan-2": "الأذان 2",
   chime: "رنين",
-  bell: "جرس",
   "soft-ping": "نغمة خفيفة",
   silent: "صامت",
 };

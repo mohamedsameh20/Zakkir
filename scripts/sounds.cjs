@@ -14,8 +14,9 @@ const root = path.resolve(__dirname, "..");
 // Order matches the SOUNDS list rendered by popup.js. "silent" is intentionally
 // absent: it is the absence of a sound, handled by a dedicated silent channel.
 // The adhan recordings (adhan-1, adhan-2) stay out of the app until their
-// source and rights are confirmed.
-const SOUND_IDS = ["chime", "bell", "soft-ping"];
+// source and rights are confirmed. There is deliberately no bell: a hadith in
+// Sahih Muslim calls the bell "the flute of Shaytan".
+const SOUND_IDS = ["chime", "soft-ping"];
 
 const ANDROID_SOUNDS_DIR = path.join(root, "assets", "sounds");
 

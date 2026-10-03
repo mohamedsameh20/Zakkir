@@ -65,14 +65,15 @@ jobs:
         # the build loudly rather than shipping a silent regression.
         run: |
           missing=0
-          for sound in chime bell soft_ping; do
+          for sound in chime soft_ping; do
             if [ ! -f "android/app/src/main/res/raw/$sound.mp3" ]; then
               echo "::error::missing res/raw/$sound.mp3"
               missing=1
             fi
           done
-          # The adhan recordings stay out of the APK until their rights are confirmed.
-          for sound in adhan_1 adhan_2; do
+          # The adhan recordings stay out until their rights are confirmed; the
+          # bell was removed for good (a hadith in Sahih Muslim censures bells).
+          for sound in adhan_1 adhan_2 bell; do
             if [ -f "android/app/src/main/res/raw/$sound.mp3" ]; then
               echo "::error::res/raw/$sound.mp3 must not be bundled"
               missing=1

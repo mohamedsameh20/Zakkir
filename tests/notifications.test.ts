@@ -99,7 +99,8 @@ test("a full window stays under Android's 500-alarm limit", () => {
 });
 
 test("sounds map to stable channels and res/raw names", () => {
-  assert.equal(resolveSoundId("bell"), "bell");
+  assert.equal(resolveSoundId("soft-ping"), "soft-ping");
+  assert.equal(resolveSoundId("bell"), "chime"); // removed sound falls back
   assert.equal(resolveSoundId("silent"), "silent");
   assert.equal(resolveSoundId("adhan-1"), "chime"); // removed sound falls back
   assert.equal(soundResource("soft-ping"), "soft_ping.mp3");

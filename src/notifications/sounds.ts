@@ -4,15 +4,15 @@
 // time. Resource names must match the files the expo-notifications config
 // plugin copies into res/raw (see scripts/sounds.cjs).
 
-export const SOUND_IDS = ["chime", "bell", "soft-ping"] as const;
+export const SOUND_IDS = ["chime", "soft-ping"] as const;
 export const SILENT_SOUND_ID = "silent";
 export const DEFAULT_SOUND_ID = "chime";
 // Sounds that earlier builds registered channels for but no longer ship.
-export const REMOVED_SOUND_IDS = ["adhan-1", "adhan-2"];
+// The bell is gone for good: a hadith in Sahih Muslim censures bells.
+export const REMOVED_SOUND_IDS = ["adhan-1", "adhan-2", "bell"];
 
 export const SOUND_LABELS: Record<string, string> = {
   chime: "Chime",
-  bell: "Bell",
   "soft-ping": "Soft Ping",
   [SILENT_SOUND_ID]: "Silent",
 };
