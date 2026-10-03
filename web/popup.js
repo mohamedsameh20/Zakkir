@@ -74,6 +74,9 @@ const STRINGS = {
     "nav.schedule": "Schedule",
     "nav.settings": "Settings",
     "prayer.next": "Next prayer",
+    "prayer.in": "in",
+    "nav.back": "Back",
+    "azkar.countHint": "Tap to count",
     "prayer.unavailable": "Unavailable",
     "prayer.loading": "Loading…",
     "prayer.show": "Show prayer times",
@@ -196,6 +199,9 @@ const STRINGS = {
     "nav.schedule": "المواقيت",
     "nav.settings": "الإعدادات",
     "prayer.next": "الصلاة القادمة",
+    "prayer.in": "بعد",
+    "nav.back": "رجوع",
+    "azkar.countHint": "اضغط للعدّ",
     "prayer.unavailable": "غير متاحة",
     "prayer.loading": "جارٍ التحميل…",
     "prayer.show": "عرض مواقيت الصلاة",
@@ -1240,26 +1246,32 @@ function durText(hrs, mins) {
   return hrs > 0 ? `${hrs}${t("time.h")} ${mins}${t("time.m")}` : `${mins}${t("time.m")}`;
 }
 
+/** "in 1h 05m" / "in 50m" / "بعد ساعة و5 دقائق" for the next-prayer countdown. */
+function countdownHTML(np) {
+  return `<span class="next-in">${t("prayer.in")}</span> ${isArabic() ? `<strong class="countdown-ar">${arabicDuration(np.h, np.m)}</strong>` : `${np.h > 0 ? `<strong>${np.h}<small>${t("time.h")}</small></strong> ` : ""}<strong>${np.h > 0 ? String(np.m).padStart(2, "0") : np.m}<small>${t("time.m")}</small></strong>`}`;
+}
+
 function prayerCardHTML() {
   const np = nextPrayer();
   const nextName = np ? prayerName(np.name) : (lastErr ? t("prayer.unavailable") : t("prayer.loading"));
   const collapsed = Boolean(state.prayerCollapsed);
   const toggleLabel = collapsed ? t("prayer.show") : t("prayer.minimize");
-  // The head is PERSISTENT across collapse/expand: the same eyebrow, name and
+  // The head is PERSISTENT across collapse/expand: the same name and
   // countdown nodes stay mounted and only change size, so the text genuinely
-  // morphs between states instead of two copies cross-fading.
+  // morphs between states instead of two copies cross-fading. "Fajr, in 1h 5m"
+  // says which prayer is next without a separate label.
   return `
     <div class="prayer-head">
       <div class="next-line">
-        <span class="eyebrow">${t("prayer.next")}</span>
-        <div class="prayer-meta"><span class="hijri">${hijriLabel() || ""}</span><button type="button" class="prayer-collapse" aria-label="${toggleLabel}" aria-expanded="${!collapsed}" title="${toggleLabel}">${icon.chevronDown}</button></div>
+        <span class="hijri">${hijriLabel() || ""}</span>
+        <button type="button" class="prayer-collapse" aria-label="${toggleLabel}" aria-expanded="${!collapsed}" title="${toggleLabel}">${icon.chevronDown}</button>
       </div>
       <div class="next-prayer">
         <div class="next-name">${nextName}</div>
-        ${np ? `<div class="next-countdown">${isArabic() ? `<strong class="countdown-ar">${arabicDuration(np.h, np.m)}</strong>` : `<strong>${np.h}<small>${t("time.h")}</small></strong><span>:</span><strong>${String(np.m).padStart(2, "0")}<small>${t("time.m")}</small></strong>`}</div>` : ""}
+        ${np ? `<div class="next-countdown">${countdownHTML(np)}</div>` : ""}
       </div>
     </div>
-    <div class="prayer-expanded-content">
+    <div class="prayer-expanded-content" ${collapsed ? "inert" : ""}>
       <div class="prayer-expanded-inner">
       ${np ? `<div class="prayer-progress" title="${prayerName(np.prev)} → ${prayerName(np.name)}"><div style="transform:scaleX(${np.pct / 100})"></div></div>` : ""}
       <div class="prayer-grid">
@@ -1297,6 +1309,8 @@ function wirePrayerCollapse() {
       button.setAttribute("aria-label", label);
       button.setAttribute("title", label);
       $("#prayerRegion")?.classList.toggle("is-collapsed", collapsed);
+      // Hidden prayer buttons must leave the focus order and accessibility tree.
+      $("#prayerRegion .prayer-expanded-content")?.toggleAttribute("inert", collapsed);
     });
   });
 }
@@ -1386,7 +1400,8 @@ function renderHome() {
   return `
     <div class="app home-view">
       <section class="card prayer-card ${state.prayerCollapsed ? "is-collapsed" : ""}" id="prayerRegion" aria-label="${t("prayer.times")}">${prayerCardHTML()}</section>
-      <button type="button" class="azkar-card" id="azkarTap" aria-label="${t("azkar.count")}">${azkarCardHTML()}</button>
+      <button type="button" class="azkar-card" id="azkarTap" aria-describedby="azkarCountHint">${azkarCardHTML()}</button>
+      <span class="sr-only" id="azkarCountHint">${t("azkar.countHint")}</span>
       <div class="nav-row azkar-controls" data-nav-mode="${navMode}">
         <button class="nav-btn" data-nav="-1" title="${t("azkar.prev.title")}">${icon.prev}<span>${t("azkar.prev")}</span></button>
         <button class="nav-btn reset-btn" id="resetBtn" title="${t("azkar.reset.title")}" aria-label="${t("azkar.reset.title")}">${icon.reset}<span>${t("azkar.reset")}</span></button>
@@ -1642,7 +1657,7 @@ function renderSchedule() {
   return `
     <div class="app">
       <div class="settings-head">
-        <button class="icon-btn" data-go="home">${icon.back}</button>
+        <button type="button" class="icon-btn" data-go="home" aria-label="${t("nav.back")}">${icon.back}</button>
         <h1>${t("sched.title")}</h1>
         <span style="width:30px"></span>
       </div>
@@ -1784,14 +1799,14 @@ function locationCardHTML() {
         </div>`
       : `<div class="loc-panel">
           <div class="row">
-            <label>${t("loc.country")}</label>
+            <label for="presetCountry">${t("loc.country")}</label>
             <select id="presetCountry">
               <option value="">${t("loc.selectCountry")}</option>
               ${Object.keys(PRESETS).map((c) => `<option value="${c}" ${c === activeCountry ? "selected" : ""}>${presetCountryLabel(c)}</option>`).join("")}
             </select>
           </div>
           <div class="row">
-            <label>${t("loc.city")}</label>
+            <label for="presetCity">${t("loc.city")}</label>
             <select id="presetCity">
               <option value="">${t("loc.selectCity")}</option>
               ${activeCountry ? Object.keys(PRESETS[activeCountry]).map((c) => `<option value="${c}" ${c === activeCity ? "selected" : ""}>${presetCityLabel(activeCountry, c)}</option>`).join("") : ""}
@@ -2013,25 +2028,25 @@ function settingsBodyHTML(id) {
       <button class="loc-btn" id="useCoordsBtn" style="width:100%;margin:2px 0 8px">${t("loc.useCoords")}</button>
     </details>
     <div class="settings-card"><div class="row"><label>${t("loc.method")}</label>${dropdownHTML("method", state.method, METHODS.map(([v]) => ({ v, l: methodName(v) })))}</div>
-      <div class="row"><label>${t("loc.sunnahFast")}</label><label class="switch"><input type="checkbox" id="sunnahFastHighlight" ${state.sunnahFastHighlight ? "checked" : ""}/><span></span></label></div>
+      <div class="row"><label for="sunnahFastHighlight">${t("loc.sunnahFast")}</label><label class="switch"><input type="checkbox" id="sunnahFastHighlight" ${state.sunnahFastHighlight ? "checked" : ""}/><span></span></label></div>
       <div class="row"><label>${t("lang.label")}</label><div class="seg" role="group" aria-label="${t("lang.label")}"><button class="seg-btn ${state.language === "en" ? "active" : ""}" data-language="en">${t("lang.en")}</button><button class="seg-btn ${state.language === "ar" ? "active" : ""}" data-language="ar">${t("lang.ar")}</button></div></div>
     </div>`;
   if (id === "notifications") {
     const notificationsOff = !state.notificationsEnabled;
     return `
-    <div class="notification-master settings-card"><div><strong>${t("notify.master")}</strong><span>${t("notify.master.sub")}</span></div><label class="switch" aria-label="${t("notify.master")}"><input type="checkbox" id="notificationsEnabled" ${state.notificationsEnabled ? "checked" : ""}/><span></span></label></div>
+    <div class="notification-master settings-card"><div><strong>${t("notify.master")}</strong><span>${t("notify.master.sub")}</span></div><label class="switch"><input aria-label="${t("notify.master")}" type="checkbox" id="notificationsEnabled" ${state.notificationsEnabled ? "checked" : ""}/><span></span></label></div>
     <div class="notification-config ${notificationsOff ? "is-paused" : ""}" aria-disabled="${notificationsOff}">
-      <div class="notification-block settings-card"><div class="notification-block-head"><div><span class="notification-kicker">${t("notify.when")}</span><strong>${t("notify.reminders")}</strong></div></div>
-        <div class="athan-line"><div class="athan-copy"><strong>${t("notify.before")}</strong><span>${t("notify.before.sub")}</span></div><label class="switch" aria-label="${t("notify.aria.before")}"><input type="checkbox" id="remindersEnabled" ${state.remindersEnabled ? "checked" : ""} ${notificationsOff ? "disabled" : ""}/><span></span></label></div>
-        <div class="athan-line"><div class="athan-copy"><strong>${t("notify.at")}</strong><span>${t("notify.at.sub")}</span></div><label class="switch" aria-label="${t("notify.aria.at")}"><input type="checkbox" id="prayerAlertEnabled" ${state.prayerAlertEnabled ? "checked" : ""} ${notificationsOff ? "disabled" : ""}/><span></span></label></div>
-        <div class="athan-line"><div class="athan-copy"><strong>${t("notify.after")}</strong><span>${t("notify.after.sub")}</span></div><label class="switch" aria-label="${t("notify.aria.after")}"><input type="checkbox" id="iqamaEnabled" ${state.iqamaEnabled ? "checked" : ""} ${notificationsOff ? "disabled" : ""}/><span></span></label></div>
+      <div class="notification-block settings-card"><div class="notification-block-head"><div><strong>${t("notify.reminders")}</strong></div></div>
+        <div class="athan-line"><div class="athan-copy"><strong>${t("notify.before")}</strong><span>${t("notify.before.sub")}</span></div><label class="switch"><input aria-label="${t("notify.aria.before")}" type="checkbox" id="remindersEnabled" ${state.remindersEnabled ? "checked" : ""} ${notificationsOff ? "disabled" : ""}/><span></span></label></div>
+        <div class="athan-line"><div class="athan-copy"><strong>${t("notify.at")}</strong><span>${t("notify.at.sub")}</span></div><label class="switch"><input aria-label="${t("notify.aria.at")}" type="checkbox" id="prayerAlertEnabled" ${state.prayerAlertEnabled ? "checked" : ""} ${notificationsOff ? "disabled" : ""}/><span></span></label></div>
+        <div class="athan-line"><div class="athan-copy"><strong>${t("notify.after")}</strong><span>${t("notify.after.sub")}</span></div><label class="switch"><input aria-label="${t("notify.aria.after")}" type="checkbox" id="iqamaEnabled" ${state.iqamaEnabled ? "checked" : ""} ${notificationsOff ? "disabled" : ""}/><span></span></label></div>
         <div class="prayer-timing-list">${PRAYER_ORDER.map((p) => prayerTimingHTML(p, notificationsOff)).join("")}</div>
       </div>
-      <div class="settings-card"><div class="settings-card-title">${t("notify.sound")}</div><div class="sound-grid">${SOUNDS.map(([id]) => `<label class="sound-option ${state.reminderSound === id ? "active" : ""}" data-sound="${id}"><input type="radio" name="reminderSound" value="${id}" ${state.reminderSound === id ? "checked" : ""} style="display:none">${soundName(id)}</label>`).join("")}</div><div class="sound-actions"><button class="loc-btn" id="testSoundBtn">${t("notify.testSound")}</button></div></div>
+      <div class="settings-card"><div class="settings-card-title">${t("notify.sound")}</div><div class="sound-grid">${SOUNDS.map(([id]) => `<label class="sound-option ${state.reminderSound === id ? "active" : ""}" data-sound="${id}"><input type="radio" name="reminderSound" value="${id}" ${state.reminderSound === id ? "checked" : ""} class="sr-only">${soundName(id)}</label>`).join("")}</div><div class="sound-actions"><button class="loc-btn" id="testSoundBtn">${t("notify.testSound")}</button></div></div>
     </div>
     <div class="notification-confirmation ${state.notificationsEnabled ? "" : "paused"}"><span class="confirmation-dot"></span><p>${notificationSummary()}</p></div>`;
   }
-  if (id === "reading") return `<div class="settings-card"><div class="font-grid">${Object.keys(FONT_MAP).map((f) => `<button class="pill ${state.font === f ? "active" : ""}" data-font="${f}" aria-label="${f}"><span class="font-sample">أبجد</span><span>${f}</span></button>`).join("")}</div><div class="row"><label>${t("reading.arSize")}</label><input type="range" min="0.7" max="2" step="0.05" value="${state.arSize}" id="arSize"/><span>${state.arSize.toFixed(2)}×</span></div><div class="row"><label>${t("reading.appScale")}</label><div class="zoom-row"><button class="zoom-btn" data-zoom="-0.1">−</button><span class="zoom-val">${Math.round(state.zoom * 100)}%</span><button class="zoom-btn" data-zoom="0.1">+</button></div></div><div class="row azkar-navigation-setting"><label>${t("reading.navMode")}</label><div class="seg" role="group" aria-label="${t("reading.navMode.aria")}"><button class="seg-btn ${azkarNavigationMode() === "buttons-and-swipe" ? "active" : ""}" data-azkar-navigation="buttons-and-swipe">${t("reading.both")}</button><button class="seg-btn ${azkarNavigationMode() === "swipe-only" ? "active" : ""}" data-azkar-navigation="swipe-only">${t("reading.swipe")}</button><button class="seg-btn ${azkarNavigationMode() === "buttons-only" ? "active" : ""}" data-azkar-navigation="buttons-only">${t("reading.buttons")}</button></div></div><div class="preview">بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</div></div>`;
+  if (id === "reading") return `<div class="settings-card"><div class="font-grid">${Object.keys(FONT_MAP).map((f) => `<button class="pill ${state.font === f ? "active" : ""}" data-font="${f}" aria-label="${f}"><span class="font-sample">أبجد</span><span>${f}</span></button>`).join("")}</div><div class="row"><label for="arSize">${t("reading.arSize")}</label><input type="range" min="0.7" max="2" step="0.05" value="${state.arSize}" id="arSize"/><span>${state.arSize.toFixed(2)}×</span></div><div class="row"><label>${t("reading.appScale")}</label><div class="zoom-row"><button class="zoom-btn" data-zoom="-0.1">−</button><span class="zoom-val">${Math.round(state.zoom * 100)}%</span><button class="zoom-btn" data-zoom="0.1">+</button></div></div><div class="row azkar-navigation-setting"><label>${t("reading.navMode")}</label><div class="seg" role="group" aria-label="${t("reading.navMode.aria")}"><button class="seg-btn ${azkarNavigationMode() === "buttons-and-swipe" ? "active" : ""}" data-azkar-navigation="buttons-and-swipe">${t("reading.both")}</button><button class="seg-btn ${azkarNavigationMode() === "swipe-only" ? "active" : ""}" data-azkar-navigation="swipe-only">${t("reading.swipe")}</button><button class="seg-btn ${azkarNavigationMode() === "buttons-only" ? "active" : ""}" data-azkar-navigation="buttons-only">${t("reading.buttons")}</button></div></div><div class="preview">بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</div></div>`;
   if (id === "appearance") {
     return `<div class="settings-card">
       <div class="theme-intro">${t("appearance.intro")}</div>
@@ -2047,7 +2062,7 @@ function settingsBodyHTML(id) {
             ${g.keys.map(k => {
               const p = PALETTES[k];
               if (!p) return "";
-              return `<button class="palette-chip ${state.palette === k ? "active" : ""}" data-palette="${k}" title="${paletteName(k)}" style="background:${p.a || "transparent"};${!p.a ? "background:repeating-linear-gradient(45deg,var(--surface-2) 0 4px,var(--line) 4px 8px);" : ""}"></button>`;
+              return `<button type="button" class="palette-chip ${state.palette === k ? "active" : ""}" data-palette="${k}" title="${paletteName(k)}" aria-label="${paletteName(k)}" style="background:${p.a || "transparent"};${!p.a ? "background:repeating-linear-gradient(45deg,var(--surface-2) 0 4px,var(--line) 4px 8px);" : ""}"></button>`;
             }).join("")}
           </div>
         </div>
@@ -2061,7 +2076,7 @@ function buildSettingsSection(id) {
 }
 function renderSettings() {
   const active = SETTINGS_SECTIONS.includes(state.settingsSection) ? state.settingsSection : "general";
-  return `<div class="app settings-view"><div class="settings-head"><button class="icon-btn" data-go="home">${icon.back}</button><h1>${t("settings.title")}</h1><span style="width:30px"></span></div><nav class="settings-nav" aria-label="${t("settings.nav.aria")}">${SETTINGS_SECTIONS.map((id) => `<button type="button" class="settings-nav-btn ${active === id ? "active" : ""}" data-settings-section="${id}">${t("settings." + id)}</button>`).join("")}</nav>${buildSettingsSection(active)}${mobileBottomNavHTML("settings")}</div>`;
+  return `<div class="app settings-view"><div class="settings-head"><button type="button" class="icon-btn" data-go="home" aria-label="${t("nav.back")}">${icon.back}</button><h1>${t("settings.title")}</h1><span style="width:30px"></span></div><nav class="settings-nav" aria-label="${t("settings.nav.aria")}">${SETTINGS_SECTIONS.map((id) => `<button type="button" class="settings-nav-btn ${active === id ? "active" : ""}" data-settings-section="${id}">${t("settings." + id)}</button>`).join("")}</nav>${buildSettingsSection(active)}${mobileBottomNavHTML("settings")}</div>`;
 }
 function htmlToNode(html) {
   const doc = new DOMParser().parseFromString(html, "text/html");
@@ -2079,6 +2094,7 @@ function renderSettingsSectionInPlace() {
   requestAnimationFrame(() => old.remove());
   document.querySelectorAll("[data-settings-section]").forEach((b) => b.classList.toggle("active", b.dataset.settingsSection === active));
   wireSettings();
+  syncPressed();
 }
 
 // Replaced content gets no animation restart for free (a fresh node with the
@@ -2457,6 +2473,7 @@ function patchPrayerCard(forceRebuild = false) {
   const el = $("#prayerRegion");
   if (!el) return;
   el.classList.toggle("is-collapsed", Boolean(state.prayerCollapsed));
+  el.querySelector(".prayer-expanded-content")?.toggleAttribute("inert", Boolean(state.prayerCollapsed));
 
   const np = nextPrayer();
   const nextName = np ? prayerName(np.name) : (lastErr ? t("prayer.unavailable") : t("prayer.loading"));
@@ -2472,17 +2489,8 @@ function patchPrayerCard(forceRebuild = false) {
 
   // In-place patch: update countdown text and progress bar fill
   if (np) {
-    const countdownAr = el.querySelector(".next-countdown .countdown-ar");
-    if (countdownAr) {
-      countdownAr.textContent = arabicDuration(np.h, np.m);
-    } else {
-      const countdownHeroHours = el.querySelector(".next-countdown strong:first-child");
-      const countdownHeroMins = el.querySelector(".next-countdown strong:last-child");
-      if (countdownHeroHours && countdownHeroMins && countdownHeroHours !== countdownHeroMins) {
-        countdownHeroHours.innerHTML = `${np.h}<small>${t("time.h")}</small>`;
-        countdownHeroMins.innerHTML = `${String(np.m).padStart(2, "0")}<small>${t("time.m")}</small>`;
-      }
-    }
+    const countdown = el.querySelector(".next-countdown");
+    if (countdown) countdown.innerHTML = countdownHTML(np);
 
     const progress = el.querySelector(".prayer-progress > div");
     if (progress) progress.style.transform = `scaleX(${np.pct / 100})`;
@@ -2498,10 +2506,18 @@ function patchPrayerDetail() {
 }
 
 // Settings in-place helpers
+// Toggle-style buttons show selection with .active; expose the same state to
+// assistive tech. Called after every render and in-place selection change.
+const PRESSABLE = "button.seg-btn, button.pill, button.theme-card, button.palette-chip, button.settings-nav-btn, button.sched-mode-btn";
+function syncPressed(root = document) {
+  root.querySelectorAll(PRESSABLE).forEach((b) => b.setAttribute("aria-pressed", String(b.classList.contains("active"))));
+}
+
 function patchSettingsActive(attr, value) {
   document.querySelectorAll(`[${attr}]`).forEach((b) => {
     b.classList.toggle("active", b.getAttribute(attr) === String(value));
   });
+  syncPressed();
 }
 function patchSliderLabel(inputId, text) {
   const inp = $("#" + inputId);
@@ -2622,6 +2638,7 @@ function wire() {
     patchCount(0, target);
   });
   if (state.view === "settings") wireSettings();
+  syncPressed();
 }
 
 function neobrutalToneHTML() {
@@ -2938,7 +2955,11 @@ function wireSettings() {
     lbl.addEventListener("click", () => {
       state.reminderSound = lbl.dataset.sound;
       storage.set({ reminderSound: state.reminderSound });
-      document.querySelectorAll("[data-sound]").forEach((l) => l.classList.toggle("active", l.dataset.sound === state.reminderSound));
+      document.querySelectorAll("[data-sound]").forEach((l) => {
+        l.classList.toggle("active", l.dataset.sound === state.reminderSound);
+        const radio = l.querySelector("input");
+        if (radio) radio.checked = l.dataset.sound === state.reminderSound;
+      });
       syncReminders();
       if (activeAudio && !activeAudio.paused) {
         playSound(state.reminderSound);

@@ -353,7 +353,7 @@ html.zakkir-mobile .mobile-nav-liquid {
   width: calc((100% - 24px) / 3);
   display: block;
   border-radius: 16px;
-  background: linear-gradient(135deg, color-mix(in oklab, var(--accent) 84%, white), color-mix(in oklab, var(--accent) 96%, transparent));
+  background: linear-gradient(135deg, color-mix(in oklab, var(--accent) 92%, white), color-mix(in oklab, var(--accent) 96%, transparent));
   box-shadow: inset 0 1.5px 0 rgba(255, 255, 255, 0.45), 0 8px 22px color-mix(in oklab, var(--accent) 28%, transparent), 0 0 12px color-mix(in oklab, var(--accent) 18%, transparent);
   pointer-events: none;
   transform: translateX(calc(var(--nav-index, 0) * (100% + 6px)));
@@ -407,3 +407,139 @@ html.zakkir-mobile .mobile-bottom-nav-btn:active .mobile-nav-icon {
   html.zakkir-mobile .mobile-nav-label { transition-duration: 0.01ms; }
   html.zakkir-mobile .mobile-nav-liquid { transition-duration: 0.01ms; }
 }
+
+/* ===== Type roles =====
+   One fixed scale instead of compounding em chains (0.6em of 0.72em ...),
+   which had pushed most labels to 7-10px. Every role scales only with the
+   app's own zoom setting (--zoom, Settings > Reading > App scale), so
+   nothing compounds and nothing renders below 12px at 100%.
+     display 30 · countdown 18 · title 18 · body 16 · control 15
+     label 13 · fine 12 (the floor)                                   */
+html.zakkir-mobile body.electron {
+  --t-display: calc(30px * var(--zoom, 1));
+  --t-countdown: calc(18px * var(--zoom, 1));
+  --t-title: calc(18px * var(--zoom, 1));
+  --t-body: calc(16px * var(--zoom, 1));
+  --t-control: calc(15px * var(--zoom, 1));
+  --t-label: calc(13px * var(--zoom, 1));
+  --t-fine: calc(12px * var(--zoom, 1));
+  font-size: var(--t-body);
+}
+/* Labels speak in sentence case: uppercase tracking at small sizes was the
+   main source of the generic "dashboard" voice and is hard to read. */
+html.zakkir-mobile :is(.prayer .n, .sec, .settings-card-title, .azkar-progress-label, .palette-group-title, .sched-table thead th, .time-period, .mobile-nav-label) {
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* Prayer card: the next prayer is the largest text on the screen. */
+html.zakkir-mobile .next-name { font-size: var(--t-display); line-height: 1.1; letter-spacing: -0.01em; }
+html.zakkir-mobile .next-countdown { font-size: var(--t-countdown); }
+html.zakkir-mobile .next-countdown strong { font-size: 1em; }
+html.zakkir-mobile .next-countdown small { font-size: 0.8em; margin-left: 1px; opacity: 1; }
+html.zakkir-mobile .next-in { color: var(--muted); font-weight: 500; }
+html.zakkir-mobile .prayer-card.is-collapsed .next-name { font-size: var(--t-title); }
+html.zakkir-mobile .prayer-card.is-collapsed .next-countdown { font-size: var(--t-control); }
+html.zakkir-mobile .prayer-card.is-collapsed .next-countdown strong { font-size: 1em; }
+html.zakkir-mobile .hijri { font-size: var(--t-label); max-width: none; }
+html.zakkir-mobile .next-line { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+html.zakkir-mobile .prayer .n { font-size: var(--t-label); font-weight: 600; }
+html.zakkir-mobile .prayer .t { font-size: var(--t-body); font-weight: 650; }
+/* AM/PM sits under the time in every cell: side by side, "12:44 PM" overflows
+   a fifth of a 360px phone, and a wrap in one column only breaks the row. */
+html.zakkir-mobile .time-cell { display: inline-flex; flex-direction: column; align-items: center; line-height: 1.15; }
+html.zakkir-mobile .time-period { font-size: var(--t-fine); opacity: 0.8; }
+
+/* Azkar card */
+html.zakkir-mobile .azkar-context-copy strong { font-size: var(--t-title); }
+html.zakkir-mobile .azkar-context .counter { font-size: var(--t-label); }
+html.zakkir-mobile .dhikr { font-size: calc(24px * var(--ar-size, 1) * var(--zoom, 1)); }
+html.zakkir-mobile .dhikr-preamble { font-size: calc(15px * var(--ar-size, 1) * var(--zoom, 1)); }
+html.zakkir-mobile .desc { font-size: var(--t-control); }
+html.zakkir-mobile .azkar-progress-label,
+html[dir="rtl"].zakkir-mobile .azkar-progress-label { font-size: var(--t-label); }
+html.zakkir-mobile .nav-btn span { font-size: var(--t-control); }
+html.zakkir-mobile .mobile-bottom-nav-btn { font-size: var(--t-fine); }
+
+/* Settings */
+html.zakkir-mobile .settings-head h1 { font-size: var(--t-title); }
+html.zakkir-mobile .settings-nav-btn { font-size: var(--t-control); }
+html.zakkir-mobile .settings-section-intro .sec { font-size: var(--t-title); font-weight: 700; color: var(--ink); margin-bottom: 4px; }
+html.zakkir-mobile .settings-section-intro p { font-size: var(--t-label); }
+html.zakkir-mobile .settings-card-title { font-size: var(--t-control); }
+html.zakkir-mobile .row > label { font-size: var(--t-body); }
+html.zakkir-mobile .row > span,
+html.zakkir-mobile .zoom-val { font-size: var(--t-control); }
+html.zakkir-mobile :is(.seg-btn, .sched-mode-btn, .sound-option, .loc-btn, .ts-label) { font-size: var(--t-control); }
+html.zakkir-mobile .loc-resolved { font-size: var(--t-body); }
+html.zakkir-mobile .loc-adv summary { font-size: var(--t-control); }
+html.zakkir-mobile :is(.theme-intro, .palette-group-title, .theme-name, .pill span:not(.font-sample)) { font-size: var(--t-label); }
+html.zakkir-mobile .athan-copy strong,
+html.zakkir-mobile .notification-block-head strong,
+html.zakkir-mobile .prayer-check strong { font-size: var(--t-body); }
+html.zakkir-mobile .athan-copy span,
+html.zakkir-mobile .notification-master span { font-size: var(--t-label); }
+html.zakkir-mobile .minute-group > span { font-size: var(--t-label); }
+html.zakkir-mobile .minute-field small { font-size: var(--t-fine); }
+html.zakkir-mobile .minute-field input { font-size: var(--t-control); }
+html.zakkir-mobile .notification-confirmation p { font-size: var(--t-label); }
+html.zakkir-mobile :is(.err, .offline-notice) { font-size: var(--t-label); }
+
+/* Schedule */
+html.zakkir-mobile .sched-month { font-size: var(--t-title); }
+html.zakkir-mobile .sched-hijri,
+html.zakkir-mobile .sched-foot span { font-size: var(--t-label); }
+html.zakkir-mobile .sched-msg { font-size: var(--t-control); }
+html.zakkir-mobile .sched-table { font-size: var(--t-label); }
+html.zakkir-mobile .sched-table thead th { font-size: var(--t-fine); }
+html.zakkir-mobile :is(.sched-table td.d .wd, .sched-table td.h, .sched-table td.h .hy) { font-size: var(--t-fine); }
+
+/* ===== Accessibility ===== */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+/* Text that sits on the tinted page background rather than a card uses ink:
+   muted greys fall below 4.5:1 there. Selection is carried by the filled pill. */
+html.zakkir-mobile :is(.settings-nav-btn:not(.active), .settings-section-intro p, .mobile-bottom-nav-btn:not(.active)) { color: var(--ink); }
+html.zakkir-mobile .settings-nav-btn:not(.active) { opacity: 0.86; }
+
+/* Keyboard / switch-access focus is always visible. */
+html.zakkir-mobile :is(button, select, summary, input, [tabindex]):focus-visible,
+html.zakkir-mobile .nav-btn:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+html.zakkir-mobile .switch input:focus-visible + span,
+html.zakkir-mobile .sound-option:focus-within {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+/* Touch targets: 44px minimum on everything you tap. */
+html.zakkir-mobile :is(.seg-btn, .settings-nav-btn, .sched-mode-btn, .sound-option, .loc-btn, .zoom-btn, .ts-btn, .icon-btn) { min-height: 44px; }
+html.zakkir-mobile :is(.zoom-btn, .icon-btn) { min-width: 44px; }
+html.zakkir-mobile .sound-option { display: inline-flex; align-items: center; padding-inline: 14px; }
+/* The switch keeps its look; its label grows to a 44px hit area. */
+html.zakkir-mobile .switch::after { content: ""; position: absolute; inset: -11px -6px; }
+
+/* Settings tabs: fit all four at phone width. */
+html.zakkir-mobile .settings-nav { gap: 2px; padding-inline: 12px; }
+html.zakkir-mobile .settings-nav-btn { font-size: calc(14px * var(--zoom, 1)); padding-inline: 10px; flex: 1 0 auto; }
+
+/* Prayer times stay on one line in a 5-column grid. */
+html.zakkir-mobile .prayer .t { font-size: var(--t-control); }
+/* Secondary text is lighter by colour, never by opacity: opacity stacked on
+   muted pushed the istiadhah line and AM/PM below 4.5:1 in every theme. */
+html.zakkir-mobile :is(.dhikr-preamble, .dhikr-preamble-istiadhah, .dhikr-preamble-basmala, .time-period, .next-countdown small) { opacity: 1; }
+html.zakkir-mobile :is(.sched-mode-btn:not(.active), .sched-msg, .sched-foot span, .loc-adv label) { color: var(--ink); }
+/* The opened coordinates panel sits on a surface, not on the backdrop art. */
+html.zakkir-mobile .loc-adv[open] { background: var(--surface); }
+html.zakkir-mobile .azkar-navigation-setting .seg-btn { font-size: var(--t-label); }
