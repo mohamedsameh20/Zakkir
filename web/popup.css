@@ -1905,11 +1905,12 @@ html[dir="rtl"] #schedNext svg { transform: scaleX(-1); }
 /* Prayer progress fills from the right in RTL. */
 html[dir="rtl"] .prayer-progress > div { transform-origin: right; }
 
-/* Azkar box stays LTR: next button on the right, prev on the left,
-   progress fills left-to-right, and counters read left-to-right. */
-html[dir="rtl"] .azkar-controls { direction: ltr; }
+/* Azkar mirrors with the language: Previous sits on the right, Next on the
+   left, arrows point the reading way, and progress fills from the right.
+   Counters stay left-to-right so "3 / 33" never reorders. */
+html[dir="rtl"] .azkar-controls .nav-btn[data-nav] svg { transform: scaleX(-1); }
 html[dir="rtl"] .azkar-progress-track > div,
-html[dir="rtl"] .progress > div { transform-origin: left; }
+html[dir="rtl"] .progress > div { transform-origin: right; }
 html[dir="rtl"] .azkar-current-count,
 html[dir="rtl"] .azkar-progress-count { direction: ltr; unicode-bidi: isolate; }
 

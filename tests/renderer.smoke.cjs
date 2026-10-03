@@ -29,6 +29,7 @@ function findChrome() {
 // (web/bridge.js posts through ReactNativeWebView, replies come via receive()).
 const HARNESS_HEAD = `<script>
 window.__smoke = { errors: [], messages: [] };
+window.SETTINGS = { language: "en", lat: 30.0444, lng: 31.2357, locationSet: true };
 addEventListener("error", (e) => __smoke.errors.push(String(e.message)));
 addEventListener("unhandledrejection", (e) => __smoke.errors.push("unhandled rejection: " + (e.reason && e.reason.message || e.reason)));
 window.ReactNativeWebView = {
@@ -36,7 +37,7 @@ window.ReactNativeWebView = {
     const message = JSON.parse(raw);
     __smoke.messages.push(message);
     if (message.type === "load-settings") {
-      setTimeout(() => ZakkirNative.receive({ type: "settings", value: { language: "en" }, locale: "en" }), 0);
+      setTimeout(() => ZakkirNative.receive({ type: "settings", value: SETTINGS, locale: "en" }), 0);
     }
   },
 };
@@ -87,13 +88,16 @@ setTimeout(async () => {
 }, 3000);
 </script>`;
 
-function runPage(tail) {
+function runPage(tail, settings) {
   const chrome = findChrome();
   if (!chrome) return null;
   assert.ok(fs.existsSync(RENDERER), "run `npm run generate-renderer` first");
   const source = fs.readFileSync(RENDERER, "utf8");
   const html = JSON.parse(source.slice(source.indexOf("=") + 1).trim().replace(/;$/, ""));
-  const page = html.replace("<head>", "<head>" + HARNESS_HEAD).replace("</body>", tail + "</body>");
+  const head = settings
+    ? HARNESS_HEAD.replace(/window\.SETTINGS = [^;]*;/, () => `window.SETTINGS = ${JSON.stringify(settings)};`)
+    : HARNESS_HEAD;
+  const page = html.replace("<head>", "<head>" + head).replace("</body>", tail + "</body>");
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "zakkir-smoke-"));
   const file = path.join(dir, "index.html");
   fs.writeFileSync(file, page);
@@ -295,4 +299,52 @@ test("every inlined reading font loads", (t) => {
   assert.deepEqual(errors, []);
   assert.deepEqual(checks.families, ["Amiri", "Cairo", "Noto Naskh Arabic", "Scheherazade New"]);
   for (const family of checks.families) assert.equal(checks.loaded[family], true, `${family} loads`);
+});
+
+// A fresh install must ask for a location rather than show Cairo's times.
+const WELCOME_TAIL = `<script>
+setTimeout(async () => {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  const checks = {};
+  try {
+    checks.welcome = Boolean(document.querySelector(".welcome-view"));
+    checks.noNav = !document.querySelector(".mobile-bottom-nav");
+    checks.noPrayerCard = !document.querySelector("#prayerRegion");
+    checks.continueDisabled = document.querySelector("#welcomeContinue").disabled;
+    checks.shownLocation = document.querySelector(".loc-resolved").textContent.trim();
+
+    document.querySelector('[data-tab="city"]').click();
+    await wait(50);
+    const country = document.querySelector("#presetCountry");
+    country.value = [...country.options].find((o) => o.value)?.value;
+    country.dispatchEvent(new Event("change", { bubbles: true }));
+    await wait(300);
+    checks.continueEnabled = !document.querySelector("#welcomeContinue").disabled;
+    checks.saved = __smoke.messages.some((m) => m.type === "save-settings" && m.patch && m.patch.locationSet === true);
+    document.querySelector("#welcomeContinue").click();
+    await wait(100);
+    checks.home = Boolean(document.querySelector(".home-view"));
+  } catch (e) {
+    __smoke.errors.push("harness: " + e.message);
+  }
+  const out = document.createElement("pre");
+  out.id = "smoke-result";
+  out.textContent = JSON.stringify({ errors: __smoke.errors, checks });
+  document.body.appendChild(out);
+}, 3000);
+</script>`;
+
+test("first launch asks for a location before showing prayer times", (t) => {
+  const result = runPage(WELCOME_TAIL, { language: "en" });
+  if (!result) return t.skip("no Chromium/Chrome found (set CHROME_BIN)");
+  const { errors, checks } = result;
+  assert.deepEqual(errors, []);
+  assert.equal(checks.welcome, true);
+  assert.equal(checks.noNav, true);
+  assert.equal(checks.noPrayerCard, true, "no guessed prayer times");
+  assert.equal(checks.continueDisabled, true);
+  assert.equal(checks.shownLocation, "Not chosen yet");
+  assert.equal(checks.continueEnabled, true, "picking a city unlocks Continue");
+  assert.equal(checks.saved, true, "the choice is persisted");
+  assert.equal(checks.home, true);
 });

@@ -600,3 +600,10 @@ html.zakkir-mobile .prayer-card.is-collapsed .next-name-ar { font-size: 0.8em; }
 /* Ten accents: two even rows of five, each a 44px target. */
 html.zakkir-mobile .palette-grid { display: grid; grid-template-columns: repeat(5, 44px); justify-content: space-between; gap: 12px 0; }
 html.zakkir-mobile .palette-chip { width: 44px; height: 44px; }
+
+/* First launch: ask where the user is instead of assuming a city. */
+html.zakkir-mobile .welcome-view { display: grid; gap: 14px; align-content: start; padding-top: 28px; }
+html.zakkir-mobile .welcome-title { margin: 0; font-size: var(--t-display); line-height: 1.2; color: var(--ink); }
+html.zakkir-mobile .welcome-sub { margin: 0; font-size: var(--t-body); color: var(--muted); line-height: 1.5; }
+html.zakkir-mobile .welcome-view .loc-btn.primary:disabled { opacity: .5; }
+html.zakkir-mobile .welcome-lang { justify-self: center; width: min(260px, 100%); margin-top: 8px; }

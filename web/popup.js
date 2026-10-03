@@ -23,6 +23,7 @@ const DEFAULTS = {
   lat: 30.0444,
   lng: 31.2357,
   locationName: "Cairo, Egypt",
+  locationSet: false,
   locationMethod: "manual",
   locationTab: "city",
   locationAdvancedOpen: false,
@@ -172,6 +173,10 @@ const STRINGS = {
     "notify.afterMin": "Minutes after {prayer}",
     "notify.beforeLbl": "Before",
     "notify.afterLbl": "After",
+    "welcome.title": "Where are you praying?",
+    "welcome.sub": "Prayer times depend on where you are. Your location is only used to fetch them.",
+    "welcome.continue": "Continue",
+    "loc.notSet": "Not chosen yet",
     "notify.min": "min",
     "notify.beforeAll": "Minutes before athan, for every prayer",
     "notify.afterAll": "Minutes after athan, for every prayer",
@@ -311,6 +316,10 @@ const STRINGS = {
     "notify.afterMin": "التنبيه بعد {prayer} بـ",
     "notify.beforeLbl": "التنبيه قبل",
     "notify.afterLbl": "الإقامة بعد",
+    "welcome.title": "أين أنت الآن؟",
+    "welcome.sub": "تختلف مواقيت الصلاة بحسب مكانك، ولا يُستخدم موقعك إلا لجلبها.",
+    "welcome.continue": "متابعة",
+    "loc.notSet": "لم يُحدَّد بعد",
     "notify.min": "د",
     "notify.beforeAll": "عدد الدقائق قبل الأذان لكل الصلوات",
     "notify.afterAll": "عدد الدقائق بعد الأذان لكل الصلوات",
@@ -614,10 +623,16 @@ let loadedPrayerDate = null;
 
 // ---------- storage ----------
 // Settings live in the native shell's AsyncStorage.
+// Keys that were actually stored, as opposed to filled in from DEFAULTS.
+const storedKeys = new Set();
 const storage = {
   get: () =>
     ZakkirNative.loadSettings()
-      .then((raw) => (raw ? { ...DEFAULTS, ...raw } : { ...DEFAULTS }))
+      .then((raw) => {
+        storedKeys.clear();
+        Object.keys(raw || {}).forEach((key) => storedKeys.add(key));
+        return raw ? { ...DEFAULTS, ...raw } : { ...DEFAULTS };
+      })
       .catch(() => ({ ...DEFAULTS })),
   set: (patch) => {
     ZakkirNative.saveSettings(patch);
@@ -955,6 +970,7 @@ function applyNearestOfflineCache() {
 }
 
 async function loadPrayers(force = false) {
+  if (!state.locationSet) return;
   const today = todayKey();
   const cache = state.prayerCache;
   const latR = +state.lat.toFixed(4);
@@ -1077,7 +1093,7 @@ function hijriLabel() {
 }
 
 function syncReminders() {
-  if (!prayers) return;
+  if (!prayers || !state.locationSet) return;
   // Hand the native scheduler the pre-fetched upcoming days as well. Without
   // them it has to call the network itself, which is exactly what fails
   // offline and leaves stale notifications scheduled.
@@ -1744,7 +1760,7 @@ function locationCardHTML() {
     detect: t("loc.viaGps"),
     manual: "",
   }[method] || "";
-  const resolved = state.locationName || `${Number(state.lat).toFixed(3)}, ${Number(state.lng).toFixed(3)}`;
+  const resolved = !state.locationSet ? t("loc.notSet") : (state.locationName || `${Number(state.lat).toFixed(3)}, ${Number(state.lng).toFixed(3)}`);
   const locationTabs = [["gps", t("loc.gps")], ["city", t("loc.city")]];
   const tab = locationTabs.some(([id]) => id === state.locationTab)
     ? state.locationTab
@@ -1804,6 +1820,18 @@ function patchLocation() {
   if (!el) { render(); return; }
   setHTML(el, locationCardHTML());
   wireLocation();
+  confirmLocation();
+}
+
+// Any location the user picks counts as chosen; until then the app asks
+// instead of quietly showing Cairo's prayer times.
+function confirmLocation() {
+  if (!state.locationSet) {
+    state.locationSet = true;
+    storage.set({ locationSet: true });
+  }
+  const next = $("#welcomeContinue");
+  if (next) next.disabled = false;
 }
 
 function wireLocation() {
@@ -2057,6 +2085,28 @@ function settingsBodyHTML(id) {
 function buildSettingsSection(id) {
   return settingsSectionHTML(id, t("settings." + id), t("settings." + id + ".desc"), settingsBodyHTML(id));
 }
+function renderWelcome() {
+  return `<div class="app welcome-view">
+    <h1 class="welcome-title">${t("welcome.title")}</h1>
+    <p class="welcome-sub">${t("welcome.sub")}</p>
+    <div id="locRegion">${locationCardHTML()}</div>
+    <button type="button" class="loc-btn primary" id="welcomeContinue" ${state.locationSet ? "" : "disabled"}>${t("welcome.continue")}</button>
+    <div class="seg welcome-lang" role="group" aria-label="${t("lang.label")}"><button type="button" class="seg-btn ${state.language === "en" ? "active" : ""}" data-welcome-language="en">${t("lang.en")}</button><button type="button" class="seg-btn ${state.language === "ar" ? "active" : ""}" data-welcome-language="ar">${t("lang.ar")}</button></div>
+  </div>`;
+}
+
+function wireWelcome() {
+  wireLocation();
+  $("#welcomeContinue")?.addEventListener("click", () => {
+    if (state.locationSet) render();
+  });
+  document.querySelectorAll("[data-welcome-language]").forEach((b) =>
+    b.addEventListener("click", () => {
+      if (state.language !== b.dataset.welcomeLanguage) update({ language: b.dataset.welcomeLanguage, prayerCache: null });
+    })
+  );
+}
+
 function renderSettings() {
   const active = SETTINGS_SECTIONS.includes(state.settingsSection) ? state.settingsSection : "general";
   return `<div class="app settings-view"><div class="settings-head"><button type="button" class="icon-btn" data-go="home" aria-label="${t("nav.back")}">${icon.back}</button><h1>${t("settings.title")}</h1><span style="width:30px"></span></div><nav class="settings-nav" aria-label="${t("settings.nav.aria")}">${SETTINGS_SECTIONS.map((id) => `<button type="button" class="settings-nav-btn ${active === id ? "active" : ""}" data-settings-section="${id}">${t("settings." + id)}</button>`).join("")}</nav>${buildSettingsSection(active)}${mobileBottomNavHTML("settings")}</div>`;
@@ -2245,7 +2295,8 @@ function setHTML(el, html) {
 function render() {
   applyVars();
   const app = $("#app");
-  const html = state.view === "settings" ? renderSettings()
+  const html = !state.locationSet ? renderWelcome()
+    : state.view === "settings" ? renderSettings()
     : state.view === "schedule" ? renderSchedule()
     : renderHome();
   // Keep the bottom nav DOM node persistent so tab switches don't
@@ -2367,9 +2418,9 @@ function animateAzkarSwap(direction, paint, fromSwipe = false) {
   const startHeight = el.getBoundingClientRect().height;
   el.style.height = `${startHeight}px`;
 
-  // The azkar box keeps LTR orientation in Arabic mode too (next = right),
-  // so "next" always enters from the right and "previous" from the left.
-  const dirSign = direction;
+  // Content travels the way the language reads: in Arabic "next" enters from
+  // the left, as when turning pages of an Arabic book.
+  const dirSign = isArabic() ? -direction : direction;
 
   const innerContent = el.querySelector(".azkar-body-wrapper") || el.querySelector(".dhikr") || el;
 
@@ -2491,8 +2542,9 @@ function wireAzkarSwipe(tap) {
       window.setTimeout(() => { suppressAzkarTap = false; }, 300);
       ZakkirNative.haptic("selection");
 
-      // Swipe left = next, swipe right = previous (azkar box stays LTR).
-      const direction = currentDx < 0 ? 1 : -1;
+      // Swipe against the reading direction to go forward: left in English,
+      // right in Arabic.
+      const direction = (currentDx < 0) !== isArabic() ? 1 : -1;
       inner.style.transition = "transform 0.12s cubic-bezier(0.4, 0, 1, 1), opacity 0.12s ease";
       inner.style.transform = `translateX(${currentDx < 0 ? -90 : 90}px)`;
       inner.style.opacity = "0.2";
@@ -2595,6 +2647,7 @@ function update(patch, persist = true) {
 }
 
 function wire() {
+  if (!state.locationSet) { wireWelcome(); return; }
   document.querySelectorAll("[data-go]").forEach((b) =>
     b.addEventListener("click", () => {
       if (state.view !== b.dataset.go) {
@@ -3029,6 +3082,10 @@ function playSound(soundId, onEndCb) {
       athanEnabled: null,
     });
   }
+
+  // Anyone who already picked a location (before this flag existed) is done.
+  if (!state.locationSet && storedKeys.has("lat") && storedKeys.has("lng")) state.locationSet = true;
+  if (!state.locationSet) state.locationTab = "gps";
 
   // Always start in time-based mode. A manual category choice can still
   // override the category for the current session, but should not
