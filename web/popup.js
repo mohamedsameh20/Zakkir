@@ -31,6 +31,7 @@ const DEFAULTS = {
   autoTime: true,
   azkarIndex: 0,
   azkarCount: 0,
+  azkarCounts: {},
   azkarHintDismissed: false,
   azkarResetDate: null,
   prayerCache: null,
@@ -94,6 +95,15 @@ const STRINGS = {
     "azkar.prev.title": "Previous dhikr",
     "azkar.next.title": "Next dhikr",
     "azkar.reset.title": "Reset count",
+    "azkar.undo": "Undo",
+    "azkar.undo.title": "Undo one count (hold to reset)",
+    "azkar.done": "Completed",
+    "azkar.partial": "{completed} of {total} done",
+    "azkar.accept": "May Allah accept it from you",
+    "azkar.nextMorning": "Morning azkar begin at Fajr · {time}",
+    "azkar.nextEvening": "Evening azkar begin at Maghrib · {time}",
+    "azkar.review": "Tap to read them again",
+    "azkar.continue": "Tap to continue where you left off",
     "azkar.tapHint": "Tap the card to count",
     "azkar.overall": "Overall progress",
     "azkar.overall.aria": "Overall Azkar progress",
@@ -219,6 +229,15 @@ const STRINGS = {
     "azkar.prev.title": "الذكر السابق",
     "azkar.next.title": "الذكر التالي",
     "azkar.reset.title": "إعادة ضبط العداد",
+    "azkar.undo": "تراجع",
+    "azkar.undo.title": "تراجع عن عدّة واحدة (اضغط مطوّلًا لإعادة الضبط)",
+    "azkar.done": "تمّت",
+    "azkar.partial": "تمّ {completed} من {total}",
+    "azkar.accept": "",
+    "azkar.nextMorning": "أذكار الصباح بعد الفجر · {time}",
+    "azkar.nextEvening": "أذكار المساء بعد المغرب · {time}",
+    "azkar.review": "اضغط لقراءتها مرة أخرى",
+    "azkar.continue": "اضغط لمتابعة ما تبقّى",
     "azkar.tapHint": "اضغط على البطاقة للتسبيح",
     "azkar.overall": "إجمالي الأذكار",
     "azkar.overall.aria": "إجمالي التقدم في الأذكار",
@@ -354,7 +373,7 @@ let suppressAzkarTap = false;
 function persistAzkarCount(count) {
   clearTimeout(countSaveTimer);
   countSaveTimer = setTimeout(() => {
-    storage.set({ azkarCount: count });
+    storage.set({ azkarCount: count, azkarCounts: state.azkarCounts });
     countSaveTimer = null;
   }, 180);
 }
@@ -764,8 +783,8 @@ function applyAutoCategory() {
   cancelPendingAzkarCount();
   state.category = want;
   state.azkarIndex = 0;
-  state.azkarCount = 0;
-  storage.set({ category: want, azkarIndex: 0, azkarCount: 0 });
+  state.azkarCount = itemCount(0);
+  storage.set({ category: want, azkarIndex: 0, azkarCount: state.azkarCount });
   return true;
 }
 
@@ -774,9 +793,39 @@ function currentDhikrList() {
   return flattenCategory(AZKAR_DATA[state.category] || []);
 }
 
+// Today's count for every dhikr, keyed "<category>|<index>", so moving between
+// items keeps their progress. Cleared by the daily reset. state.azkarCount
+// mirrors the current item's entry.
+function itemKey(index = state.azkarIndex) { return `${state.category}|${index}`; }
+function itemTarget(z) { return parseInt(z?.count, 10) || 1; }
+function itemCount(index) { return (state.azkarCounts || {})[itemKey(index)] || 0; }
+function setItemCount(n) {
+  state.azkarCount = n;
+  state.azkarCounts = { ...(state.azkarCounts || {}), [itemKey()]: n };
+  persistAzkarCount(n);
+}
+
+/** Items finished today, not the current position. */
 function azkarOverallProgress() {
   const list = currentDhikrList();
-  return { completed: list.length ? state.azkarIndex + 1 : 0, total: list.length };
+  const completed = list.filter((z, i) => itemCount(i) >= itemTarget(z)).length;
+  return { completed, total: list.length };
+}
+
+/** First unfinished item after `from` (wrapping), or list.length when all are done. */
+function nextUnfinished(from = state.azkarIndex) {
+  const list = currentDhikrList();
+  for (let step = 1; step <= list.length; step += 1) {
+    const i = (from + step) % list.length;
+    if (itemCount(i) < itemTarget(list[i])) return i;
+  }
+  return list.length;
+}
+
+/** The position after the last item shows the session summary. */
+function onAzkarSummary() {
+  const list = currentDhikrList();
+  return list.length > 0 && state.azkarIndex >= list.length;
 }
 
 function fmt12(hhmm) {
@@ -1181,8 +1230,8 @@ function applyAutoAzkarCategory() {
     cancelPendingAzkarCount();
     state.category = targetCat;
     state.azkarIndex = 0;
-    state.azkarCount = 0;
-    storage.set({ category: targetCat, azkarIndex: 0, azkarCount: 0 });
+    state.azkarCount = itemCount(0);
+    storage.set({ category: targetCat, azkarIndex: 0, azkarCount: state.azkarCount });
     if (state.view === "home") {
       patchAzkarCard();
     }
@@ -1196,7 +1245,8 @@ function maybeResetDaily() {
     state.azkarResetDate = today;
     state.azkarIndex = 0;
     state.azkarCount = 0;
-    storage.set({ azkarResetDate: today, azkarIndex: 0, azkarCount: 0 });
+    state.azkarCounts = {};
+    storage.set({ azkarResetDate: today, azkarIndex: 0, azkarCount: 0, azkarCounts: {} });
   }
   applyAutoAzkarCategory();
 }
@@ -1211,6 +1261,7 @@ const icon = {
   prev: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 6l-6 6 6 6"/></svg>`,
   next: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>`,
   reset: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/></svg>`,
+  undo: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>`,
 };
 
 // ---------- views ----------
@@ -1360,7 +1411,30 @@ function splitOpeningFormula(content) {
     : { preamble: "", body: String(content || "") };
 }
 
+/** "Fajr · 5:23 AM" style start of the next azkar session. */
+function nextSessionLine(morning) {
+  const prayer = morning ? "Maghrib" : "Fajr";
+  const time = prayers?.[prayer] ? fmt12(prayers[prayer]).replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim() : "";
+  return t(morning ? "azkar.nextEvening" : "azkar.nextMorning", { time });
+}
+
+function azkarSummaryHTML() {
+  const { completed, total } = azkarOverallProgress();
+  const done = total > 0 && completed === total;
+  const morning = state.category === MORNING_CAT;
+  return `
+    <div class="azkar-summary${done ? " is-done" : ""}" aria-live="polite">
+      <div class="azkar-summary-title" lang="ar">${morning ? "أذكار الصباح" : "أذكار المساء"}</div>
+      <div class="azkar-summary-state">${done ? t("azkar.done") : t("azkar.partial", { completed, total })}</div>
+      ${done ? `<div class="azkar-summary-dua"><span lang="ar">تقبّل الله</span>${isArabic() ? "" : `<small>${t("azkar.accept")}</small>`}</div>` : ""}
+      <div class="azkar-progress-track" role="progressbar" aria-label="${t("azkar.overall.aria")}" aria-valuemin="0" aria-valuemax="${total}" aria-valuenow="${completed}"><div style="transform:scaleX(${total ? completed / total : 0})"></div></div>
+      <div class="azkar-summary-next">${nextSessionLine(morning)}</div>
+      <div class="azkar-summary-action">${done ? t("azkar.review") : t("azkar.continue")}</div>
+    </div>`;
+}
+
 function azkarCardHTML() {
+  if (onAzkarSummary()) return azkarSummaryHTML();
   const list = currentDhikrList();
   const z = list[state.azkarIndex] || { content: "—", count: "1", description: "" };
   const target = parseInt(z.count, 10) || 1;
@@ -1400,11 +1474,11 @@ function renderHome() {
   return `
     <div class="app home-view">
       <section class="card prayer-card ${state.prayerCollapsed ? "is-collapsed" : ""}" id="prayerRegion" aria-label="${t("prayer.times")}">${prayerCardHTML()}</section>
-      <button type="button" class="azkar-card" id="azkarTap" aria-describedby="azkarCountHint">${azkarCardHTML()}</button>
+      <button type="button" class="azkar-card${onAzkarSummary() ? " is-summary" : ""}" id="azkarTap" aria-describedby="azkarCountHint">${azkarCardHTML()}</button>
       <span class="sr-only" id="azkarCountHint">${t("azkar.countHint")}</span>
       <div class="nav-row azkar-controls" data-nav-mode="${navMode}">
         <button class="nav-btn" data-nav="-1" title="${t("azkar.prev.title")}">${icon.prev}<span>${t("azkar.prev")}</span></button>
-        <button class="nav-btn reset-btn" id="resetBtn" title="${t("azkar.reset.title")}" aria-label="${t("azkar.reset.title")}">${icon.reset}<span>${t("azkar.reset")}</span></button>
+        <button class="nav-btn reset-btn" id="resetBtn" title="${t("azkar.undo.title")}" aria-label="${t("azkar.undo.title")}">${icon.undo}<span>${t("azkar.undo")}</span></button>
         <button class="nav-btn" data-nav="1" title="${t("azkar.next.title")}"><span>${t("azkar.next")}</span>${icon.next}</button>
       </div>
       ${mobileBottomNavHTML("home")}
@@ -2304,8 +2378,12 @@ function patchAzkarCard() {
     const z = list[state.azkarIndex] || { content: "—", count: "1", description: "" };
     const target = parseInt(z.count, 10) || 1;
     const bodyWrapper = el.querySelector(".azkar-body-wrapper");
+    const summary = onAzkarSummary();
+    el.classList.toggle("is-summary", summary);
+    const hintEl = $("#azkarCountHint");
+    if (hintEl) hintEl.textContent = summary ? "" : t("azkar.countHint");
 
-    if (bodyWrapper) {
+    if (bodyWrapper && !summary) {
       const reading = splitOpeningFormula(z.content);
       const morning = state.category === MORNING_CAT;
       const contextCopy = el.querySelector(".azkar-context-copy strong");
@@ -2388,15 +2466,23 @@ function animateAzkarSwap(direction, paint, fromSwipe = false) {
   }, fromSwipe ? 10 : 110);
 }
 
-function navigateAzkar(direction, fromSwipe = false) {
+function goToAzkar(index, direction, fromSwipe = false) {
   const list = currentDhikrList();
   if (!list.length || azkarNavigationBusy) return;
-  const index = (state.azkarIndex + direction + list.length) % list.length;
+  const target = Math.max(0, Math.min(list.length, index));
+  if (target === state.azkarIndex) {
+    ZakkirNative.haptic("selection");
+    return;
+  }
   cancelPendingAzkarCount();
-  state.azkarIndex = index;
-  state.azkarCount = 0;
-  storage.set({ azkarIndex: index, azkarCount: 0 });
+  state.azkarIndex = target;
+  state.azkarCount = target < list.length ? itemCount(target) : 0;
+  storage.set({ azkarIndex: target, azkarCount: state.azkarCount, azkarCounts: state.azkarCounts });
   animateAzkarSwap(direction, patchAzkarCard, fromSwipe);
+}
+
+function navigateAzkar(direction, fromSwipe = false) {
+  goToAzkar(state.azkarIndex + direction, direction, fromSwipe);
 }
 
 function wireAzkarSwipe(tap) {
@@ -2591,6 +2677,11 @@ function wire() {
   if (tap) tap.addEventListener("click", () => {
     if (suppressAzkarTap || azkarNavigationBusy) return;
     const list = currentDhikrList();
+    if (onAzkarSummary()) {
+      const first = nextUnfinished(-1);
+      goToAzkar(first < list.length ? first : 0, -1);
+      return;
+    }
     const z = list[state.azkarIndex]; if (!z) return;
     const target = parseInt(z.count, 10) || 1;
     const next = state.azkarCount + 1;
@@ -2603,18 +2694,19 @@ function wire() {
     // on every tap — the "whole page re-render" the user reported.
     ZakkirNative.haptic(next >= target ? "success" : "light");
     if (next >= target) {
-      // Finish in place, then advance through the same animated path as navigation.
-      state.azkarCount = target;
+      // Finish in place, then move on to the next unfinished item, or to the
+      // session summary once everything is done.
+      setItemCount(target);
       patchCount(target, target);
       tap.classList.remove("azkar-complete");
       void tap.offsetWidth;
       tap.classList.add("azkar-complete");
       setTimeout(() => tap.classList.remove("azkar-complete"), 500);
-      setTimeout(() => navigateAzkar(1), 420);
+      const after = nextUnfinished();
+      setTimeout(() => goToAzkar(after, after > state.azkarIndex ? 1 : -1), 420);
     } else {
       // in-place patch: no full re-render, no flicker
-      state.azkarCount = next;
-      persistAzkarCount(next);
+      setItemCount(next);
       patchCount(next, target);
     }
   });
@@ -2625,18 +2717,39 @@ function wire() {
       navigateAzkar(dir);
     })
   );
-  const reset = $("#resetBtn");
-  if (reset) reset.addEventListener("click", (e) => {
-    e.currentTarget?.blur?.();
-    const list = currentDhikrList();
-    const z = list[state.azkarIndex];
-    const target = z ? (parseInt(z.count, 10) || 1) : 1;
-    cancelPendingAzkarCount();
-    state.azkarCount = 0;
-    storage.set({ azkarCount: 0 });
-    ZakkirNative.haptic("selection");
-    patchCount(0, target);
-  });
+  const undo = $("#resetBtn");
+  if (undo) {
+    // Tap: take back one count (a mis-tap shouldn't cost the whole item).
+    // Hold: reset this item to zero.
+    let holdTimer = null;
+    let held = false;
+    const currentTarget = () => itemTarget(currentDhikrList()[state.azkarIndex]);
+    undo.addEventListener("pointerdown", () => {
+      held = false;
+      clearTimeout(holdTimer);
+      holdTimer = setTimeout(() => {
+        if (onAzkarSummary()) return;
+        held = true;
+        setItemCount(0);
+        ZakkirNative.haptic("success");
+        patchCount(0, currentTarget());
+      }, 600);
+    });
+    for (const type of ["pointerup", "pointerleave", "pointercancel"]) {
+      undo.addEventListener(type, () => clearTimeout(holdTimer));
+    }
+    undo.addEventListener("click", (e) => {
+      e.currentTarget?.blur?.();
+      if (held) { held = false; return; }
+      if (onAzkarSummary() || state.azkarCount <= 0) {
+        ZakkirNative.haptic("selection");
+        return;
+      }
+      setItemCount(state.azkarCount - 1);
+      ZakkirNative.haptic("selection");
+      patchCount(state.azkarCount, currentTarget());
+    });
+  }
   if (state.view === "settings") wireSettings();
   syncPressed();
 }
@@ -3114,5 +3227,5 @@ function playSound(soundId, onEndCb) {
 })();
 
 addEventListener("pagehide", () => {
-  if (countSaveTimer) storage.set({ azkarCount: state.azkarCount });
+  if (countSaveTimer) storage.set({ azkarCount: state.azkarCount, azkarCounts: state.azkarCounts });
 });

@@ -543,3 +543,44 @@ html.zakkir-mobile :is(.sched-mode-btn:not(.active), .sched-msg, .sched-foot spa
 /* The opened coordinates panel sits on a surface, not on the backdrop art. */
 html.zakkir-mobile .loc-adv[open] { background: var(--surface); }
 html.zakkir-mobile .azkar-navigation-setting .seg-btn { font-size: var(--t-label); }
+
+/* ===== Azkar session summary =====
+   Shown after the last dhikr (or Next past it): the session gets an ending
+   instead of silently looping back to item 1. */
+html.zakkir-mobile .azkar-card.is-summary { min-height: 320px; justify-content: center; }
+html.zakkir-mobile .azkar-summary {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 24px 8px 8px;
+  text-align: center;
+}
+html.zakkir-mobile .azkar-summary-title {
+  font-family: var(--ar-font, "Scheherazade New"), serif;
+  font-size: calc(22px * var(--zoom, 1));
+  color: var(--muted);
+}
+html.zakkir-mobile .azkar-summary-state {
+  font-size: var(--t-display);
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--ink);
+}
+html.zakkir-mobile .azkar-summary.is-done .azkar-summary-state { color: var(--accent); }
+html.zakkir-mobile .azkar-summary-dua {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+html.zakkir-mobile .azkar-summary-dua span {
+  font-family: var(--ar-font, "Scheherazade New"), serif;
+  font-size: calc(28px * var(--zoom, 1));
+  line-height: 1.5;
+  color: var(--ink);
+}
+html.zakkir-mobile .azkar-summary-dua small { font-size: var(--t-label); color: var(--muted); }
+html.zakkir-mobile .azkar-summary .azkar-progress-track { width: min(240px, 80%); margin-block: 6px; }
+html.zakkir-mobile .azkar-summary-next { font-size: var(--t-label); color: var(--muted); }
+html.zakkir-mobile .azkar-summary-action { font-size: var(--t-label); font-weight: 600; color: var(--accent); }

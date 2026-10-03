@@ -87,17 +87,13 @@ setTimeout(async () => {
 }, 3000);
 </script>`;
 
-test("renderer boots and every view renders without errors", (t) => {
+function runPage(tail) {
   const chrome = findChrome();
-  if (!chrome) return t.skip("no Chromium/Chrome found (set CHROME_BIN)");
+  if (!chrome) return null;
   assert.ok(fs.existsSync(RENDERER), "run `npm run generate-renderer` first");
-
   const source = fs.readFileSync(RENDERER, "utf8");
   const html = JSON.parse(source.slice(source.indexOf("=") + 1).trim().replace(/;$/, ""));
-  const page = html
-    .replace("<head>", "<head>" + HARNESS_HEAD)
-    .replace("</body>", HARNESS_TAIL + "</body>");
-
+  const page = html.replace("<head>", "<head>" + HARNESS_HEAD).replace("</body>", tail + "</body>");
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "zakkir-smoke-"));
   const file = path.join(dir, "index.html");
   fs.writeFileSync(file, page);
@@ -114,11 +110,16 @@ test("renderer boots and every view renders without errors", (t) => {
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
-
   const match = dom.match(/<pre id="smoke-result">([\s\S]*?)<\/pre>/);
   assert.ok(match, "harness never reported (page failed to boot?)");
   const decoded = match[1].replace(/&quot;/g, '"').replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
-  const { errors, checks } = JSON.parse(decoded);
+  return JSON.parse(decoded);
+}
+
+test("renderer boots and every view renders without errors", (t) => {
+  const result = runPage(HARNESS_TAIL);
+  if (!result) return t.skip("no Chromium/Chrome found (set CHROME_BIN)");
+  const { errors, checks } = result;
 
   assert.deepEqual(errors, []);
   assert.equal(checks.home, true, "home view rendered");
@@ -130,4 +131,78 @@ test("renderer boots and every view renders without errors", (t) => {
   assert.equal(checks.backToHome, true, "back returns home");
   // The native shell needs every view change to route the hardware back button.
   assert.deepEqual(checks.viewChanges.slice(-3), ["settings", "schedule", "home"]);
+});
+
+// Drives the azkar session through the page's own functions (classic-script
+// globals) and reports what the user would see.
+const AZKAR_TAIL = `<script>
+setTimeout(async () => {
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  const checks = {};
+  const tap = () => document.querySelector("#azkarTap").click();
+  const count = () => document.querySelector(".azkar-current-count")?.textContent.trim();
+  const overall = () => document.querySelector(".azkar-progress-count")?.textContent.trim();
+  try {
+    update({ view: "home" }, false);
+    await wait(50);
+    goToAzkar(1, 1); await wait(600);
+    checks.secondItemStart = count();
+    tap(); await wait(50);
+    const target = itemTarget(currentDhikrList()[1]);
+    checks.afterTap = count();
+    navigateAzkar(1); await wait(600);
+    navigateAzkar(-1); await wait(600);
+    checks.keptAfterNavigation = count();
+    document.querySelector("#resetBtn").click(); await wait(50);
+    checks.afterUndo = count();
+    checks.overallBefore = overall();
+    // Finish every item but the last one, then complete the last by tapping.
+    const list = currentDhikrList();
+    list.slice(0, -1).forEach((z, i) => { state.azkarCounts[itemKey(i)] = itemTarget(z); });
+    checks.overallAllButLast = (render(), await wait(50), overall());
+    goToAzkar(list.length - 1, 1); await wait(600);
+    for (let i = 0; i < itemTarget(list[list.length - 1]); i += 1) { tap(); await wait(30); }
+    await wait(1200);
+    checks.summaryShown = Boolean(document.querySelector(".azkar-summary.is-done"));
+    checks.summaryText = document.querySelector(".azkar-summary-state")?.textContent.trim();
+    // Previous on the first item must not wrap to the end.
+    goToAzkar(0, -1); await wait(600);
+    navigateAzkar(-1); await wait(600);
+    checks.stayedOnFirst = state.azkarIndex === 0;
+    // From the summary, tapping jumps to the first unfinished item.
+    state.azkarCounts[itemKey(2)] = 0;
+    goToAzkar(list.length, 1); await wait(600);
+    checks.partialSummary = document.querySelector(".azkar-summary-state")?.textContent.trim();
+    tap(); await wait(600);
+    checks.jumpedTo = state.azkarIndex;
+    checks.target = target;
+  } catch (e) {
+    __smoke.errors.push("harness: " + e.message);
+  }
+  const out = document.createElement("pre");
+  out.id = "smoke-result";
+  out.textContent = JSON.stringify({ errors: __smoke.errors, checks });
+  document.body.appendChild(out);
+}, 3000);
+</script>`;
+
+test("azkar session keeps counts, undoes, and ends with a summary", (t) => {
+  const result = runPage(AZKAR_TAIL);
+  if (!result) return t.skip("no Chromium/Chrome found (set CHROME_BIN)");
+  const { errors, checks } = result;
+  assert.deepEqual(errors, []);
+  const { target } = checks;
+  assert.equal(checks.secondItemStart, `0 / ${target}`);
+  assert.equal(checks.afterTap, `1 / ${target}`);
+  assert.equal(checks.keptAfterNavigation, `1 / ${target}`, "count survives moving away and back");
+  assert.equal(checks.afterUndo, `0 / ${target}`, "undo takes back one count");
+  assert.match(checks.overallBefore, /^0 \/ \d+$/, "progress counts finished items, not position");
+  assert.match(checks.overallAllButLast, /^(\d+) \/ (\d+)$/);
+  const [, done, total] = checks.overallAllButLast.match(/^(\d+) \/ (\d+)$/);
+  assert.equal(Number(done), Number(total) - 1);
+  assert.equal(checks.summaryShown, true, "finishing the last item shows the summary");
+  assert.equal(checks.summaryText, "Completed");
+  assert.equal(checks.stayedOnFirst, true, "Previous on the first item does not wrap");
+  assert.match(checks.partialSummary, /^\d+ of \d+ done$/);
+  assert.equal(checks.jumpedTo, 2, "tapping the summary resumes at the first unfinished item");
 });
