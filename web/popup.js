@@ -1,6 +1,9 @@
-// Azkar Extension — Prayer Times + Azkar (Hisn al-Muslim)
+// Zakkir for Android: the UI that runs inside the app's WebView.
 // Prayer times: api.aladhan.com (timings)
-// Azkar:        bundled azkar.json (Hisn al-Muslim, nawafalqari/azkar-api)
+// Azkar:        bundled azkar.json (Hisn al-Muslim, nawafalqari/azkar-api),
+//               inlined by scripts/generate-renderer.cjs as __ZAKKIR_AZKAR__.
+// The native shell (App.tsx) is reached through the bridge the generator
+// installs as globalThis.electronAPI.
 
 const DEFAULTS = {
   view: "home",
@@ -32,7 +35,6 @@ const DEFAULTS = {
   azkarResetDate: null,
   prayerCache: null,
   offlinePrayerCache: null,
-  isElectronPinned: false,
   notificationsEnabled: true,
   remindersEnabled: false,
   reminderMinutes: 10,
@@ -43,12 +45,10 @@ const DEFAULTS = {
   iqamaEnabled: false,
   iqamaMinutes: 10,
   iqamaMinutesByPrayer: {},
-  ignoreUpdateUntil: 0,
   scheduleMonth: null,
   scheduleDateMode: "g",
   scheduleCache: {},
   sunnahFastHighlight: true,
-  updateAlertsEnabled: true,
   prayerCollapsed: false,
   azkarNavigation: "buttons-and-swipe",
   language: "",
@@ -69,13 +69,6 @@ function migrateNotificationSettings(data) {
 // `language` is "" (auto-detect) until first boot; then "en" or "ar".
 const STRINGS = {
   en: {
-    "brand.subtitle": "Daily remembrance",
-    "header.pin": "Pin (keep open)",
-    "header.unpin": "Close pinned window",
-    "header.minimize": "Minimize",
-    "header.close": "Close",
-    "header.schedule": "Monthly schedule",
-    "header.settings": "Settings",
     "nav.primary": "Primary navigation",
     "nav.home": "Home",
     "nav.schedule": "Schedule",
@@ -91,7 +84,6 @@ const STRINGS = {
     "time.ago": "{time} ago",
     "time.in": "in {time}",
     "detail.next": "→ {name} at {time}",
-    "azkar.today": "Today's azkar",
     "azkar.count": "Count this dhikr",
     "azkar.prev": "Previous",
     "azkar.next": "Next",
@@ -103,10 +95,6 @@ const STRINGS = {
     "azkar.overall": "Overall progress",
     "azkar.overall.aria": "Overall Azkar progress",
     "azkar.current.aria": "Current dhikr progress",
-    "map.search": "Search city…",
-    "map.use": "✓ Use This Location",
-    "map.back": "Back",
-    "map.fetching": "Fetching…",
     "sched.title": "Schedule",
     "sched.prevMonth": "Previous month",
     "sched.nextMonth": "Next month",
@@ -119,22 +107,16 @@ const STRINGS = {
     "sched.error": "Failed to load schedule — check your connection.",
     "sched.errorShort": "Failed to load schedule.",
     "sched.retry": "Retry",
-    "sched.csv": "Export CSV",
-    "sched.csvTitle": "Download CSV",
     "sched.fast.monday": "Sunnah fast — Monday",
     "sched.fast.thursday": "Sunnah fast — Thursday",
     "sched.methodFallback": "Method {method}",
     "loc.viaPreset": "via city",
     "loc.viaGps": "via GPS",
-    "loc.viaMap": "via map",
     "loc.gps": "GPS",
-    "loc.map": "Map",
     "loc.city": "City",
     "loc.country": "Country",
     "loc.detect": "Detect my location",
     "loc.detect.sub": "Uses your device's location. You'll be asked once for permission.",
-    "loc.pickMap": "Open map picker",
-    "loc.pickMap.sub": "Click anywhere on the map or search to drop a pin.",
     "loc.selectCountry": "-- Select Country --",
     "loc.selectCity": "-- Select City --",
     "loc.detecting": "Detecting…",
@@ -147,19 +129,16 @@ const STRINGS = {
     "loc.useCoords": "Use These Coordinates",
     "loc.method": "Calculation method",
     "loc.sunnahFast": "Highlight Mon/Thu (Sunnah fasting)",
-    "loc.updateAlerts": "Show update alerts",
     "settings.title": "Settings",
     "settings.nav.aria": "Settings sections",
     "settings.general": "General",
     "settings.notifications": "Notifications",
     "settings.reading": "Reading",
     "settings.appearance": "Appearance",
-    "settings.window": "Window",
     "settings.general.desc": "Set your prayer location and schedule preferences.",
     "settings.notifications.desc": "Choose when Zakkir should remind you.",
     "settings.reading.desc": "Tune Arabic text for comfortable daily reading.",
     "settings.appearance.desc": "Choose the visual atmosphere and accent color.",
-    "settings.window.desc": "Adjust the popup to fit the way you use it.",
     "lang.label": "Language",
     "lang.en": "English",
     "lang.ar": "العربية",
@@ -200,23 +179,10 @@ const STRINGS = {
     "reading.swipe": "Swipe only",
     "reading.buttons": "Buttons only",
     "appearance.intro": "Choose a complete visual system. Themes can change geometry, depth, texture, motion, and color. The accent palette remains customizable.",
-    "appearance.designEras": "Design eras",
-    "appearance.glass": "Glass and depth",
-    "appearance.bold": "Bold and experimental",
-    "appearance.fresh": "Fresh picks",
-    "appearance.atmospheric": "Atmospheric themes",
-    "appearance.classic": "Browse classic themes ({count})",
     "appearance.accent": "Accent color",
     "neobrutal.label": "Neobrutalist contrast",
     "neobrutal.quiet": "Quiet",
     "neobrutal.high": "High contrast",
-    "window.zoom": "UI zoom",
-    "window.width": "Width",
-    "window.height": "Height",
-    "update.available": "🚀 Zakkir Update Available: v{version}",
-    "update.download": "Download",
-    "update.remind": "Remind Later (3d)",
-    "update.never": "Never Show Again",
     "err.prayers": "Failed to load prayer times — check your location.",
     "prayers.offline": "Offline — saved prayer times",
     "prayers.stale": "Offline — showing last saved prayer times.",
@@ -225,13 +191,6 @@ const STRINGS = {
     "fmt.pm": "PM",
   },
   ar: {
-    "brand.subtitle": "أذكار ومواقيت الصلاة",
-    "header.pin": "تثبيت النافذة",
-    "header.unpin": "إلغاء تثبيت النافذة",
-    "header.minimize": "تصغير",
-    "header.close": "إغلاق",
-    "header.schedule": "مواقيت الشهر",
-    "header.settings": "الإعدادات",
     "nav.primary": "القائمة الرئيسية",
     "nav.home": "الرئيسية",
     "nav.schedule": "المواقيت",
@@ -247,7 +206,6 @@ const STRINGS = {
     "time.ago": "مضت منذ {time}",
     "time.in": "بعد {time}",
     "detail.next": "← {name} بعد {time}",
-    "azkar.today": "أذكار اليوم",
     "azkar.count": "عدد التكرار",
     "azkar.prev": "السابق",
     "azkar.next": "التالي",
@@ -259,10 +217,6 @@ const STRINGS = {
     "azkar.overall": "إجمالي الأذكار",
     "azkar.overall.aria": "إجمالي التقدم في الأذكار",
     "azkar.current.aria": "تقدم الذكر الحالي",
-    "map.search": "البحث عن مدينة…",
-    "map.use": "✓ اعتماد هذا الموقع",
-    "map.back": "رجوع",
-    "map.fetching": "جارٍ جلب الموقع…",
     "sched.title": "جدول المواقيت",
     "sched.prevMonth": "الشهر السابق",
     "sched.nextMonth": "الشهر التالي",
@@ -275,22 +229,16 @@ const STRINGS = {
     "sched.error": "تعذّر تحميل الجدول — يُرجى التحقق من الاتصال.",
     "sched.errorShort": "تعذّر تحميل الجدول.",
     "sched.retry": "إعادة المحاولة",
-    "sched.csv": "تصدير (CSV)",
-    "sched.csvTitle": "تنزيل CSV",
     "sched.fast.monday": "صيام الاثنين (سُنّة)",
     "sched.fast.thursday": "صيام الخميس (سُنّة)",
     "sched.methodFallback": "طريقة الحساب {method}",
     "loc.viaPreset": "حسب المدينة",
     "loc.viaGps": "حسب الموقع الجغرافي (GPS)",
-    "loc.viaMap": "التحديد من الخريطة",
     "loc.gps": "GPS",
-    "loc.map": "الخريطة",
     "loc.city": "المدينة",
     "loc.country": "الدولة",
     "loc.detect": "تحديد الموقع تلقائيًا",
     "loc.detect.sub": "تحديد الموقع الحالي تلقائيًا لحساب أوقات الصلاة بدقة.",
-    "loc.pickMap": "اختيار الموقع من الخريطة",
-    "loc.pickMap.sub": "حدد موقعك بالنقر على الخريطة أو البحث عن عنوان.",
     "loc.selectCountry": "-- اختر الدولة --",
     "loc.selectCity": "-- اختر المدينة --",
     "loc.detecting": "جارٍ تحديد الموقع…",
@@ -303,19 +251,16 @@ const STRINGS = {
     "loc.useCoords": "حفظ الإحداثيات",
     "loc.method": "طريقة حساب المواقيت",
     "loc.sunnahFast": "التذكير بصيام الاثنين والخميس",
-    "loc.updateAlerts": "التنبيه عند توفر تحديثات",
     "settings.title": "الإعدادات",
     "settings.nav.aria": "أقسام الإعدادات",
     "settings.general": "عام",
     "settings.notifications": "الإشعارات",
     "settings.reading": "القراءة",
     "settings.appearance": "المظهر",
-    "settings.window": "النافذة",
     "settings.general.desc": "ضبط موقع أوقات الصلاة وإعدادات التوقيت.",
     "settings.notifications.desc": "تخصيص التنبيهات وإشعارات الأذان والإقامة.",
     "settings.reading.desc": "تخصيص الخطوط وحجم الخطوط لتسهيل القراءة.",
     "settings.appearance.desc": "تخصيص السمات والمظهر وألوان الواجهة.",
-    "settings.window.desc": "التحكم في أبعاد النافذة وتكبير الواجهة.",
     "lang.label": "اللغة",
     "lang.en": "English",
     "lang.ar": "العربية",
@@ -356,23 +301,10 @@ const STRINGS = {
     "reading.swipe": "السحب باللمس فقط",
     "reading.buttons": "الأزرار فقط",
     "appearance.intro": "تخصيص المظهر وتجربة الاستخدام البصرية والتنقل بين السمات المختلفة.",
-    "appearance.designEras": "الأنماط الحديثة",
-    "appearance.glass": "النمط الزجاجي",
-    "appearance.bold": "النمط البارز",
-    "appearance.fresh": "المجموعات المختارة",
-    "appearance.atmospheric": "السمات الهادئة",
-    "appearance.classic": "عرض الأنماط التقليدية ({count})",
     "appearance.accent": "اللون الرئيسي للواجهة",
     "neobrutal.label": "درجة التباين",
     "neobrutal.quiet": "عادي",
     "neobrutal.high": "تباين مرتفع",
-    "window.zoom": "نسبة التكبير",
-    "window.width": "عرض النافذة",
-    "window.height": "ارتفاع النافذة",
-    "update.available": "🚀 يتوفر تحديث جديد لـ زكّير: الاصدار v{version}",
-    "update.download": "تنزيل الآن",
-    "update.remind": "تذكيري لاحقًا (بعد 3 أيام)",
-    "update.never": "عدم العرض مرة أخرى",
     "err.prayers": "تعذّر تحميل أوقات الصلاة — يُرجى التحقق من الموقع.",
     "prayers.offline": "بدون إنترنت — أوقات الصلاة المحفوظة",
     "prayers.stale": "بدون إنترنت — عرض آخر أوقات الصلاة المحفوظة.",
@@ -760,42 +692,19 @@ let usingCachedPrayers = false;
 let offlinePrayerNotice = false;
 let activePrayer = null; // UI-only, not persisted
 let activeAudio = null;
-let renderedView = null;
 let mobileNavTransition = null;
 let prayerLoadSequence = 0;
 let loadedPrayerDate = null;
 
 // ---------- storage ----------
+// Settings live in the native shell's AsyncStorage.
 const storage = {
   get: () =>
-    new Promise((res) => {
-      if (globalThis.chrome?.storage) {
-        chrome.storage.local.get(null, (raw) => res({ ...DEFAULTS, ...migrateNotificationSettings(raw || {}) }));
-      }
-      else if (globalThis.electronAPI?.loadSettings) {
-        globalThis.electronAPI.loadSettings().then(raw => {
-          res(raw ? { ...DEFAULTS, ...raw } : { ...DEFAULTS });
-        }).catch(() => res({ ...DEFAULTS }));
-      }
-      else {
-        try {
-          const raw = localStorage.getItem("azkar");
-          res(raw ? { ...DEFAULTS, ...JSON.parse(raw) } : { ...DEFAULTS });
-        } catch { res({ ...DEFAULTS }); }
-      }
-    }),
+    globalThis.electronAPI.loadSettings()
+      .then((raw) => (raw ? { ...DEFAULTS, ...raw } : { ...DEFAULTS }))
+      .catch(() => ({ ...DEFAULTS })),
   set: (patch) => {
-    if (globalThis.chrome?.storage) {
-      chrome.storage.local.set(patch);
-    } else if (globalThis.electronAPI?.saveSettings) {
-      globalThis.electronAPI.saveSettings(patch);
-    } else {
-      try {
-        const raw = localStorage.getItem("azkar");
-        const cur = raw ? JSON.parse(raw) : {};
-        localStorage.setItem("azkar", JSON.stringify({ ...cur, ...patch }));
-      } catch {}
-    }
+    globalThis.electronAPI.saveSettings(patch);
   },
 };
 
@@ -934,28 +843,12 @@ async function reverseGeocode(lat, lng) {
   } catch { return `${lat.toFixed(4)}, ${lng.toFixed(4)}`; }
 }
 
-async function forwardGeocode(query) {
-  try {
-    const r = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=5`, { headers: { 'Accept-Language': geocodeLanguage() } });
-    return await r.json();
-  } catch { return []; }
-}
-
 // ---------- data ----------
 async function loadAzkar() {
   if (AZKAR_DATA) return;
-  const url = globalThis.chrome?.runtime?.getURL ? chrome.runtime.getURL("azkar.json") : "azkar.json";
-  const r = await fetch(url);
-  AZKAR_DATA = await r.json();
+  AZKAR_DATA = globalThis.__ZAKKIR_AZKAR__;
   CATS = Object.keys(AZKAR_DATA);
   if (!CATS.includes(state.category)) state.category = CATS[0];
-}
-
-function ddmmyyyy(dayOffset = 0) {
-  const d = new Date();
-  if (dayOffset !== 0) d.setDate(d.getDate() + dayOffset);
-  const pad = (n) => String(n).padStart(2, "0");
-  return `${pad(d.getDate())}-${pad(d.getMonth() + 1)}-${d.getFullYear()}`;
 }
 
 // ---------- offline prayer cache ----------
@@ -1232,37 +1125,36 @@ function hijriLabel() {
 }
 
 function syncReminders() {
-  if (globalThis.electronAPI?.setPrayerTimes && prayers) {
-    // Hand the native scheduler the pre-fetched upcoming days as well. Without
-    // them it has to call the network itself, which is exactly what fails
-    // offline and leaves stale notifications scheduled.
-    const upcoming = {};
-    const days = offlineCacheDays();
-    if (days) {
-      for (let offset = 0; offset <= OFFLINE_CACHE_DAYS_AHEAD; offset += 1) {
-        const dateKey = dateKeyOffset(offset);
-        const entry = days[dateKey];
-        if (entry?.timings) upcoming[dateKey] = entry.timings;
-      }
+  if (!prayers) return;
+  // Hand the native scheduler the pre-fetched upcoming days as well. Without
+  // them it has to call the network itself, which is exactly what fails
+  // offline and leaves stale notifications scheduled.
+  const upcoming = {};
+  const days = offlineCacheDays();
+  if (days) {
+    for (let offset = 0; offset <= OFFLINE_CACHE_DAYS_AHEAD; offset += 1) {
+      const dateKey = dateKeyOffset(offset);
+      const entry = days[dateKey];
+      if (entry?.timings) upcoming[dateKey] = entry.timings;
     }
-    globalThis.electronAPI.setPrayerTimes(prayers, {
-      notificationsEnabled: state.notificationsEnabled,
-      remindersEnabled: state.remindersEnabled,
-      reminderMinutes: state.reminderMinutes,
-      reminderMinutesByPrayer: state.reminderMinutesByPrayer,
-      reminderPrayers: state.reminderPrayers,
-      reminderSound: state.reminderSound,
-      prayerAlertEnabled: state.prayerAlertEnabled,
-      iqamaEnabled: state.iqamaEnabled,
-      iqamaMinutes: state.iqamaMinutes,
-      iqamaMinutesByPrayer: state.iqamaMinutesByPrayer,
-      lat: state.lat,
-      lng: state.lng,
-      method: state.method,
-      language: state.language,
-      upcomingTimings: upcoming,
-    });
   }
+  globalThis.electronAPI.setPrayerTimes(prayers, {
+    notificationsEnabled: state.notificationsEnabled,
+    remindersEnabled: state.remindersEnabled,
+    reminderMinutes: state.reminderMinutes,
+    reminderMinutesByPrayer: state.reminderMinutesByPrayer,
+    reminderPrayers: state.reminderPrayers,
+    reminderSound: state.reminderSound,
+    prayerAlertEnabled: state.prayerAlertEnabled,
+    iqamaEnabled: state.iqamaEnabled,
+    iqamaMinutes: state.iqamaMinutes,
+    iqamaMinutesByPrayer: state.iqamaMinutesByPrayer,
+    lat: state.lat,
+    lng: state.lng,
+    method: state.method,
+    language: state.language,
+    upcomingTimings: upcoming,
+  });
 }
 
 function applyAutoAzkarCategory() {
@@ -1307,37 +1199,10 @@ const icon = {
   prev: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 6l-6 6 6 6"/></svg>`,
   next: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>`,
   reset: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/></svg>`,
-  expand: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9V3h6M21 9V3h-6M3 15v6h6M21 15v6h-6"/></svg>`,
-  pin: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 17v5"/><path d="M9 10.76V6a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v4.76l2 3.24H7l2-3.24Z"/></svg>`,
-  unpin: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3l18 18"/><path d="M12 17v5"/><path d="M9 10.76V6a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v4.76l2 3.24H7l2-3.24Z"/></svg>`,
-  close: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>`,
-  minimize: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/></svg>`,
 };
 
-const IS_PINNED = (() => {
-  try { return new URLSearchParams(location.search).get("pinned") === "1"; }
-  catch { return false; }
-})();
-
 // ---------- views ----------
-function headerHTML() {
-  if (globalThis.__ZAKKIR_MOBILE__) {
-    return "";
-  }
-  const pinned = globalThis.electronAPI ? true : IS_PINNED;
-  return `
-    <div class="brand"><img class="logo" src="icon.png" alt="Zakkir"/><span><span class="name">Zakkir</span><span class="brand-sub">${t("brand.subtitle")}</span></span></div>
-    <div class="icons">
-      ${globalThis.electronAPI ? "" : `<button class="icon-btn" id="pinBtn" title="${pinned ? t("header.unpin") : t("header.pin")}">${pinned ? icon.unpin : icon.pin}</button>`}
-      ${globalThis.electronAPI ? `<button class="icon-btn" id="minimizeBtn" title="${t("header.minimize")}">${icon.minimize}</button>` : ""}
-      ${globalThis.electronAPI ? `<button class="icon-btn" id="closeBtn" title="${t("header.close")}">${icon.close}</button>` : ""}
-      <button class="icon-btn" data-go="schedule" title="${t("header.schedule")}">${icon.cal}</button>
-      <button class="icon-btn" data-go="settings" title="${t("header.settings")}">${icon.gear}</button>
-    </div>`;
-}
-
 function mobileBottomNavHTML(active) {
-  if (!globalThis.__ZAKKIR_MOBILE__) return "";
   const order = ["home", "schedule", "settings"];
   const destinationIndex = Math.max(0, order.indexOf(active));
   const originIndex = mobileNavTransition?.to === destinationIndex
@@ -1372,7 +1237,7 @@ function durText(hrs, mins) {
 function prayerCardHTML() {
   const np = nextPrayer();
   const nextName = np ? prayerName(np.name) : (lastErr ? t("prayer.unavailable") : t("prayer.loading"));
-  const collapsed = Boolean(globalThis.__ZAKKIR_MOBILE__ && state.prayerCollapsed);
+  const collapsed = Boolean(state.prayerCollapsed);
   const toggleLabel = collapsed ? t("prayer.show") : t("prayer.minimize");
   // The head is PERSISTENT across collapse/expand: the same eyebrow, name and
   // countdown nodes stay mounted and only change size, so the text genuinely
@@ -1381,7 +1246,7 @@ function prayerCardHTML() {
     <div class="prayer-head">
       <div class="next-line">
         <span class="eyebrow">${t("prayer.next")}</span>
-        <div class="prayer-meta"><span class="hijri">${hijriLabel() || ""}</span>${globalThis.__ZAKKIR_MOBILE__ ? `<button type="button" class="prayer-collapse" aria-label="${toggleLabel}" aria-expanded="${!collapsed}" title="${toggleLabel}">${icon.chevronDown}</button>` : ""}</div>
+        <div class="prayer-meta"><span class="hijri">${hijriLabel() || ""}</span><button type="button" class="prayer-collapse" aria-label="${toggleLabel}" aria-expanded="${!collapsed}" title="${toggleLabel}">${icon.chevronDown}</button></div>
       </div>
       <div class="next-prayer">
         <div class="next-name">${nextName}</div>
@@ -1420,7 +1285,7 @@ function wirePrayerCollapse() {
       state.prayerCollapsed = !state.prayerCollapsed;
       storage.set({ prayerCollapsed: state.prayerCollapsed });
       globalThis.__ZAKKIR_HAPTIC__?.("selection");
-      const collapsed = Boolean(globalThis.__ZAKKIR_MOBILE__ && state.prayerCollapsed);
+      const collapsed = Boolean(state.prayerCollapsed);
       const label = collapsed ? t("prayer.show") : t("prayer.minimize");
       button.setAttribute("aria-expanded", String(!collapsed));
       button.setAttribute("aria-label", label);
@@ -1462,16 +1327,6 @@ function detailHTML(name) {
     </div>`;
 }
 
-function catRowHTML() {
-  const list = currentDhikrList();
-  const z = list[state.azkarIndex] || { count: "1" };
-  const target = parseInt(z.count, 10) || 1;
-  return `
-    <span class="section-label">${t("azkar.today")}</span>
-    <div class="cat-tools">${dropdownHTML("catPick", state.category, CATS.map((c) => ({ v: c, l: c })), { full: true })}
-    <span class="counter">${state.azkarCount} / ${target}</span></div>`;
-}
-
 function splitOpeningFormula(content) {
   const lines = String(content || "").split("\n");
   if (lines.length < 2) return { preamble: "", body: String(content || "") };
@@ -1495,12 +1350,12 @@ function azkarCardHTML() {
   const reading = splitOpeningFormula(z.content);
   const morning = state.category === MORNING_CAT;
   return `
-    ${globalThis.__ZAKKIR_MOBILE__ ? `<div class="azkar-context ${morning ? "is-morning" : "is-evening"}" aria-live="polite">
+    <div class="azkar-context ${morning ? "is-morning" : "is-evening"}" aria-live="polite">
       <span class="azkar-context-balance" aria-hidden="true"></span>
       <div class="azkar-context-copy"><strong lang="ar">${morning ? "أذكار الصباح" : "أذكار المساء"}</strong></div>
       <span class="counter azkar-current-count" aria-label="${t("azkar.current.aria")}">${state.azkarCount} / ${target}</span>
-    </div>` : ""}
-    ${globalThis.__ZAKKIR_MOBILE__ ? `<div class="progress azkar-current-progress" aria-hidden="true"><div style="transform:scaleX(${pct / 100})"></div></div>` : ""}
+    </div>
+    <div class="progress azkar-current-progress" aria-hidden="true"><div style="transform:scaleX(${pct / 100})"></div></div>
     <div class="azkar-body-wrapper">
       ${reading.preamble ? `<div class="dhikr-preamble dhikr-preamble-${reading.preambleKind}" lang="ar">${reading.preamble}</div>` : ""}
       <div class="dhikr" lang="ar">${reading.body}</div>
@@ -1511,11 +1366,6 @@ function azkarCardHTML() {
       <div class="azkar-progress-label"><span>${t("azkar.overall")}</span><strong class="azkar-progress-count">${overall.completed} / ${overall.total}</strong></div>
       <div class="azkar-progress-track" role="progressbar" aria-label="${t("azkar.overall.aria")}" aria-valuemin="0" aria-valuemax="${overall.total}" aria-valuenow="${overall.completed}"><div style="transform:scaleX(${overallPct / 100})"></div></div>
     </div>`;
-}
-
-function navIndicatorText() {
-  const list = currentDhikrList();
-  return `${state.azkarIndex + 1} / ${list.length || 0}`;
 }
 
 const AZKAR_NAVIGATION_MODES = new Set(["buttons-and-swipe", "swipe-only", "buttons-only"]);
@@ -1529,37 +1379,16 @@ function renderHome() {
   const navMode = azkarNavigationMode();
   return `
     <div class="app home-view">
-      <div class="header" id="headerRegion">${headerHTML()}</div>
-      <section class="card prayer-card ${globalThis.__ZAKKIR_MOBILE__ && state.prayerCollapsed ? "is-collapsed" : ""}" id="prayerRegion" aria-label="${t("prayer.times")}">${prayerCardHTML()}</section>
-      ${globalThis.__ZAKKIR_MOBILE__ ? "" : `<div class="cat-row" id="catRegion">${catRowHTML()}</div>`}
+      <section class="card prayer-card ${state.prayerCollapsed ? "is-collapsed" : ""}" id="prayerRegion" aria-label="${t("prayer.times")}">${prayerCardHTML()}</section>
       <button type="button" class="azkar-card" id="azkarTap" aria-label="${t("azkar.count")}">${azkarCardHTML()}</button>
       <div class="nav-row azkar-controls" data-nav-mode="${navMode}">
         <button class="nav-btn" data-nav="-1" title="${t("azkar.prev.title")}">${icon.prev}<span>${t("azkar.prev")}</span></button>
         <button class="nav-btn reset-btn" id="resetBtn" title="${t("azkar.reset.title")}" aria-label="${t("azkar.reset.title")}">${icon.reset}<span>${t("azkar.reset")}</span></button>
         <button class="nav-btn" data-nav="1" title="${t("azkar.next.title")}"><span>${t("azkar.next")}</span>${icon.next}</button>
       </div>
-      ${globalThis.__ZAKKIR_MOBILE__ ? "" : `<div class="nav-indicator" id="navIndicator" aria-live="polite">${navIndicatorText()}</div>`}
       ${mobileBottomNavHTML("home")}
     </div>
   `;
-}
-
-function renderMap() {
-  return `
-    <div class="map-view">
-      <div class="map-toolbar">
-        <button class="icon-btn" id="mapBackBtn" title="${t("map.back")}">${icon.back}</button>
-        <div class="map-search-wrap">
-          <input class="map-search" id="mapSearch" placeholder="${t("map.search")}" autocomplete="off"/>
-          <div class="map-results" id="mapResults"></div>
-        </div>
-      </div>
-      <div id="leafletMap"></div>
-      <div class="map-footer">
-        <div class="map-loc-label" id="mapLocLabel">${state.locationName}</div>
-        <button class="btn-primary" id="useLocationBtn">${t("map.use")}</button>
-      </div>
-    </div>`;
 }
 
 // ---------- Monthly schedule ----------
@@ -1800,7 +1629,6 @@ function scheduleFooterHTML() {
   return `
     <div class="sched-foot">
       <span>${where} · ${methodNameL}</span>
-      ${globalThis.__ZAKKIR_MOBILE__ ? "" : `<button class="sched-csv" id="schedCsv" title="${t("sched.csvTitle")}">${t("sched.csv")}</button>`}
     </div>`;
 }
 
@@ -1836,30 +1664,6 @@ function patchScheduleDirectional(delta) {
   if (body) playEnter(body, delta < 0 ? "slideInFromStart" : "slideInFromEnd");
 }
 
-function downloadScheduleCsv() {
-  if (!_scheduleData?.days) return;
-  const ym = currentScheduleYM();
-  const header = isArabic()
-    ? ["ميلادي", "اليوم", "هجري", "الشهر الهجري", "السنة الهجرية", "المناسبة", "الفجر", "الظهر", "العصر", "المغرب", "العشاء"]
-    : ["Gregorian", "Weekday", "Hijri", "Hijri Month", "Hijri Year", "Event", "Fajr", "Dhuhr", "Asr", "Maghrib", "Isha"];
-  const rows = _scheduleData.days.map((d) => [
-    `${ym}-${String(d.g).padStart(2, "0")}`,
-    d.weekday || "",
-    d.hDay || "",
-    d.hMonth || "",
-    d.hYear || "",
-    hijriEventName(d.hMonthNum, d.hDay),
-    d.timings.Fajr, d.timings.Dhuhr, d.timings.Asr, d.timings.Maghrib, d.timings.Isha,
-  ]);
-  const csv = [header, ...rows].map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
-  const blob = new Blob([csv], { type: "text/csv" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url; a.download = `zakkir-schedule-${ym}.csv`;
-  document.body.appendChild(a); a.click(); a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
-
 function wireSchedule() {
   const prev = $("#schedPrev");
   if (prev) prev.addEventListener("click", () => {
@@ -1877,8 +1681,6 @@ function wireSchedule() {
   });
   const retry = $("#schedRetry");
   if (retry) retry.addEventListener("click", () => { fetchMonth(currentScheduleYM()); patchSchedule(); });
-  const csv = $("#schedCsv");
-  if (csv) csv.addEventListener("click", downloadScheduleCsv);
   document.querySelectorAll(".sched-mode-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
       const mode = btn.getAttribute("data-mode") === "h" ? "h" : "g";
@@ -1947,16 +1749,13 @@ function locationCardHTML() {
   const srcLabel = {
     preset: t("loc.viaPreset"),
     detect: t("loc.viaGps"),
-    map: t("loc.viaMap"),
     manual: "",
   }[method] || "";
   const resolved = state.locationName || `${Number(state.lat).toFixed(3)}, ${Number(state.lng).toFixed(3)}`;
-  const locationTabs = globalThis.__ZAKKIR_MOBILE__
-    ? [["gps", t("loc.gps")], ["city", t("loc.city")]]
-    : [["gps", t("loc.gps")], ["map", t("loc.map")], ["city", t("loc.city")]];
+  const locationTabs = [["gps", t("loc.gps")], ["city", t("loc.city")]];
   const tab = locationTabs.some(([id]) => id === state.locationTab)
     ? state.locationTab
-    : (method === "detect" ? "gps" : method === "map" && !globalThis.__ZAKKIR_MOBILE__ ? "map" : "city");
+    : (method === "detect" ? "gps" : "city");
 
   let activeCountry = "";
   let activeCity = "";
@@ -1976,11 +1775,6 @@ function locationCardHTML() {
       ? `<div class="loc-panel">
           <button class="loc-btn primary" id="detectBtn">${t("loc.detect")}</button>
           <div class="loc-sub">${t("loc.detect.sub")}</div>
-        </div>`
-      : tab === "map"
-      ? `<div class="loc-panel">
-          <button class="loc-btn primary" id="pickMap">${t("loc.pickMap")}</button>
-          <div class="loc-sub">${t("loc.pickMap.sub")}</div>
         </div>`
       : `<div class="loc-panel">
           <div class="row">
@@ -2048,9 +1842,6 @@ function wireLocation() {
       detect.disabled = false;
     }
   });
-  const pick = $("#pickMap");
-  if (pick) pick.addEventListener("click", () => update({ view: "map" }));
-
   const presetCountry = $("#presetCountry");
   const presetCity = $("#presetCity");
   if (presetCountry && presetCity) {
@@ -2104,14 +1895,8 @@ function themeCardsHTML(themes, featured = false) {
       <div class="sw" data-theme-sw="${id}"></div><span class="theme-name">${themeName(id)}</span>
     </button>`).join("");
 }
-const CLASSIC_THEME_INDEX = THEMES.findIndex(([id]) => id === "light");
 
-const SETTINGS_SECTIONS = globalThis.__ZAKKIR_MOBILE__
-  ? ["general", "reading", "appearance", "notifications"]
-  : ["general", "notifications", "reading", "appearance", "window"];
-const SETTINGS_NAV = globalThis.__ZAKKIR_MOBILE__
-  ? [["general"], ["reading"], ["appearance"], ["notifications"]]
-  : [["general"], ["notifications"], ["reading"], ["appearance"], ["window"]];
+const SETTINGS_SECTIONS = ["general", "reading", "appearance", "notifications"];
 
 function settingsSectionHTML(id, title, description, body) {
   return `<section class="settings-section" data-settings-panel="${id}">
@@ -2223,7 +2008,6 @@ function settingsBodyHTML(id) {
     </details>
     <div class="settings-card"><div class="row"><label>${t("loc.method")}</label>${dropdownHTML("method", state.method, METHODS.map(([v]) => ({ v, l: methodName(v) })))}</div>
       <div class="row"><label>${t("loc.sunnahFast")}</label><label class="switch"><input type="checkbox" id="sunnahFastHighlight" ${state.sunnahFastHighlight ? "checked" : ""}/><span></span></label></div>
-      ${globalThis.electronAPI && !globalThis.__ZAKKIR_MOBILE__ ? `<div class="row"><label>${t("loc.updateAlerts")}</label><label class="switch"><input type="checkbox" id="updateAlertsEnabled" ${state.updateAlertsEnabled ? "checked" : ""}/><span></span></label></div>` : ""}
       <div class="row"><label>${t("lang.label")}</label><div class="seg" role="group" aria-label="${t("lang.label")}"><button class="seg-btn ${state.language === "en" ? "active" : ""}" data-language="en">${t("lang.en")}</button><button class="seg-btn ${state.language === "ar" ? "active" : ""}" data-language="ar">${t("lang.ar")}</button></div></div>
     </div>`;
   if (id === "notifications") {
@@ -2241,7 +2025,7 @@ function settingsBodyHTML(id) {
     </div>
     <div class="notification-confirmation ${state.notificationsEnabled ? "" : "paused"}"><span class="confirmation-dot"></span><p>${notificationSummary()}</p></div>`;
   }
-  if (id === "reading") return `<div class="settings-card"><div class="font-grid">${Object.keys(FONT_MAP).map((f) => `<button class="pill ${state.font === f ? "active" : ""}" data-font="${f}" aria-label="${f}"><span class="font-sample">أبجد</span><span>${f}</span></button>`).join("")}</div><div class="row"><label>${t("reading.arSize")}</label><input type="range" min="0.7" max="2" step="0.05" value="${state.arSize}" id="arSize"/><span>${state.arSize.toFixed(2)}×</span></div>${globalThis.__ZAKKIR_MOBILE__ ? `<div class="row"><label>${t("reading.appScale")}</label><div class="zoom-row"><button class="zoom-btn" data-zoom="-0.1">−</button><span class="zoom-val">${Math.round(state.zoom * 100)}%</span><button class="zoom-btn" data-zoom="0.1">+</button></div></div><div class="row azkar-navigation-setting"><label>${t("reading.navMode")}</label><div class="seg" role="group" aria-label="${t("reading.navMode.aria")}"><button class="seg-btn ${azkarNavigationMode() === "buttons-and-swipe" ? "active" : ""}" data-azkar-navigation="buttons-and-swipe">${t("reading.both")}</button><button class="seg-btn ${azkarNavigationMode() === "swipe-only" ? "active" : ""}" data-azkar-navigation="swipe-only">${t("reading.swipe")}</button><button class="seg-btn ${azkarNavigationMode() === "buttons-only" ? "active" : ""}" data-azkar-navigation="buttons-only">${t("reading.buttons")}</button></div></div>` : ""}<div class="preview">بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</div></div>`;
+  if (id === "reading") return `<div class="settings-card"><div class="font-grid">${Object.keys(FONT_MAP).map((f) => `<button class="pill ${state.font === f ? "active" : ""}" data-font="${f}" aria-label="${f}"><span class="font-sample">أبجد</span><span>${f}</span></button>`).join("")}</div><div class="row"><label>${t("reading.arSize")}</label><input type="range" min="0.7" max="2" step="0.05" value="${state.arSize}" id="arSize"/><span>${state.arSize.toFixed(2)}×</span></div><div class="row"><label>${t("reading.appScale")}</label><div class="zoom-row"><button class="zoom-btn" data-zoom="-0.1">−</button><span class="zoom-val">${Math.round(state.zoom * 100)}%</span><button class="zoom-btn" data-zoom="0.1">+</button></div></div><div class="row azkar-navigation-setting"><label>${t("reading.navMode")}</label><div class="seg" role="group" aria-label="${t("reading.navMode.aria")}"><button class="seg-btn ${azkarNavigationMode() === "buttons-and-swipe" ? "active" : ""}" data-azkar-navigation="buttons-and-swipe">${t("reading.both")}</button><button class="seg-btn ${azkarNavigationMode() === "swipe-only" ? "active" : ""}" data-azkar-navigation="swipe-only">${t("reading.swipe")}</button><button class="seg-btn ${azkarNavigationMode() === "buttons-only" ? "active" : ""}" data-azkar-navigation="buttons-only">${t("reading.buttons")}</button></div></div><div class="preview">بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</div></div>`;
   if (id === "appearance") {
     return `<div class="settings-card">
       <div class="theme-intro">${t("appearance.intro")}</div>
@@ -2264,7 +2048,6 @@ function settingsBodyHTML(id) {
       `).join("")}
     </div>`;
   }
-  if (id === "window") return `<div class="settings-card"><div class="row"><label>${t("window.zoom")}</label><div class="zoom-row"><button class="zoom-btn" data-zoom="-0.1">−</button><span class="zoom-val">${Math.round(state.zoom * 100)}%</span><button class="zoom-btn" data-zoom="0.1">+</button></div></div><div class="row"><label>${t("window.width")}</label><input type="range" min="360" max="900" step="10" value="${state.popupW}" id="popupW"/><span>${state.popupW}px</span></div><div class="row"><label>${t("window.height")}</label><input type="range" min="480" max="900" step="10" value="${state.popupH}" id="popupH"/><span>${state.popupH}px</span></div></div>`;
   return "";
 }
 function buildSettingsSection(id) {
@@ -2272,7 +2055,7 @@ function buildSettingsSection(id) {
 }
 function renderSettings() {
   const active = SETTINGS_SECTIONS.includes(state.settingsSection) ? state.settingsSection : "general";
-  return `<div class="app settings-view"><div class="settings-head"><button class="icon-btn" data-go="home">${icon.back}</button><h1>${t("settings.title")}</h1><span style="width:30px"></span></div><nav class="settings-nav" aria-label="${t("settings.nav.aria")}">${SETTINGS_NAV.map(([id]) => `<button type="button" class="settings-nav-btn ${active === id ? "active" : ""}" data-settings-section="${id}">${t("settings." + id)}</button>`).join("")}</nav>${buildSettingsSection(active)}${mobileBottomNavHTML("settings")}</div>`;
+  return `<div class="app settings-view"><div class="settings-head"><button class="icon-btn" data-go="home">${icon.back}</button><h1>${t("settings.title")}</h1><span style="width:30px"></span></div><nav class="settings-nav" aria-label="${t("settings.nav.aria")}">${SETTINGS_SECTIONS.map((id) => `<button type="button" class="settings-nav-btn ${active === id ? "active" : ""}" data-settings-section="${id}">${t("settings." + id)}</button>`).join("")}</nav>${buildSettingsSection(active)}${mobileBottomNavHTML("settings")}</div>`;
 }
 function htmlToNode(html) {
   const doc = new DOMParser().parseFromString(html, "text/html");
@@ -2285,15 +2068,9 @@ function renderSettingsSectionInPlace() {
   const next = htmlToNode(buildSettingsSection(active));
   // Avoid a blank flash: insert the new section next to the old one and
   // remove the old on the next frame so the WebView never paints an empty
-  // .app gap (Appearance's theme grid is heavy to parse). On mobile keep
-  // it instant; desktop keeps the fade.
+  // .app gap (Appearance's theme grid is heavy to parse).
   old.after(next);
-  if (!globalThis.__ZAKKIR_MOBILE__) {
-    old.remove();
-    playEnter(next);
-  } else {
-    requestAnimationFrame(() => old.remove());
-  }
+  requestAnimationFrame(() => old.remove());
   document.querySelectorAll("[data-settings-section]").forEach((b) => b.classList.toggle("active", b.dataset.settingsSection === active));
   wireSettings();
 }
@@ -2355,8 +2132,9 @@ function applyVars() {
   document.body.style.setProperty("--popup-w", state.popupW + "px");
   document.body.style.setProperty("--popup-h", state.popupH + "px");
 
-  const pinned = globalThis.electronAPI ? true : IS_PINNED;
-  document.body.classList.toggle("pinned", pinned);
+  // popup.css lays the app out with body.pinned rules (originally the
+  // extension's pinned window); the app always uses that layout.
+  document.body.classList.add("pinned");
 
   if (state.customAccent) {
     document.body.style.setProperty("--accent", state.customAccent);
@@ -2389,7 +2167,7 @@ function applyVars() {
     document.body.style.removeProperty("--ink");
   }
 
-  if (globalThis.__ZAKKIR_MOBILE__ && (_appliedStateCache.postedTheme !== theme || _appliedStateCache.postedPalette !== palette)) {
+  if (_appliedStateCache.postedTheme !== theme || _appliedStateCache.postedPalette !== palette) {
     _appliedStateCache.postedTheme = theme;
     _appliedStateCache.postedPalette = palette;
     setTimeout(() => {
@@ -2418,94 +2196,56 @@ function setHTML(el, html) {
 function render() {
   applyVars();
   const app = $("#app");
-  const paint = () => {
-    if (state.view === "map") {
-      setHTML(app, renderMap());
-      wireMap();
-      return;
-    }
-    const html = state.view === "settings" ? renderSettings()
-      : state.view === "schedule" ? renderSchedule()
-      : renderHome();
-    // On mobile keep the bottom nav DOM node persistent so tab switches
-    // don't destroy/recreate it (that was the "whole page re-renders"
-    // flash). Preserve the existing sibling nav, replace only the .app
-    // view container.
-    if (globalThis.__ZAKKIR_MOBILE__) {
-      const savedNav = app.querySelector(":scope > .mobile-bottom-nav");
-      const existingApp = app.querySelector(":scope > .app");
-      if (existingApp && savedNav) {
-        const tmp = document.createElement("div");
-        tmp.innerHTML = html;
-        const newApp = tmp.firstElementChild;
-        const newNavInNew = newApp?.querySelector?.(".mobile-bottom-nav");
-        if (newNavInNew) newNavInNew.remove();
-        existingApp.replaceWith(newApp);
-        wire();
-        // Keep the preserved nav's active states in sync (its DOM was
-        // not recreated, so the old .active would otherwise stay on the
-        // previous tab and make e.g. Settings look white on Home).
-        savedNav.querySelectorAll(".mobile-bottom-nav-btn").forEach(btn => {
-          const isActive = btn.dataset.go === state.view;
-          btn.classList.toggle("active", isActive);
-          if (isActive) btn.setAttribute("aria-current", "page");
-          else btn.removeAttribute("aria-current");
-        });
-        settleMobileNav(state.view);
-        return;
-      }
-      // First mobile render (or after map): fall through to full setHTML
-      // then the nav will be moved to sibling below.
-    }
+  const html = state.view === "settings" ? renderSettings()
+    : state.view === "schedule" ? renderSchedule()
+    : renderHome();
+  // Keep the bottom nav DOM node persistent so tab switches don't
+  // destroy/recreate it (that was the "whole page re-renders" flash).
+  // Preserve the existing sibling nav and replace only the .app view.
+  const savedNav = app.querySelector(":scope > .mobile-bottom-nav");
+  const existingApp = app.querySelector(":scope > .app");
+  if (existingApp && savedNav) {
+    const tmp = document.createElement("div");
+    tmp.innerHTML = html;
+    const newApp = tmp.firstElementChild;
+    const newNavInNew = newApp?.querySelector?.(".mobile-bottom-nav");
+    if (newNavInNew) newNavInNew.remove();
+    existingApp.replaceWith(newApp);
+    wire();
+    // Keep the preserved nav's active states in sync (its DOM was
+    // not recreated, so the old .active would otherwise stay on the
+    // previous tab and make e.g. Settings look white on Home).
+    savedNav.querySelectorAll(".mobile-bottom-nav-btn").forEach(btn => {
+      const isActive = btn.dataset.go === state.view;
+      btn.classList.toggle("active", isActive);
+      if (isActive) btn.setAttribute("aria-current", "page");
+      else btn.removeAttribute("aria-current");
+    });
+  } else {
+    // First render: paint everything, then move the nav out of .app.
     setHTML(app, html);
     wire();
-    settleMobileNav(state.view);
-  };
-  // Direction of travel through the bottom-nav order, so a view arrives from the
-  // side you moved toward instead of hard-cutting. mobileNavTransition is set by
-  // the nav handler before update() triggers this render.
-  const order = ["home", "schedule", "settings"];
-  const from = order.indexOf(renderedView);
-  const to = order.indexOf(state.view);
-  const viewChanged = renderedView !== null && renderedView !== state.view;
-  const direction = viewChanged && from >= 0 && to >= 0 ? Math.sign(to - from) : 0;
-  renderedView = state.view;
-  paint();
-  // Bottom nav is position:fixed. If it stays inside the animated .app
-  // (which gets contentEnter/slideIn transforms), fixed becomes relative to
-  // the transformed ancestor and the bar visibly glitches up/down with the
-  // page. Ensure it is a sibling of .app so it stays viewport-fixed.
-  if (globalThis.__ZAKKIR_MOBILE__ && state.view !== "map") {
+    // Bottom nav is position:fixed. If it stays inside the animated .app,
+    // fixed becomes relative to the transformed ancestor and the bar
+    // visibly glitches with the page. Make it a sibling of .app instead.
     const root = app.querySelector(":scope > .app");
     const nav = root?.querySelector?.(".mobile-bottom-nav");
-    if (nav && nav.parentElement === root) {
-      app.appendChild(nav);
-    }
+    if (nav && nav.parentElement === root) app.appendChild(nav);
   }
-  if (viewChanged) {
-    // On mobile view switches are instant (animation: none) to avoid the
-    // blank flash that the 31-row schedule table caused while animating.
-    if (globalThis.__ZAKKIR_MOBILE__) return;
-    const root = app.querySelector(":scope > .app");
-    const target = root || app.firstElementChild;
-    if (target) {
-      if (direction !== 0) playEnter(target, direction < 0 ? "slideInFromStart" : "slideInFromEnd");
-      else playEnter(target, "contentEnter");
-    }
-  }
-  if (globalThis.__ZAKKIR_MOBILE__) {
-    window.ReactNativeWebView?.postMessage(JSON.stringify({ type: "view-change", view: state.view }));
-  }
+  settleMobileNav(state.view);
+  // View switches are instant (no enter animation) to avoid the blank flash
+  // the 31-row schedule table caused while animating. The native shell
+  // tracks the view so the hardware back button returns home.
+  window.ReactNativeWebView?.postMessage(JSON.stringify({ type: "view-change", view: state.view }));
 }
 
 globalThis.__ZAKKIR_HANDLE_BACK__ = () => {
   if (state.view === "home") return false;
-  update({ view: state.view === "map" ? "settings" : "home" });
+  update({ view: "home" });
   return true;
 };
 
 function settleMobileNav(nextView) {
-  if (!globalThis.__ZAKKIR_MOBILE__) return;
   const nav = document.querySelector(".mobile-bottom-nav");
   if (!nav) return;
   const order = ["home", "schedule", "settings"];
@@ -2520,8 +2260,6 @@ function settleMobileNav(nextView) {
 }
 
 function patchCount(count, target) {
-  const categoryCounter = document.querySelector("#catRegion .counter");
-  if (categoryCounter) categoryCounter.textContent = `${count} / ${target}`;
   const currentCounter = document.querySelector("#azkarTap .azkar-current-count");
   if (currentCounter) currentCounter.textContent = `${count} / ${target}`;
   const currentBar = document.querySelector("#azkarTap .azkar-current-progress > div");
@@ -2561,25 +2299,11 @@ function patchAzkarCard() {
       setHTML(el, azkarCardHTML());
     }
   }
-
-  const cat = $("#catRegion");
-  if (cat && !globalThis.__ZAKKIR_MOBILE__) {
-    setHTML(cat, catRowHTML());
-    wireDropdowns({
-      catPick: (v) => {
-        state.autoTime = false;
-        storage.set({ autoTime: false });
-        update({ category: v, azkarIndex: 0, azkarCount: 0 });
-      },
-    }, cat);
-  }
-  const nav = $("#navIndicator");
-  if (nav) nav.textContent = navIndicatorText();
 }
 
 function animateAzkarSwap(direction, paint, fromSwipe = false) {
   const el = $("#azkarTap");
-  if (!el || !globalThis.__ZAKKIR_MOBILE__) {
+  if (!el) {
     paint();
     return;
   }
@@ -2654,7 +2378,7 @@ function navigateAzkar(direction, fromSwipe = false) {
 }
 
 function wireAzkarSwipe(tap) {
-  if (!tap || !globalThis.__ZAKKIR_MOBILE__ || azkarNavigationMode() === "buttons-only") return;
+  if (!tap || azkarNavigationMode() === "buttons-only") return;
   let startX = 0;
   let startY = 0;
   let currentDx = 0;
@@ -2726,7 +2450,7 @@ function wireAzkarSwipe(tap) {
 function patchPrayerCard(forceRebuild = false) {
   const el = $("#prayerRegion");
   if (!el) return;
-  el.classList.toggle("is-collapsed", Boolean(globalThis.__ZAKKIR_MOBILE__ && state.prayerCollapsed));
+  el.classList.toggle("is-collapsed", Boolean(state.prayerCollapsed));
 
   const np = nextPrayer();
   const nextName = np ? prayerName(np.name) : (lastErr ? t("prayer.unavailable") : t("prayer.loading"));
@@ -2848,20 +2572,13 @@ function wire() {
     const z = list[state.azkarIndex]; if (!z) return;
     const target = parseInt(z.count, 10) || 1;
     const next = state.azkarCount + 1;
-    if (globalThis.__ZAKKIR_MOBILE__ && !state.azkarHintDismissed) {
+    if (!state.azkarHintDismissed) {
       state.azkarHintDismissed = true;
       storage.set({ azkarHintDismissed: true });
     }
-    // Pulse is desktop-only (mobile suppresses it via `animation: none`).
-    // Running it on mobile forces a synchronous layout and, via the
+    // No tap pulse: it forces a synchronous layout and, via the
     // `mobile-view-enter` :not(.pulse) gate, restarts the enter animation
     // on every tap — the "whole page re-render" the user reported.
-    if (!globalThis.__ZAKKIR_MOBILE__) {
-      tap.classList.remove("pulse");
-      void tap.offsetWidth;
-      tap.classList.add("pulse");
-      setTimeout(() => tap.classList.remove("pulse"), 220);
-    }
     globalThis.__ZAKKIR_HAPTIC__?.(next >= target ? "success" : "light");
     if (next >= target) {
       // Finish in place, then advance through the same animated path as navigation.
@@ -2898,44 +2615,6 @@ function wire() {
     globalThis.__ZAKKIR_HAPTIC__?.("selection");
     patchCount(0, target);
   });
-  // Themed dropdowns (replaces native <select>)
-  if (!globalThis.__ZAKKIR_MOBILE__) {
-    wireDropdowns({
-      catPick: (v) => {
-        state.autoTime = false;
-        storage.set({ autoTime: false });
-        update({ category: v, azkarIndex: 0, azkarCount: 0 });
-      },
-    });
-  }
-  const pinBtn = $("#pinBtn");
-  if (pinBtn) pinBtn.addEventListener("click", () => {
-    if (IS_PINNED) { window.close(); return; }
-    const base = globalThis.chrome?.runtime?.getURL ? chrome.runtime.getURL("popup.html") : "popup.html";
-    const url = base + "?pinned=1";
-    const w = Math.round(state.popupW + 16);
-    const h = Math.round(state.popupH + 40);
-    if (globalThis.chrome?.windows?.create) {
-      chrome.windows.create({ url, type: "popup", width: w, height: h, focused: true }, () => window.close());
-    } else {
-      window.open(url, "zakkir-pinned", `popup=yes,width=${w},height=${h}`);
-    }
-  });
-
-  const minimizeBtn = $("#minimizeBtn");
-  if (minimizeBtn) minimizeBtn.addEventListener("click", () => {
-    if (globalThis.electronAPI) {
-      globalThis.electronAPI.minimizeWindow();
-    }
-  });
-
-  const closeBtn = $("#closeBtn");
-  if (closeBtn) closeBtn.addEventListener("click", () => {
-    if (globalThis.electronAPI) {
-      globalThis.electronAPI.closeWindow();
-    }
-  });
-
   if (state.view === "settings") wireSettings();
 }
 
@@ -3163,20 +2842,6 @@ function wireSettings() {
   document.querySelectorAll("[data-azkar-navigation]").forEach((b) =>
     b.addEventListener("click", () => update({ azkarNavigation: b.dataset.azkarNavigation }))
   );
-  const w = $("#popupW");
-  if (w) w.addEventListener("input", (e) => {
-    const v = parseInt(e.target.value, 10);
-    update({ popupW: v });
-    patchSliderLabel("popupW", v + "px");
-    if (globalThis.electronAPI) globalThis.electronAPI.resizeWindow(v, state.popupH);
-  });
-  const h = $("#popupH");
-  if (h) h.addEventListener("input", (e) => {
-    const v = parseInt(e.target.value, 10);
-    update({ popupH: v });
-    patchSliderLabel("popupH", v + "px");
-    if (globalThis.electronAPI) globalThis.electronAPI.resizeWindow(state.popupW, v);
-  });
 
   // General: manual coordinates
   const useCoordsBtn = $("#useCoordsBtn");
@@ -3261,11 +2926,6 @@ function wireSettings() {
     state.sunnahFastHighlight = e.target.checked;
     storage.set({ sunnahFastHighlight: state.sunnahFastHighlight });
   });
-  const ua = $("#updateAlertsEnabled");
-  if (ua) ua.addEventListener("change", (e) => {
-    state.updateAlertsEnabled = e.target.checked;
-    storage.set({ updateAlertsEnabled: state.updateAlertsEnabled });
-  });
 
   // Sound picker
   document.querySelectorAll("[data-sound]").forEach((lbl) => {
@@ -3322,8 +2982,11 @@ function playSound(soundId, onEndCb) {
     if (onEndCb) onEndCb();
     return;
   }
-  const base = globalThis.chrome?.runtime?.getURL ? chrome.runtime.getURL("") : "";
-  const src = globalThis.__ZAKKIR_SOUNDS__?.[soundId] || (base + `sounds/${soundId}.mp3`);
+  const src = globalThis.__ZAKKIR_SOUNDS__?.[soundId];
+  if (!src) {
+    if (onEndCb) onEndCb();
+    return;
+  }
   try {
     activeAudio = new Audio(src);
     if (onEndCb) {
@@ -3340,60 +3003,6 @@ function playSound(soundId, onEndCb) {
   } catch (e) {
     if (onEndCb) onEndCb();
   }
-}
-
-function wireMap() {
-  const mapBack = $("#mapBackBtn");
-  if (mapBack) mapBack.addEventListener("click", () => update({ view: "settings" }));
-  if (typeof L === "undefined") return;
-  // Fix default icon paths to our local leaflet folder
-  delete L.Icon.Default.prototype._getIconUrl;
-  L.Icon.Default.mergeOptions({ iconUrl: "leaflet/marker-icon.png", iconRetinaUrl: "leaflet/marker-icon-2x.png", shadowUrl: "leaflet/marker-shadow.png" });
-  const map = L.map("leafletMap").setView([state.lat, state.lng], 10);
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { attribution: "© OSM" }).addTo(map);
-  const marker = L.marker([state.lat, state.lng], { draggable: true }).addTo(map);
-  let pendingLat = state.lat, pendingLng = state.lng;
-  const labelEl = $("#mapLocLabel");
-  async function updatePin(lat, lng) {
-    pendingLat = lat; pendingLng = lng;
-    if (labelEl) labelEl.textContent = t("map.fetching");
-    const name = await reverseGeocode(lat, lng);
-    if (labelEl) labelEl.textContent = name;
-  }
-  marker.on("dragend", () => { const ll = marker.getLatLng(); updatePin(ll.lat, ll.lng); });
-  map.on("click", (e) => { marker.setLatLng(e.latlng); updatePin(e.latlng.lat, e.latlng.lng); });
-  // Search
-  let searchTimer;
-  const searchEl = $("#mapSearch");
-  const resultsEl = $("#mapResults");
-  if (searchEl) searchEl.addEventListener("input", () => {
-    clearTimeout(searchTimer);
-    searchTimer = setTimeout(async () => {
-      const q = searchEl.value.trim(); if (!q) { if (resultsEl) resultsEl.innerHTML = ""; return; }
-      const results = await forwardGeocode(q);
-      if (resultsEl) setHTML(resultsEl, results.slice(0, 5).map(r =>
-        `<div class="map-result" data-lat="${r.lat}" data-lon="${r.lon}">${r.display_name}</div>`
-      ).join(""));
-      document.querySelectorAll(".map-result").forEach(r => r.addEventListener("click", () => {
-        const lat = parseFloat(r.dataset.lat), lon = parseFloat(r.dataset.lon);
-        map.setView([lat, lon], 12);
-        marker.setLatLng([lat, lon]);
-        updatePin(lat, lon);
-        if (resultsEl) resultsEl.innerHTML = "";
-        if (searchEl) searchEl.value = "";
-      }));
-    }, 400);
-  });
-  // Confirm
-  const useBtn = $("#useLocationBtn");
-  if (useBtn) useBtn.addEventListener("click", async () => {
-    const name = await reverseGeocode(pendingLat, pendingLng);
-    state.lat = +pendingLat.toFixed(4); state.lng = +pendingLng.toFixed(4);
-    state.locationName = name; state.locationMethod = "map"; state.locationTab = "map";
-    storage.set({ lat: state.lat, lng: state.lng, locationName: name, locationMethod: "map", locationTab: "map", prayerCache: null });
-    await loadPrayers(true);
-    update({ view: "settings" });
-  });
 }
 
 // ---------- init ----------
@@ -3419,16 +3028,13 @@ function wireMap() {
       reminderEnabled: null,
       athanEnabled: null,
     });
-    if (globalThis.chrome?.storage) chrome.storage.local.remove(["reminderEnabled", "athanEnabled"]);
   }
 
-  // Mobile always starts in time-based mode. A manual category choice can
-  // still override the category for the current session, but should not
+  // Always start in time-based mode. A manual category choice can still
+  // override the category for the current session, but should not
   // permanently prevent the next launch from opening Morning or Evening.
-  if (globalThis.__ZAKKIR_MOBILE__) {
-    state.autoTime = true;
-    storage.set({ autoTime: true });
-  }
+  state.autoTime = true;
+  storage.set({ autoTime: true });
 
   // Removed themes fall back cleanly instead of leaving stale stored classes.
   if (!THEMES.some(([id]) => id === state.theme)) {
@@ -3450,68 +3056,21 @@ function wireMap() {
     } catch {}
   }
 
-  if (globalThis.electronAPI) {
-    document.body.classList.add("electron");
-    globalThis.electronAPI.resizeWindow(state.popupW, state.popupH);
-    globalThis.electronAPI.setAlwaysOnTop(true);
-    // Listen for sound play requests from main process
-    if (globalThis.electronAPI.onPlaySound) {
-      globalThis.electronAPI.onPlaySound((file) => playSound(file));
-    }
-    let resizeTimer;
-    window.addEventListener("resize", () => {
-      clearTimeout(resizeTimer);
-      resizeTimer = setTimeout(() => {
-        update({ popupW: window.innerWidth, popupH: window.innerHeight });
-      }, 500);
-    });
-  }
-
-  if (globalThis.electronAPI?.onUpdateAvailable) {
-    globalThis.electronAPI.onUpdateAvailable((version, url) => {
-      const now = Date.now();
-      if (!state.updateAlertsEnabled || now < (state.ignoreUpdateUntil || 0)) return; // ignored by user
-
-      let banner = document.getElementById("updateBanner");
-      if (!banner) {
-        banner = document.createElement("div");
-        banner.id = "updateBanner";
-        document.body.appendChild(banner);
-      }
-      banner.innerHTML = `
-        <div class="update-title"><span>🚀</span> ${t("update.available", { version })}</div>
-        <div class="update-actions">
-          <button id="updateDownloadBtn" class="btn-primary">${t("update.download")}</button>
-          <button id="updateRemindBtn" class="btn-secondary">${t("update.remind")}</button>
-          <button id="updateNeverBtn" class="btn-dismiss">${t("update.never")}</button>
-        </div>
-      `;
-      banner.style.display = "block";
-
-      document.getElementById("updateDownloadBtn").onclick = () => {
-        globalThis.electronAPI.openExternal(url);
-      };
-      document.getElementById("updateRemindBtn").onclick = () => {
-        banner.style.display = "none";
-        state.ignoreUpdateUntil = now + 3 * 24 * 60 * 60 * 1000;
-        storage.set({ ignoreUpdateUntil: state.ignoreUpdateUntil });
-      };
-      document.getElementById("updateNeverBtn").onclick = () => {
-        banner.style.display = "none";
-        state.updateAlertsEnabled = false;
-        storage.set({ updateAlertsEnabled: false });
-        if (state.view === "settings") render();
-      };
-    });
-  }
+  // popup.css makes body.electron the scroll container (originally the
+  // desktop window styling); the app relies on that layout.
+  document.body.classList.add("electron");
+  let resizeTimer;
+  window.addEventListener("resize", () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+      update({ popupW: window.innerWidth, popupH: window.innerHeight });
+    }, 500);
+  });
 
   try { await loadAzkar(); } catch (e) { lastErr = t("err.azkar"); }
   maybeResetDaily();
   applyAutoCategory();
   render();
-  // Tell the main process the UI is ready — it will now show the window.
-  // This ensures the user never sees or clicks the app before state is set up.
-  if (globalThis.electronAPI?.signalReady) globalThis.electronAPI.signalReady();
   await loadPrayers();
   // Re-evaluate auto category now that real prayer times are loaded.
   const switched = applyAutoCategory();

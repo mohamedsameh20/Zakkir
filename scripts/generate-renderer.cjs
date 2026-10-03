@@ -41,12 +41,7 @@ soundNames.forEach((name) => {
 // copies them into res/raw on prebuild.
 require("./sounds.cjs").syncAndroidSoundAssets();
 
-const patchedJs = js
-  .replace(/const url = globalThis\.chrome\?\.runtime\?\.getURL \? chrome\.runtime\.getURL\("azkar\.json"\) : "azkar\.json";/, "const url = 'data:application/json,' + encodeURIComponent(JSON.stringify(window.__ZAKKIR_AZKAR__));")
-  .replace("const raw = localStorage.getItem(\"azkar\");", "const raw = localStorage.getItem(\"azkar\");");
-
 const bridge = `
-  window.__ZAKKIR_MOBILE__ = true;
   document.documentElement.classList.add('zakkir-mobile');
   window.__ZAKKIR_AZKAR__ = ${azkar};
   window.__ZAKKIR_SOUNDS__ = ${JSON.stringify(soundsObj)};
@@ -65,8 +60,7 @@ const bridge = `
   window.electronAPI = {
     loadSettings: function() { return new Promise(function(resolve) { var done = false; var finish = function(value) { if (done) return; done = true; clearTimeout(timer); window.__resolveSettings = null; resolve(value || {}); }; var timer = setTimeout(function() { finish({}); }, 3000); window.__resolveSettings = finish; window.ReactNativeWebView.postMessage(JSON.stringify({type:'load-settings'})); }); },
     saveSettings: function(patch) { window.ReactNativeWebView.postMessage(JSON.stringify({type:'save-settings',patch:patch})); },
-    setPrayerTimes: function(times, settings) { window.ReactNativeWebView.postMessage(JSON.stringify({type:'schedule-notifications', times: times || {}, settings: settings || {}})); }, signalReady: function() {}, onPlaySound: function() {}, onUpdateAvailable: function() {},
-    openExternal: function() {}, resizeWindow: function() {}, setAlwaysOnTop: function() {}, minimizeWindow: function() {}, closeWindow: function() {}
+    setPrayerTimes: function(times, settings) { window.ReactNativeWebView.postMessage(JSON.stringify({type:'schedule-notifications', times: times || {}, settings: settings || {}})); }
   };
   window.__ZAKKIR_HAPTIC__ = function(kind) {
     try { window.ReactNativeWebView.postMessage(JSON.stringify({type:'haptic',kind:kind || 'light'})); } catch (_) {}
@@ -483,5 +477,5 @@ const mobileCss = `
   }
 `;
 
-const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=3,user-scalable=yes"/><style>${fonts}${css}${mobileCss}</style></head><body><div id="app"><div class="boot">Loading...</div></div><script>${scheduler.replace(/<\/script/gi, "<\\/script")}</script><script>${bridge}</script><script>${patchedJs.replace(/<\/script/gi, "<\\/script")}</script></body></html>`;
+const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=3,user-scalable=yes"/><style>${fonts}${css}${mobileCss}</style></head><body><div id="app"><div class="boot">Loading...</div></div><script>${scheduler.replace(/<\/script/gi, "<\\/script")}</script><script>${bridge}</script><script>${js.replace(/<\/script/gi, "<\\/script")}</script></body></html>`;
 fs.writeFileSync(path.join(root, "renderer.generated.ts"), `export const rendererHtml = ${JSON.stringify(html)};\n`);
