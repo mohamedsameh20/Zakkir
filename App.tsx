@@ -6,6 +6,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { AppState, BackHandler, I18nManager, LogBox, Platform, SafeAreaView, StatusBar as NativeStatusBar, StyleSheet, View } from "react-native";
 import { WebView, WebViewMessageEvent } from "react-native-webview";
 import { rendererHtml } from "./renderer.generated";
+import { deliverScript, parseWebMessage } from "./src/bridge";
 
 // Hide the known Expo Go-only warning ("push notifications removed in SDK 53")
 // so LogBox banners don't cover the UI in screenshots. Real dev/prod builds
@@ -404,49 +405,57 @@ export default function App() {
     if (Platform.OS !== "android") return;
     const subscription = BackHandler.addEventListener("hardwareBackPress", () => {
       if (currentView === "home") return false;
-      webView.current?.injectJavaScript("window.__ZAKKIR_HANDLE_BACK__?.();true;");
+      webView.current?.injectJavaScript(deliverScript({ type: "back" }));
       return true;
     });
     return () => subscription.remove();
   }, [currentView]);
 
   async function onMessage(event: WebViewMessageEvent) {
+    const message = parseWebMessage(event.nativeEvent.data);
+    if (!message) return;
     try {
-      const message = JSON.parse(event.nativeEvent.data);
-      if (message.type === "load-settings") {
-        const raw = await AsyncStorage.getItem(SETTINGS_KEY);
-        let value = {};
-        if (raw) {
-          try { value = JSON.parse(raw); }
-          catch { await AsyncStorage.removeItem(SETTINGS_KEY); }
+      switch (message.type) {
+        case "load-settings": {
+          const raw = await AsyncStorage.getItem(SETTINGS_KEY);
+          let value = {};
+          if (raw) {
+            try { value = JSON.parse(raw); }
+            catch { await AsyncStorage.removeItem(SETTINGS_KEY); }
+          }
+          webView.current?.injectJavaScript(deliverScript({ type: "settings", value, locale: getDeviceLanguage() }));
+          break;
         }
-        const locale = getDeviceLanguage();
-        webView.current?.injectJavaScript(`window.__ZAKKIR_LOCALE__=${JSON.stringify(locale)};window.dispatchEvent(new MessageEvent('message',{data:${JSON.stringify(JSON.stringify({ type: "settings", value }))}}));true;`);
-      } else if (message.type === "save-settings") {
-        let current = {};
-        try { current = JSON.parse((await AsyncStorage.getItem(SETTINGS_KEY)) || "{}"); }
-        catch { await AsyncStorage.removeItem(SETTINGS_KEY); }
-        await AsyncStorage.setItem(SETTINGS_KEY, JSON.stringify({ ...current, ...message.patch }));
-      } else if (message.type === "theme-color") {
-        if (message.bg) setThemeBg(message.bg);
-        if (typeof message.isDark === "boolean") setIsDarkTheme(message.isDark);
-      } else if (message.type === "haptic") {
-        try {
+        case "save-settings": {
+          let current = {};
+          try { current = JSON.parse((await AsyncStorage.getItem(SETTINGS_KEY)) || "{}"); }
+          catch { await AsyncStorage.removeItem(SETTINGS_KEY); }
+          await AsyncStorage.setItem(SETTINGS_KEY, JSON.stringify({ ...current, ...message.patch }));
+          break;
+        }
+        case "theme-color":
+          if (message.bg) setThemeBg(message.bg);
+          if (message.isDark !== undefined) setIsDarkTheme(message.isDark);
+          break;
+        case "haptic": {
           const type = message.kind === "success"
             ? AndroidHaptics.Confirm
             : message.kind === "selection"
               ? AndroidHaptics.Segment_Tick
               : AndroidHaptics.Segment_Frequent_Tick;
           await performAndroidHapticsAsync(type);
-        } catch (_) {}
-      } else if (message.type === "view-change" && typeof message.view === "string") {
-        setCurrentView(message.view);
-      } else if (message.type === "schedule-notifications") {
-        const times = message.times || {};
-        const settings = message.settings || {};
-        lastSchedule.current = { times, settings };
-        await AsyncStorage.setItem(SCHEDULE_KEY, JSON.stringify({ times, settings }));
-        await scheduleNotifications(times, settings);
+          break;
+        }
+        case "view-change":
+          setCurrentView(message.view);
+          break;
+        case "schedule-notifications": {
+          const { times, settings } = message;
+          lastSchedule.current = { times, settings };
+          await AsyncStorage.setItem(SCHEDULE_KEY, JSON.stringify({ times, settings }));
+          await scheduleNotifications(times, settings);
+          break;
+        }
       }
     } catch (_) {}
   }

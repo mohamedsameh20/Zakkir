@@ -41,30 +41,13 @@ soundNames.forEach((name) => {
 // copies them into res/raw on prebuild.
 require("./sounds.cjs").syncAndroidSoundAssets();
 
-const bridge = `
+const bridge = fs.readFileSync(path.join(web, "bridge.js"), "utf8");
+
+// Data the page reads at boot. Inlined so the app works fully offline.
+const data = `
   document.documentElement.classList.add('zakkir-mobile');
   window.__ZAKKIR_AZKAR__ = ${azkar};
   window.__ZAKKIR_SOUNDS__ = ${JSON.stringify(soundsObj)};
-  (function() {
-    var locale = String(window.__ZAKKIR_LOCALE__ || navigator.language || 'en');
-    if (locale.toLowerCase().indexOf('ar') === 0) {
-      document.documentElement.setAttribute('lang', 'ar');
-      document.documentElement.dir = 'rtl';
-      var boot = document.querySelector('.boot');
-      if (boot) boot.textContent = 'جارٍ التحميل…';
-    }
-  })();
-  window.addEventListener('message', function(event) {
-    try { var message = JSON.parse(event.data); if (message.type === 'settings' && window.__resolveSettings) window.__resolveSettings(message.value); } catch (_) {}
-  });
-  window.electronAPI = {
-    loadSettings: function() { return new Promise(function(resolve) { var done = false; var finish = function(value) { if (done) return; done = true; clearTimeout(timer); window.__resolveSettings = null; resolve(value || {}); }; var timer = setTimeout(function() { finish({}); }, 3000); window.__resolveSettings = finish; window.ReactNativeWebView.postMessage(JSON.stringify({type:'load-settings'})); }); },
-    saveSettings: function(patch) { window.ReactNativeWebView.postMessage(JSON.stringify({type:'save-settings',patch:patch})); },
-    setPrayerTimes: function(times, settings) { window.ReactNativeWebView.postMessage(JSON.stringify({type:'schedule-notifications', times: times || {}, settings: settings || {}})); }
-  };
-  window.__ZAKKIR_HAPTIC__ = function(kind) {
-    try { window.ReactNativeWebView.postMessage(JSON.stringify({type:'haptic',kind:kind || 'light'})); } catch (_) {}
-  };
 `;
 
 const mobileCss = `
@@ -477,5 +460,5 @@ const mobileCss = `
   }
 `;
 
-const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=3,user-scalable=yes"/><style>${fonts}${css}${mobileCss}</style></head><body><div id="app"><div class="boot">Loading...</div></div><script>${scheduler.replace(/<\/script/gi, "<\\/script")}</script><script>${bridge}</script><script>${js.replace(/<\/script/gi, "<\\/script")}</script></body></html>`;
+const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=3,user-scalable=yes"/><style>${fonts}${css}${mobileCss}</style></head><body><div id="app"><div class="boot">Loading...</div></div><script>${scheduler.replace(/<\/script/gi, "<\\/script")}</script><script>${data}</script><script>${bridge}</script><script>${js.replace(/<\/script/gi, "<\\/script")}</script></body></html>`;
 fs.writeFileSync(path.join(root, "renderer.generated.ts"), `export const rendererHtml = ${JSON.stringify(html)};\n`);

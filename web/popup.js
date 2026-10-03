@@ -2,8 +2,8 @@
 // Prayer times: api.aladhan.com (timings)
 // Azkar:        bundled azkar.json (Hisn al-Muslim, nawafalqari/azkar-api),
 //               inlined by scripts/generate-renderer.cjs as __ZAKKIR_AZKAR__.
-// The native shell (App.tsx) is reached through the bridge the generator
-// installs as globalThis.electronAPI.
+// The native shell (App.tsx) is reached only through window.ZakkirNative,
+// defined in web/bridge.js.
 
 const DEFAULTS = {
   view: "home",
@@ -700,11 +700,11 @@ let loadedPrayerDate = null;
 // Settings live in the native shell's AsyncStorage.
 const storage = {
   get: () =>
-    globalThis.electronAPI.loadSettings()
+    ZakkirNative.loadSettings()
       .then((raw) => (raw ? { ...DEFAULTS, ...raw } : { ...DEFAULTS }))
       .catch(() => ({ ...DEFAULTS })),
   set: (patch) => {
-    globalThis.electronAPI.saveSettings(patch);
+    ZakkirNative.saveSettings(patch);
   },
 };
 
@@ -1138,7 +1138,7 @@ function syncReminders() {
       if (entry?.timings) upcoming[dateKey] = entry.timings;
     }
   }
-  globalThis.electronAPI.setPrayerTimes(prayers, {
+  ZakkirNative.scheduleNotifications(prayers, {
     notificationsEnabled: state.notificationsEnabled,
     remindersEnabled: state.remindersEnabled,
     reminderMinutes: state.reminderMinutes,
@@ -1284,7 +1284,7 @@ function wirePrayerCollapse() {
       e.stopPropagation();
       state.prayerCollapsed = !state.prayerCollapsed;
       storage.set({ prayerCollapsed: state.prayerCollapsed });
-      globalThis.__ZAKKIR_HAPTIC__?.("selection");
+      ZakkirNative.haptic("selection");
       const collapsed = Boolean(state.prayerCollapsed);
       const label = collapsed ? t("prayer.show") : t("prayer.minimize");
       button.setAttribute("aria-expanded", String(!collapsed));
@@ -2181,7 +2181,7 @@ function applyVars() {
         probe.remove();
         const luminance = (0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2]) / 255;
         const isDark = luminance < 0.5;
-        window.ReactNativeWebView?.postMessage(JSON.stringify({ type: "theme-color", bg, isDark }));
+        ZakkirNative.themeColor(bg, isDark);
       } catch (_) {}
     }, 20);
   }
@@ -2236,10 +2236,10 @@ function render() {
   // View switches are instant (no enter animation) to avoid the blank flash
   // the 31-row schedule table caused while animating. The native shell
   // tracks the view so the hardware back button returns home.
-  window.ReactNativeWebView?.postMessage(JSON.stringify({ type: "view-change", view: state.view }));
+  ZakkirNative.viewChanged(state.view);
 }
 
-globalThis.__ZAKKIR_HANDLE_BACK__ = () => {
+ZakkirNative.onBack = () => {
   if (state.view === "home") return false;
   update({ view: "home" });
   return true;
@@ -2428,7 +2428,7 @@ function wireAzkarSwipe(tap) {
     if (isHorizontal && Math.abs(currentDx) >= 38) {
       suppressAzkarTap = true;
       window.setTimeout(() => { suppressAzkarTap = false; }, 300);
-      globalThis.__ZAKKIR_HAPTIC__?.("selection");
+      ZakkirNative.haptic("selection");
 
       // Swipe left = next, swipe right = previous (azkar box stays LTR).
       const direction = currentDx < 0 ? 1 : -1;
@@ -2541,7 +2541,7 @@ function wire() {
         const from = order.indexOf(state.view);
         const to = order.indexOf(b.dataset.go);
         mobileNavTransition = from >= 0 && to >= 0 && from !== to ? { from, to } : null;
-        globalThis.__ZAKKIR_HAPTIC__?.("selection");
+        ZakkirNative.haptic("selection");
         update({ view: b.dataset.go });
       }
     })
@@ -2579,7 +2579,7 @@ function wire() {
     // No tap pulse: it forces a synchronous layout and, via the
     // `mobile-view-enter` :not(.pulse) gate, restarts the enter animation
     // on every tap — the "whole page re-render" the user reported.
-    globalThis.__ZAKKIR_HAPTIC__?.(next >= target ? "success" : "light");
+    ZakkirNative.haptic(next >= target ? "success" : "light");
     if (next >= target) {
       // Finish in place, then advance through the same animated path as navigation.
       state.azkarCount = target;
@@ -2612,7 +2612,7 @@ function wire() {
     cancelPendingAzkarCount();
     state.azkarCount = 0;
     storage.set({ azkarCount: 0 });
-    globalThis.__ZAKKIR_HAPTIC__?.("selection");
+    ZakkirNative.haptic("selection");
     patchCount(0, target);
   });
   if (state.view === "settings") wireSettings();
@@ -3012,10 +3012,10 @@ function playSound(soundId, onEndCb) {
   state = { ...DEFAULTS, ...migratedData };
   // The default or a saved choice may name a sound this build doesn't ship.
   if (!SOUNDS.some(([id]) => id === state.reminderSound)) state.reminderSound = SOUNDS[0][0];
-  // Auto-detect language on first boot: explicit bridge locale (mobile),
-  // else the browser/device language.
+  // Auto-detect language on first boot: the device locale from the native
+  // shell, else the WebView's language.
   if (!state.language) {
-    const detected = String(globalThis.__ZAKKIR_LOCALE__ || globalThis.navigator?.language || document.documentElement.lang || "en")
+    const detected = String(ZakkirNative.locale || globalThis.navigator?.language || document.documentElement.lang || "en")
       .toLowerCase()
       .startsWith("ar") ? "ar" : "en";
     state.language = detected;

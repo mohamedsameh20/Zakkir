@@ -12,7 +12,7 @@
     "build:apk:debug": "npm run generate-renderer && cd android && ./gradlew assembleDebug",
     "clean:android": "cd android && ./gradlew clean",
     "typecheck": "npm run generate-renderer && tsc --noEmit",
-    "test": "node --test tests/*.cjs",
+    "test": "node --test tests/*.cjs tests/*.test.ts",
     "ios": "expo run:ios"
   },
   "dependencies": {

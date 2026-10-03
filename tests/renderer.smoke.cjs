@@ -25,7 +25,8 @@ function findChrome() {
   return null;
 }
 
-// Runs before the app: records errors and answers the bridge like App.tsx.
+// Runs before the app: records errors and answers the bridge like App.tsx
+// (web/bridge.js posts through ReactNativeWebView, replies come via receive()).
 const HARNESS_HEAD = `<script>
 window.__smoke = { errors: [], messages: [] };
 addEventListener("error", (e) => __smoke.errors.push(String(e.message)));
@@ -35,9 +36,7 @@ window.ReactNativeWebView = {
     const message = JSON.parse(raw);
     __smoke.messages.push(message);
     if (message.type === "load-settings") {
-      setTimeout(() => dispatchEvent(new MessageEvent("message", {
-        data: JSON.stringify({ type: "settings", value: { language: "en" } }),
-      })), 0);
+      setTimeout(() => ZakkirNative.receive({ type: "settings", value: { language: "en" }, locale: "en" }), 0);
     }
   },
 };
@@ -74,7 +73,7 @@ setTimeout(async () => {
     await wait(50);
     checks.schedule = Boolean(document.querySelector("#schedBody"));
 
-    checks.backHandled = window.__ZAKKIR_HANDLE_BACK__();
+    checks.backHandled = ZakkirNative.onBack();
     await wait(50);
     checks.backToHome = Boolean(document.querySelector(".home-view"));
   } catch (e) {
